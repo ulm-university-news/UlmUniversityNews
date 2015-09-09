@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Context>
+
+    <Resource    name="jdbc/UniversityNewsDB"
+                 factory="org.apache.tomcat.jdbc.pool.DataSourceFactory"
+                 auth="Container"
+                 type="javax.sql.DataSource"
+                 username="universityNews"
+                 password="universityNewsDatabaseAccess2015"
+                 driverClassName="com.mysql.jdbc.Driver"
+                 description="JCG Example MySQL Database"
+                 url="jdbc:mysql://localhost:3306/ulm_university_news"
+                 initialSize="2"
+                 minIdle="2"
+                 maxActive="10"
+                 maxIdle="10"
+                 maxWait="15000"
+                 defaultAutoCommit="true"
+                 testOnBorrow="true"
+                 testWhileIdle="true"
+                 validationQuery="SELECT 1"
+                 validationInterval="30000"
+                 removeAbandoned="true"
+                 removeAbandonedTimeout="60"
+                 logAbandoned="true"
+                 timeBetweenEvictionRunsMillis="30000"
+                 minEvictableIdleTimeMillis="30000"  />
+
+
+</Context>
