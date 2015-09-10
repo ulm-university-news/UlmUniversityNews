@@ -7,7 +7,10 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.core.Response;
 
 /**
- * Created by Matthias Mak on 08.09.2015.
+ * TODO
+ *
+ * @author Matthias Mak
+ * @author Philipp Speidel
  */
 @Path("/user")
 public class UserAPI {

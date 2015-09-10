@@ -14,21 +14,24 @@ import javax.mail.internet.MimeMessage;
  */
 public class EmailManager {
 
-    //reference for the Singleton class
+    /** Reference for the EmailManager Singleton class. */
     private static EmailManager _instance;
 
-    //user credentials for the gmail smtp server
-    final String username = "ulm.university.news@gmail.com";
-    final String password = "bi{8Q,h.SaQq";
+    /** Username for the gmail smtp server. */
+    private final String username = "ulm.university.news@gmail.com";
+    /** Password for the gmail smtp server. */
+    private final String password = "bi{8Q,h.SaQq";
 
-    //constructor
+    /**
+     * Create an instance of the EmailManager class.
+     */
     public EmailManager(){
 
     }
 
     /**
-     * get an instance of the EmailManager class
-     * @return instance of EmailManager
+     * Get an instance of the EmailManager class.
+     * @return Instance of EmailManager.
      */
     public static EmailManager getInstance(){
         if(_instance == null){
@@ -38,23 +41,22 @@ public class EmailManager {
     }
 
     /**
-     * send an email to a given recipient.
-     * @param recipientMailAddress the email address of the recipient
-     * @param subject the subject of the email
-     * @param message the content of the email
-     * @return true if email has been sent successfully, false otherwise
+     * Send an email to a given recipient.
+     * @param recipientMailAddress The email address of the recipient.
+     * @param subject The subject of the email.
+     * @param message The content of the email.
+     * @return Returns true if email has been sent successfully, false otherwise.
      */
     public boolean sendMail(String recipientMailAddress, String subject, String message){
-        //Create a Properties object to contain settings for the SMTP protocol provider
-        //Properties
+        //Create a Properties object to contain settings for the SMTP protocol provider.
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
         props.put("mail.smtp.host", "smtp.gmail.com");
         props.put("mail.smtp.port", "587");
 
-        //if SMTP authentication is required you must set the mail.smtp.auth property to true and construct a Authenticator instance that returns a PasswordAuthentication
-        //instance with your username and password
+        /* If SMTP authentication is required the mail.smtp.auth property must be set to true and an Authenticator
+        instance needs to be created which returns a PasswordAuthentication instance with your username and password.*/
         Authenticator authenticator = null;
         authenticator = new Authenticator(){
             protected PasswordAuthentication getPasswordAuthentication(){
@@ -62,11 +64,11 @@ public class EmailManager {
             }
         };
 
-        //create a session instance using the properties object and the Authenticator object. Debug will be set to true
+        //Create a session instance using the properties object and the Authenticator object. Debug will be set to true.
         Session session = Session.getInstance(props, authenticator);
         session.setDebug(true);
 
-        //create the message object
+        //Create the message object.
         Message mailMessage = new MimeMessage(session);
         try {
             mailMessage.setFrom(new InternetAddress(username));

@@ -8,7 +8,8 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 /**
- * TODO
+ * The DatabaseManager class provides basic functionality to retrieve an open connection to the database from
+ * the JDBC Connection Pool and to return it to the pool after usage.
  *
  * @author Matthias Mak
  * @author Philipp Speidel
@@ -17,18 +18,18 @@ public class DatabaseManager {
 
     /**
      * Retrieves a Connection from the JDBC Connection Pool and returns it.
-     * @return a connection to the database
+     * @return A connection to the database.
      */
     protected Connection getDatabaseConnection(){
         Connection con = null;
         try {
-            String resourceName = "jdbc/UniversityNewsDB";  //name of the resource which should be accessed
+            String resourceName = "jdbc/UniversityNewsDB";  //Name of the resource which should be accessed.
 
             Context initialContext = new InitialContext();
             Context environmentContext = (Context) initialContext.lookup("java:comp/env");
             DataSource dataSource = (DataSource) environmentContext.lookup(resourceName);
 
-            //request a connetion from the pool
+            //Request a connetion from the pool.
             con = dataSource.getConnection();
         } catch (NamingException e) {
             //TODO
@@ -42,10 +43,10 @@ public class DatabaseManager {
 
     /**
      * Returns an open connection to the database back to the JDBC Connection Pool.
-     * @param con the connection which should be returned
+     * @param con The connection which should be returned.
      */
     protected void returnConnection(Connection con){
-        //release connection back to the pool
+        //Release connection back to the pool.
         if(con != null){
             try {
                 con.close();
@@ -54,7 +55,7 @@ public class DatabaseManager {
                 e.printStackTrace();
             }
         }
-        con = null; //prevent any future access
+        con = null; //Prevent any future access.
     }
 
 }
