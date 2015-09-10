@@ -27,8 +27,8 @@ public class EmailManager {
     }
 
     /**
-     * get an instance of the MailManager class
-     * @return instance of MailManager
+     * get an instance of the EmailManager class
+     * @return instance of EmailManager
      */
     public static EmailManager getInstance(){
         if(_instance == null){
@@ -37,8 +37,14 @@ public class EmailManager {
         return _instance;
     }
 
-
-    public void sendMail(String recipientMailAddress, String subject, String message){
+    /**
+     * send an email to a given recipient.
+     * @param recipientMailAddress the email address of the recipient
+     * @param subject the subject of the email
+     * @param message the content of the email
+     * @return true if email has been sent successfully, false otherwise
+     */
+    public boolean sendMail(String recipientMailAddress, String subject, String message){
         //Create a Properties object to contain settings for the SMTP protocol provider
         //Properties
         Properties props = new Properties();
@@ -71,14 +77,19 @@ public class EmailManager {
             Transport.send(mailMessage);
 
             System.out.println("Mail sent!");
+            return true;
 
         } catch (AddressException e) {
+            //TODO
             System.err.println("Address error! Not a valid address!");
             e.printStackTrace();
         } catch (MessagingException e) {
+            //TODO
             System.err.println("MessagingException occured! Could not send mail!");
             e.printStackTrace();
         }
+
+        return false;
     }
 
 }
