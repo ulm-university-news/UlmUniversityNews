@@ -20,7 +20,7 @@ public class DatabaseManager {
      * Retrieves a Connection from the JDBC Connection Pool and returns it.
      * @return A connection to the database.
      */
-    protected Connection getDatabaseConnection(){
+    protected Connection getDatabaseConnection()throws SQLException{
         Connection con = null;
         try {
             String resourceName = "jdbc/UniversityNewsDB";  //Name of the resource which should be accessed.
@@ -33,10 +33,11 @@ public class DatabaseManager {
             con = dataSource.getConnection();
         } catch (NamingException e) {
             //TODO
-            e.printStackTrace();
+            throw new SQLException("Naming Exception occurred during the JNDI lookup. " +
+                    "No database connection could be enabled.", e);
         } catch (SQLException e) {
             //TODO
-            e.printStackTrace();
+            throw e;
         }
         return con;
     }
