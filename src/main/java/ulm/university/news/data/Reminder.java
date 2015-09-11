@@ -50,15 +50,15 @@ public class Reminder {
     /**
      * Constructor which sets the given attributes and computes the remaining fields.
      *
-     * @param id The unique Reminder id.
-     * @param startDate The date on which the Reminder should fire for the first time.
-     * @param endDate The date on which the Reminder should fire for the last time.
-     * @param interval The interval in seconds on which the Reminder should fire.
-     * @param channelId The id of the Channel which is associated with the Reminder.
+     * @param id              The unique Reminder id.
+     * @param startDate       The date on which the Reminder should fire for the first time.
+     * @param endDate         The date on which the Reminder should fire for the last time.
+     * @param interval        The interval in seconds on which the Reminder should fire.
+     * @param channelId       The id of the Channel which is associated with the Reminder.
      * @param authorModerator The id of the Moderator which links to the author of the Reminder.
-     * @param title The title of the Announcement.
-     * @param text The text of the Announcement.
-     * @param priority The priority of the Announcement.
+     * @param title           The title of the Announcement.
+     * @param text            The text of the Announcement.
+     * @param priority        The priority of the Announcement.
      */
     public Reminder(int id, ZonedDateTime startDate, ZonedDateTime endDate, int interval, int channelId, int
             authorModerator, String title, String text, Priority priority) {
@@ -127,10 +127,21 @@ public class Reminder {
      * @return true if Reminder is valid
      */
     public boolean isValid() {
-        // Is the interval a multiple of a day?
-        if (endDate.isAfter(startDate)) {
+        // Check if the start date is after the end date.
+        if (startDate.isAfter(endDate)) {
             return false;
+        } else {
+            // Check if the interval is a multiple of a day (86400s = 24h * 60m * 60s).
+            if(interval % 86400 != 0) {
+                return false;
+            } else {
+                // Check if interval is at least one day and no more than 28 days (4 weeks).
+                if(interval < 86400 || interval > 2419200) {
+                    return false;
+                }
+            }
         }
+        // All checks passed. Reminder is valid.
         return true;
     }
 
