@@ -31,7 +31,7 @@ public class ReminderManager {
     public static synchronized void addReminder(Reminder reminder) {
         ZonedDateTime currentDate = ZonedDateTime.now(TIME_ZONE);
 
-        // Starting reminder tasks is exact to the second.
+        //Starting reminder tasks is exact to the second.
         Future<?> timingTask = scheduler.scheduleAtFixedRate(new ReminderTask(reminder),
                 ChronoUnit.SECONDS.between(currentDate, reminder.getNextDate()), reminder.getInterval(), TimeUnit.SECONDS);
 
@@ -46,7 +46,7 @@ public class ReminderManager {
      */
     public static synchronized void removeReminder(int reminderId) {
         // Cancel already scheduled reminder tasks.
-        if(activeReminders.containsKey(reminderId)) {
+        if (activeReminders.containsKey(reminderId)) {
             activeReminders.get(reminderId).cancel(false);
             activeReminders.remove(reminderId);
         }

@@ -1,7 +1,13 @@
 package ulm.university.news.util;
 
 /**
- * Created by Philipp on 10.09.2015.
+ * The Platform on which the users app is running. Possible values are ANDROID, WINDOWS and IOS.
+ *
+ * @author Matthias Mak
+ * @author Philipp Speidel
  */
 public enum Platform {
+    ANDROID, WINDOWS, IOS;
+
+    public static final Platform values[] = values();
 }

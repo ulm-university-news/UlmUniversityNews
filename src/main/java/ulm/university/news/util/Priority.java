@@ -7,5 +7,7 @@ package ulm.university.news.util;
  * @author Philipp Speidel
  */
 public enum Priority {
-    NORMAL, HIGH
+    NORMAL, HIGH;
+
+    public static final Priority values[] = values();
 }
