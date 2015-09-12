@@ -9,7 +9,7 @@ package ulm.university.news.util;
 public class DatabaseException extends Exception{
 
     /**
-     * Generate a DatabaseException with a given error message.
+     * Constructs a DatabaseException with a given error message.
      *
      * @param message The description of the error which has caused the exception.
      */
@@ -18,7 +18,7 @@ public class DatabaseException extends Exception{
     }
 
     /**
-     * Generate a DatabaseException with a given error message and the Throwable which has caused the exception.
+     * Constructs a DatabaseException with a given error message and the Throwable which has caused the exception.
      *
      * @param message The description of the error which has caused the exception.
      * @param cause An instance of a Throwable object which has caused this Exception.
