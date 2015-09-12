@@ -75,4 +75,10 @@ public class UserDatabaseManager extends DatabaseManager {
         }
     }
 
+
+    public boolean isValidUserToken(String accessToken){
+        // TODO
+        return false;
+    }
+
 }

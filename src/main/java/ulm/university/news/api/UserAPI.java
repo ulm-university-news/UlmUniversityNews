@@ -12,6 +12,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import java.net.URI;
+import java.util.List;
 
 /**
  * TODO
@@ -61,6 +62,13 @@ public class UserAPI {
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "user" + "/" + user.getId());
         // Return the generated user resource and set the Location Header.
         return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(user).build();
+    }
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<User> getAllUsers(){
+        // TODO
+        return null;
     }
 
 }
