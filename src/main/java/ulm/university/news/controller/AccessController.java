@@ -2,7 +2,10 @@ package ulm.university.news.controller;
 
 import ulm.university.news.manager.database.ModeratorDatabaseManager;
 import ulm.university.news.manager.database.UserDatabaseManager;
+import ulm.university.news.util.DatabaseException;
+import ulm.university.news.util.ServerException;
 import ulm.university.news.util.TokenType;
+
 
 /**
  * TODO
@@ -33,17 +36,21 @@ public class AccessController {
      * @param accessToken The access token which should be verified.
      * @return TokenType.USER if it is a valid user access token, TokenType.Moderator if it is a valid moderator
      * access token, or TokenType.Invalid if one of the checks has failed.
+     * @throws ServerException If the connection to the database fails.
      */
-    public TokenType verifyAccessToken(String accessToken){
+    public TokenType verifyAccessToken(String accessToken) throws ServerException {
         TokenType tokenType = null;
-        if(accessToken.matches("[a-fA-F0-9]{56}") && userDB.isValidUserToken(accessToken)){
-            tokenType = TokenType.USER;
-        }
-        else if(accessToken.matches("[a-fA-F0-9]{64}") && moderatorDB.isValidModeratorToken(accessToken)){
-            tokenType = TokenType.MODERATOR;
-        }
-        else {
-            tokenType = TokenType.INVALID;
+        try {
+            if (accessToken.matches("[a-fA-F0-9]{56}") && userDB.isValidUserToken(accessToken)) {
+                tokenType = TokenType.USER;
+            } else if (accessToken.matches("[a-fA-F0-9]{64}") && moderatorDB.isValidModeratorToken(accessToken)) {
+                tokenType = TokenType.MODERATOR;
+            } else {
+                tokenType = TokenType.INVALID;
+            }
+        }catch(DatabaseException e){
+            //TODO Logging
+            throw new ServerException(500, 0, e.getMessage());
         }
         return tokenType;
     }
