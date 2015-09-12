@@ -1,7 +1,13 @@
 package ulm.university.news.util;
 
 /**
- * Created by Philipp on 12.09.2015.
+ * The ServerException indicates that the execution of the request has failed and cannot be continued. The server
+ * aborts the execution and responds with an error message. The ServerException contains information about the
+ * error which has occurred. This information is used within the API component to generate the error message which will
+ * be sent within the HTTP Response.
+ *
+ * @author Matthias Mak
+ * @author Philipp Speidel
  */
 public class ServerException extends Exception{
 
