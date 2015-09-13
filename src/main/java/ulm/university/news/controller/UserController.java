@@ -1,6 +1,5 @@
 package ulm.university.news.controller;
 
-import ulm.university.news.data.Moderator;
 import ulm.university.news.data.User;
 import ulm.university.news.manager.database.ModeratorDatabaseManager;
 import ulm.university.news.manager.database.UserDatabaseManager;
@@ -9,7 +8,6 @@ import ulm.university.news.util.ServerException;
 import ulm.university.news.util.TokenAlreadyExistsException;
 import ulm.university.news.util.TokenType;
 
-import java.util.ArrayList;
 import java.util.List;
 
 
@@ -22,8 +20,8 @@ import java.util.List;
 public class UserController {
 
     /** An instance of the UserDatabaseManager. */
-    UserDatabaseManager userDB = new UserDatabaseManager();
-    ModeratorDatabaseManager moderatorDB = new ModeratorDatabaseManager();
+    UserDatabaseManager userDBManager = new UserDatabaseManager();
+    ModeratorDatabaseManager moderatorDBManager = new ModeratorDatabaseManager();
     AccessController accessController = new AccessController();
 
     /**
@@ -54,7 +52,7 @@ public class UserController {
         boolean successful =false;
         while(successful == false){
             try {
-                userDB.storeUser(user);
+                userDBManager.storeUser(user);
                 successful = true;
             } catch (TokenAlreadyExistsException e) {
                 // TODO logging
@@ -97,7 +95,7 @@ public class UserController {
 //        }
 //
 //        try {
-//            users = userDB.getUsers();
+//            users = userDBManager.getUsers();
 //        } catch (DatabaseException e) {
 //            //TODO Logging
 //            e.printStackTrace();
@@ -105,6 +103,80 @@ public class UserController {
 //        }
 
         return users;
+    }
+
+    /**
+     * Performs an update on the data of the user account which is identified by the given id and the access token.
+     * The user object contains the fields which should be updated and the new values. As far as no data conditions
+     * are harmed, the fields will be updated in the database.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param userId The id of the user account which should be updated.
+     * @param user The user object with the new data values which have been transmitted with the request.
+     * @return The user object with the updated data values.
+     * @throws ServerException If the new data values have harmed certain conditions, the user is not authorized or
+     * doesn't have the required permissions and if a database failure has occurred.
+     */
+    public User changeUser(String accessToken, int userId, User user) throws ServerException {
+        User userDB = null;
+        TokenType tokenType = accessController.verifyAccessToken(accessToken);
+
+        if(tokenType == TokenType.MODERATOR){
+            throw new ServerException(403,0, "Moderator is not allowed to perform the requested operation.");
+        }
+        else if(tokenType == TokenType.INVALID){
+            throw new ServerException(401, 0, "To perform this operation a valid access token needs to be provided.");
+        }
+
+        try {
+            userDB = userDBManager.getUserByToken(accessToken);
+
+            if(userDB.getId() != userId){
+                throw new ServerException(403, 0, "User is only allowed to change his own account.");
+            }
+
+            userDB = updateUser(user, userDB);
+            userDBManager.updateUser(userDB);
+
+        } catch (DatabaseException e) {
+            // TODO Logging
+            e.printStackTrace();
+            throw new ServerException(500, 0, "Database failure. Update user account failed.");
+        }
+
+        return userDB;
+    }
+
+    /**
+     * Compares the user object with the received data from the request with the user object taken from the
+     * database. Updates the database object with the new data which has been received through the request. Note that
+     * some fields cannot be changed, so if some changes to these fields are described, they will be ignored.
+     *
+     * @param user The user object which contains the data from the request.
+     * @param userDB The user object which contains the data from the database.
+     * @return Returns an updated version of the user object taken from the database.
+     * @throws ServerException If some data based conditions were harmed.
+     */
+    private User updateUser(User user, User userDB) throws ServerException{
+        String newName = user.getName();
+        if(newName != null){
+            // Update name if conditions are met.
+            if(user.getName().length() <= 35){
+                userDB.setName(newName);
+            }
+            else{
+                throw new ServerException(400,0, "Name exceeded maximum length.");
+            }
+        }
+        String newPushToken = user.getPushAccessToken();
+        if(newPushToken != null){
+            userDB.setPushAccessToken(newPushToken);
+        }
+//        if(user.getPlatform() != null){
+//            userDB.setPlatform(user.getPlatform());
+//        }
+
+        return userDB;
     }
 
 }
