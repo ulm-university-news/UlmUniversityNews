@@ -214,7 +214,7 @@ public class UserDatabaseManager extends DatabaseManager {
             String query =
                     "SELECT * " +
                     "FROM User " +
-                    "WHERE ServerAccesToken=?;";
+                    "WHERE ServerAccessToken=?;";
 
             PreparedStatement getUserStmt = con.prepareStatement(query);
             getUserStmt.setString(1, accessToken);
