@@ -66,9 +66,24 @@ public class UserAPI {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public List<User> getAllUsers(){
-        // TODO
-        return null;
+    public List<User> getAllUsers(@HeaderParam("Authorization") String accessToken){
+        List<User> users;
+        try {
+            users = userCtrl.getUsers(accessToken);
+        } catch (ServerException e) {
+            e.printStackTrace();
+            return null;    // TODO
+        }
+        return users;
+    }
+
+    @PATCH
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Path("/{id}")
+    public Response changeUser(@PathParam("id") int id, @HeaderParam("Authorization") String accessToken){
+        System.out.println("Test " + id + " PATCH Method is called!");
+        return Response.status(200).entity(accessToken).build();
     }
 
 }
