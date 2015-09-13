@@ -44,6 +44,10 @@ public class UserController {
         // Perform checks on the received data. If the data is incomplete the user can't be created.
         if(user.getName() == null || user.getPlatform() == null || user.getPushAccessToken() == null){
             // TODO send 400 Bad Request and abort execution
+            throw new ServerException(400, 0, "Incomplete data record.");
+        }
+        else if(user.getName().length() >= 35){
+            throw new ServerException(400, 0, "Name exceeded maximum length.");
         }
 
         // Create the accessToken which will identify the new user in the system.
@@ -103,6 +107,36 @@ public class UserController {
 //        }
 
         return users;
+    }
+
+    /**
+     * Get the data to the user account identified by the given id.
+     *
+     * @param accessToken The access token of the requestor
+     * @param userId The id of the user account which should be retrieved.
+     * @return The user object with the data of the user account.
+     * @throws ServerException If the requstor is unauthorized, the user resource has not been found or a database
+     * failure has occurred.
+     */
+    public User getUser(String accessToken, int userId) throws ServerException {
+        User user = null;
+        TokenType tokenType = accessController.verifyAccessToken(accessToken);
+
+        if(tokenType == TokenType.INVALID){
+            throw new ServerException(401, 0, "To perform this operation a valid access token needs to be provided.");
+        }
+
+        try {
+            user = userDBManager.getUser(userId);
+            if(user == null){
+                throw new ServerException(404, 0, "User resource not found.");
+            }
+        } catch (DatabaseException e) {
+            // TODO Logging
+            e.printStackTrace();
+            throw new ServerException(500, 0, "Database failure.");
+        }
+        return user;
     }
 
     /**
