@@ -1,7 +1,7 @@
 package ulm.university.news.util;
 
 /**
- * The GroupType defines a Group as a WORKING oder TUTORIAL group.
+ * The GroupType defines a Group as a WORKING or TUTORIAL group.
  *
  * @author Matthias Mak
  * @author Philipp Speidel

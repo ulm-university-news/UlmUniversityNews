@@ -16,7 +16,7 @@ public class Moderator {
     /** The unique id of the Moderator. */
     int id;
     /** The unique user name of the Moderator. */
-    String userName;
+    String name;
     /** The first name of the Moderator. */
     String firstName;
     /** The last name of the Moderator. */
@@ -27,6 +27,8 @@ public class Moderator {
     String serverAccessToken;
     /** The password of the Moderator. */
     String password;
+    /** The motivation of the account application. */
+    String motivation;
     /** Defines whether the Moderators account is locked or not. */
     boolean locked;
     /** Defines whether the Moderator has admin rights or not. */
@@ -45,27 +47,30 @@ public class Moderator {
     /**
      * Creates an instance of Moderator.
      *
-     * @param id                The unique id of the Moderator.
-     * @param userName          The unique user name of the Moderator.
-     * @param firstName         The first name of the Moderator.
-     * @param lastName          The last name of the Moderator.
-     * @param email             The email address of the Moderator.
+     * @param id The unique id of the Moderator.
+     * @param name The unique user name of the Moderator.
+     * @param firstName The first name of the Moderator.
+     * @param lastName The last name of the Moderator.
+     * @param email The email address of the Moderator.
      * @param serverAccessToken The access token of the Moderator.
-     * @param password          The password of the Moderator.
-     * @param locked            Defines whether the Moderators account is locked or not.
-     * @param admin             Defines whether the Moderator has admin rights or not.
-     * @param deleted           Defines whether the Moderator account is marked as deleted or not.
-     * @param active            Defines whether the Moderator actively manages a certain channel or not.
+     * @param password The password of the Moderator.
+     * @param motivation The motivation of the account application.
+     * @param locked Defines whether the Moderators account is locked or not.
+     * @param admin Defines whether the Moderator has admin rights or not.
+     * @param deleted Defines whether the Moderator account is marked as deleted or not.
+     * @param active Defines whether the Moderator actively manages a certain channel or not.
      */
-    public Moderator(int id, String userName, String firstName, String lastName, String email, String serverAccessToken,
-                     String password, boolean locked, boolean admin, boolean deleted, boolean active) {
+    public Moderator(int id, String name, String firstName, String lastName, String email, String serverAccessToken,
+                     String password, String motivation, boolean locked, boolean admin, boolean deleted,
+                     boolean active) {
         this.id = id;
-        this.userName = userName;
+        this.name = name;
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
         this.serverAccessToken = serverAccessToken;
         this.password = password;
+        this.motivation = motivation;
         this.locked = locked;
         this.admin = admin;
         this.deleted = deleted;
@@ -75,25 +80,28 @@ public class Moderator {
     /**
      * Creates an instance of Moderator.
      *
-     * @param userName          The unique user name of the Moderator.
-     * @param firstName         The first name of the Moderator.
-     * @param lastName          The last name of the Moderator.
-     * @param email             The email address of the Moderator.
+     * @param name The unique user name of the Moderator.
+     * @param firstName The first name of the Moderator.
+     * @param lastName The last name of the Moderator.
+     * @param email The email address of the Moderator.
      * @param serverAccessToken The access token of the Moderator.
-     * @param password          The password of the Moderator.
-     * @param locked            Defines whether the Moderators account is locked or not.
-     * @param admin             Defines whether the Moderator has admin rights or not.
-     * @param deleted           Defines whether the Moderator account is marked as deleted or not.
-     * @param active            Defines whether the Moderator actively manages a certain channel or not.
+     * @param password The password of the Moderator.
+     * @param motivation The motivation of the account application.
+     * @param locked Defines whether the Moderators account is locked or not.
+     * @param admin Defines whether the Moderator has admin rights or not.
+     * @param deleted Defines whether the Moderator account is marked as deleted or not.
+     * @param active Defines whether the Moderator actively manages a certain channel or not.
      */
-    public Moderator(String userName, String firstName, String lastName, String email, String serverAccessToken,
-                     String password, boolean locked, boolean admin, boolean deleted, boolean active) {
-        this.userName = userName;
+    public Moderator(String name, String firstName, String lastName, String email, String serverAccessToken,
+                     String password, String motivation, boolean locked, boolean admin, boolean deleted,
+                     boolean active) {
+        this.name = name;
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
         this.serverAccessToken = serverAccessToken;
         this.password = password;
+        this.motivation = motivation;
         this.locked = locked;
         this.admin = admin;
         this.deleted = deleted;
@@ -180,12 +188,12 @@ public class Moderator {
         this.id = id;
     }
 
-    public String getUserName() {
-        return userName;
+    public String getName() {
+        return name;
     }
 
-    public void setUserName(String userName) {
-        this.userName = userName;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getFirstName() {
@@ -258,5 +266,13 @@ public class Moderator {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public String getMotivation() {
+        return motivation;
+    }
+
+    public void setMotivation(String motivation) {
+        this.motivation = motivation;
     }
 }
