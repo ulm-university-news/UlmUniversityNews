@@ -26,15 +26,15 @@ public class UserAPI {
     /** Instance of the UserController class. */
     private UserController userCtrl = new UserController();
 
-    @GET
-    @Path("/{id}")
-    public Response getMsg(@PathParam("id") String msg) {
-
-        String output = "Hello Jersey: " + msg;
-
-        return Response.status(200).entity(output).build();
-
-    }
+//    @GET
+//    @Path("/{id}")
+//    public Response getMsg(@PathParam("id") String msg) {
+//
+//        String output = "Hello Jersey: " + msg;
+//
+//        return Response.status(Response.Status.OK).entity(output).build();
+//
+//    }
 
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
@@ -55,8 +55,8 @@ public class UserAPI {
         try {
             user = userCtrl.createUser(user);
         } catch (ServerException e) {
-            e.printStackTrace();
-            return Response.status(e.getHttpStatusCode()).entity(e).build();    // TODO
+            ServerError se = new ServerError(e.getHttpStatusCode(),e.getErrorCode(), e.getMessage());
+            return Response.status(e.getHttpStatusCode()).entity(se).build();    // TODO
         }
         // Create the URI for the generated resource.
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "user" + "/" + user.getId());
@@ -71,19 +71,37 @@ public class UserAPI {
         try {
             users = userCtrl.getUsers(accessToken);
         } catch (ServerException e) {
-            e.printStackTrace();
             return null;    // TODO
         }
         return users;
+    }
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{id}")
+    public Response getUser(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id){
+        User user = null;
+        try {
+            user = userCtrl.getUser(accessToken, id);
+        } catch (ServerException e) {
+            ServerError se = new ServerError(e.getHttpStatusCode(),e.getErrorCode(), e.getMessage());
+            return Response.status(e.getHttpStatusCode()).entity(se).build();    // TODO
+        }
+        return Response.status(Response.Status.OK).entity(user).build();
     }
 
     @PATCH
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("/{id}")
-    public Response changeUser(@PathParam("id") int id, @HeaderParam("Authorization") String accessToken){
-        System.out.println("Test " + id + " PATCH Method is called!");
-        return Response.status(200).entity(accessToken).build();
+    public Response changeUser(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id, User user){
+        try {
+            user = userCtrl.changeUser(accessToken, id, user);
+        } catch (ServerException e) {
+            ServerError se = new ServerError(e.getHttpStatusCode(),e.getErrorCode(), e.getMessage());
+            return Response.status(e.getHttpStatusCode()).entity(se).build();    // TODO
+        }
+        return Response.status(Response.Status.OK).entity(user).build();
     }
 
 }
