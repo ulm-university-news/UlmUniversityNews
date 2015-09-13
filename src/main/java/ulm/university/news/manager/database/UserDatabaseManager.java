@@ -137,11 +137,11 @@ public class UserDatabaseManager extends DatabaseManager {
             while(getUsersRs.next()){
                 int id = getUsersRs.getInt("Id");
                 String name = getUsersRs.getString("Name");
-                String serverAccessToken = getUsersRs.getString("ServerAccessToken");
                 String pushAccessToken = getUsersRs.getString("PushAccessToken");
                 Platform platform = Platform.values[getUsersRs.getInt("Platform")];
 
-                User tmp = new User(id, name, serverAccessToken, pushAccessToken, platform);
+                // The ServerAccessToken is never returned in a response to a GET request, it is set to null.
+                User tmp = new User(id, name, null, pushAccessToken, platform);
                 users.add(tmp);
             }
             getUsersStmt.close();
@@ -180,11 +180,54 @@ public class UserDatabaseManager extends DatabaseManager {
             ResultSet getUserRs = getUserStmt.executeQuery();
             if(getUserRs.next()){
                 String name = getUserRs.getString("Name");
-                String serverAccessToken = getUserRs.getString("ServerAccessToken");
                 String pushAccessToken = getUserRs.getString("PushAccessToken");
                 Platform platform = Platform.values[getUserRs.getInt("Platform")];
 
-                user = new User(userId, name, serverAccessToken, pushAccessToken, platform);
+                // The ServerAccessToken is never returned in a response to a GET request, it is set to null.
+                user = new User(userId, name, null, pushAccessToken, platform);
+            }
+            getUserStmt.close();
+        } catch (SQLException e) {
+            // TODO Logging
+            e.printStackTrace();
+            throw new DatabaseException("Database failure with SqlState " + e.getSQLState() +
+                    " and error code " + e.getErrorCode() + "; message " + e.getMessage());
+        }
+        finally {
+            returnConnection(con);
+        }
+        return user;
+    }
+
+    /**
+     * Returns the user which is identified by the given access token.
+     *
+     * @param accessToken The access token which has been received with the request.
+     * @return The user which is identified by the access token.
+     * @throws DatabaseException If connection to the database has failed.
+     */
+    public User getUserByToken(String accessToken) throws DatabaseException {
+        Connection con = null;
+        User user = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * " +
+                    "FROM User " +
+                    "WHERE ServerAccesToken=?;";
+
+            PreparedStatement getUserStmt = con.prepareStatement(query);
+            getUserStmt.setString(1, accessToken);
+
+            ResultSet getUserRs = getUserStmt.executeQuery();
+            if(getUserRs.next()){
+                int userId = getUserRs.getInt("Id");
+                String name = getUserRs.getString("Name");
+                String pushAccessToken = getUserRs.getString("PushAccessToken");
+                Platform platform = Platform.values[getUserRs.getInt("Platform")];
+
+                // The ServerAccessToken is never returned in a response to a GET request, it is set to null.
+                user = new User(userId, name, null, pushAccessToken, platform);
             }
             getUserStmt.close();
         } catch (SQLException e) {
