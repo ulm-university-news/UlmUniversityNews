@@ -1,10 +1,16 @@
 package ulm.university.news.controller;
 
+import ulm.university.news.data.Moderator;
 import ulm.university.news.data.User;
+import ulm.university.news.manager.database.ModeratorDatabaseManager;
 import ulm.university.news.manager.database.UserDatabaseManager;
 import ulm.university.news.util.DatabaseException;
 import ulm.university.news.util.ServerException;
 import ulm.university.news.util.TokenAlreadyExistsException;
+import ulm.university.news.util.TokenType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
@@ -17,6 +23,8 @@ public class UserController {
 
     /** An instance of the UserDatabaseManager. */
     UserDatabaseManager userDB = new UserDatabaseManager();
+    ModeratorDatabaseManager moderatorDB = new ModeratorDatabaseManager();
+    AccessController accessController = new AccessController();
 
     /**
      * Creates an instance of the UserController class.
@@ -61,6 +69,42 @@ public class UserController {
         }
 
         return user;
+    }
+
+
+    /**
+     * Returns the data of all user accounts which exist in the system.
+     *
+     * @param accessToken The access token of the requestor.
+     * @return Returns a list of user objects.
+     * @throws ServerException If the authorization of the requestor fails or the requestor is not allowed to perform
+     * the operation. Furthermore, a failure of the database also causes a ServerException.
+     */
+    public List<User> getUsers(String accessToken) throws ServerException {
+        List<User> users = null;
+        TokenType tokenType= accessController.verifyAccessToken(accessToken);
+
+        if(tokenType == TokenType.USER){
+            throw new ServerException(403,0, "User is not allowed to perform the requested operation.");
+        }
+        else if(tokenType == TokenType.INVALID){
+            throw new ServerException(401, 0, "To perform this operation a valid access token needs to be provided.");
+        }
+
+//        Moderator moderator = moderatorDB.getModeratorByToken(accessToken);
+//        if(moderator.isAdmin() == false){
+//            throw new ServerException(403, 0, "Moderator is not allowed to perform the requested operation.");
+//        }
+//
+//        try {
+//            users = userDB.getUsers();
+//        } catch (DatabaseException e) {
+//            //TODO Logging
+//            e.printStackTrace();
+//            throw new ServerException(500, 0, "Database failure.");
+//        }
+
+        return users;
     }
 
 }
