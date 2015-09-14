@@ -119,4 +119,91 @@ public class ModeratorDatabaseManager extends DatabaseManager {
         }
     }
 
+    /**
+     * Returns the moderator who is identified by the given access token.
+     *
+     * @param accessToken The access token which has been received with the request.
+     * @return The moderator who is identified by the access token.
+     * @throws DatabaseException If connection to the database has failed.
+     */
+    public Moderator getModeratorByToken(String accessToken) throws DatabaseException {
+        Connection con = null;
+        Moderator moderator = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * " +
+                            "FROM Moderator " +
+                            "WHERE ServerAccessToken=?;";
+
+            PreparedStatement getModeratorStmt = con.prepareStatement(query);
+            getModeratorStmt.setString(1, accessToken);
+
+            ResultSet getModeratorRs = getModeratorStmt.executeQuery();
+            if (getModeratorRs.next()) {
+                int id = getModeratorRs.getInt("Id");
+                String name = getModeratorRs.getString("Name");
+                String firstName = getModeratorRs.getString("FirstName");
+                String lastName = getModeratorRs.getString("LastName");
+                String email = getModeratorRs.getString("Email");
+                String password = getModeratorRs.getString("Password");
+                String motivation = getModeratorRs.getString("Motivation");
+                String serverAccessToken = getModeratorRs.getString("ServerAccessToken");
+                boolean locked = getModeratorRs.getBoolean("Locked");
+                boolean admin = getModeratorRs.getBoolean("Admin");
+                boolean deleted = getModeratorRs.getBoolean("Deleted");
+
+                moderator = new Moderator(id, name, firstName, lastName, email, serverAccessToken, password,
+                        motivation, locked, admin, deleted, false);
+            }
+            getModeratorStmt.close();
+        } catch (SQLException e) {
+            // TODO Logging
+            e.printStackTrace();
+            throw new DatabaseException("Database failure with SqlState " + e.getSQLState() +
+                    " and error code " + e.getErrorCode() + "; message " + e.getMessage());
+        } finally {
+            returnConnection(con);
+        }
+        return moderator;
+    }
+
+    /**
+     * Checks whether the Moderator identified by the given moderator id is responsible for the Channel identified by
+     * the given channel id or not.
+     *
+     * @param moderatorId The id of the Moderator.
+     * @param channelId The id of the Channel.
+     * @return true if the Moderator is responsible for the Channel.
+     */
+    public boolean isResponsibleForChannel(int moderatorId, int channelId) throws DatabaseException {
+        Connection con = null;
+        boolean responsible = false;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * " +
+                            "FROM ModeratorChannel " +
+                            "WHERE Moderator_Id=? AND Channel_Id=?;";
+
+            PreparedStatement getResponsibleStmt = con.prepareStatement(query);
+            getResponsibleStmt.setInt(1, moderatorId);
+            getResponsibleStmt.setInt(2, channelId);
+
+            ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
+            if (getResponsibleRs.next()) {
+                responsible = true;
+            }
+            getResponsibleStmt.close();
+        } catch (SQLException e) {
+            //TODO Logging
+            e.printStackTrace();
+            throw new DatabaseException("Database failure with SqlState " + e.getSQLState() +
+                    " and error code " + e.getErrorCode() + "; message " + e.getMessage());
+        } finally {
+            returnConnection(con);
+        }
+        return responsible;
+    }
+
 }
