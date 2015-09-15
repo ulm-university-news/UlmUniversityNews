@@ -12,14 +12,22 @@ public class Constants {
     /** The time zone where the server is located. */
     public static final ZoneId TIME_ZONE = ZoneId.of("Europe/Berlin");
 
+    /** A pattern which describes the valid form of a user or moderator name. */
+    public static final String NAME_PATTERN = "^[a-zA-Z0-9]{3,35}$";
+
+    /** A pattern which describes the valid form of a moderator password. */
+    public static final String PASSWORD_PATTERN = "^[a-zA-Z0-9]{3,35}$";
+
+    // Error Codes:
     // User:
     public static final int USER_NOT_FOUND = 1000;
-    public static final int USER_FORBIDDEN = 1002;
-    public static final int USER_INCOMPLETE_DATA_RECORD = 1003;
+    public static final int USER_FORBIDDEN = 1001;
+    public static final int USER_DATA_INCOMPLETE = 1002;
 
     // Moderator:
     public static final int MODERATOR_NOT_FOUND = 2000;
-    public static final int MODERATOR_FORBIDDEN = 2002;
+    public static final int MODERATOR_FORBIDDEN = 2001;
+    public static final int MODERATOR_DATA_INCOMPLETE = 2002;
 
     // Group:
     public static final int GROUP_NOT_FOUND = 4000;

@@ -9,6 +9,10 @@ import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
 
 import java.util.regex.Pattern;
 
+import static ulm.university.news.util.Constants.MODERATOR_DATA_INCOMPLETE;
+import static ulm.university.news.util.Constants.NAME_PATTERN;
+import static ulm.university.news.util.Constants.PASSWORD_PATTERN;
+
 /**
  * TODO
  *
@@ -17,11 +21,6 @@ import java.util.regex.Pattern;
  */
 public class ModeratorController {
 
-    /** A pattern which describes the valid form of a user or moderator name. */
-    private static final String NAME_PATTERN = "^[a-zA-Z0-9_-]{3,35}$";
-
-    /** A pattern which describes the valid form of a user or moderator name. */
-    private static final String PASSWORD_PATTERN = "^[a-zA-Z0-9]{3,35}$";
 
     /** An instance of the ModeratorDatabaseManager. */
     ModeratorDatabaseManager moderatorDB = new ModeratorDatabaseManager();
@@ -43,13 +42,13 @@ public class ModeratorController {
         if (moderator.getName() == null || moderator.getPassword() == null || moderator.getEmail() == null ||
                 moderator.getFirstName() == null || moderator.getLastName() == null ||
                 moderator.getMotivation() == null) {
-            throw new ServerException(400, 0, "Moderator data is incomplete.");
+            throw new ServerException(400, MODERATOR_DATA_INCOMPLETE);
         } else if (!Pattern.compile(NAME_PATTERN).matcher(moderator.getName()).matches()) {
-            throw new ServerException(400, 0, "Name is invalid.");
+            throw new ServerException(400, 1, "Name is invalid.");
         } else if (!EmailValidator.getInstance().isValid(moderator.getEmail())) {
-            throw new ServerException(400, 0, "Email address is invalid.");
+            throw new ServerException(400, 2, "Email address is invalid.");
         } else if (!Pattern.compile(PASSWORD_PATTERN).matcher(moderator.getName()).matches()) {
-            throw new ServerException(400, 0, "Password is invalid.");
+            throw new ServerException(400, 3, "Password is invalid.");
         }
 
         // Create the accessToken which will identify the new moderator in the system.
@@ -76,7 +75,6 @@ public class ModeratorController {
                 throw new ServerException(500, 1000, "Database failure. Creation of moderator account failed.");
             }
         }
-
         return moderator;
     }
 
