@@ -3,6 +3,7 @@ package ulm.university.news.manager.database;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.User;
+import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.data.enums.Platform;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
@@ -72,8 +73,7 @@ public class UserDatabaseManager extends DatabaseManager {
                 throw new TokenAlreadyExistsException("Token already in database, a new token needs to be created.");
             }
 
-            logger.error("SQLException occurred with SQLState: {}, ErrorCode: {} and message: {}.", e.getSQLState(),
-                    e.getErrorCode(), e.getMessage());
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller
             throw new DatabaseException("Database failure.");
         }
