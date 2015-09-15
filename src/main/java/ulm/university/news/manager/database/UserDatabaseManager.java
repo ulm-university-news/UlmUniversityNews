@@ -108,7 +108,7 @@ public class UserDatabaseManager extends DatabaseManager {
             //TODO Logging
             e.printStackTrace();
             throw new DatabaseException("Database failure with SqlState " + e.getSQLState() +
-                    " and error code " + e.getErrorCode() + "; message " + e.getMessage());
+                    " and error code " + e.getErrorCode() + "; message " + e.getMessage(), e);
         }
         finally {
             returnConnection(con);
