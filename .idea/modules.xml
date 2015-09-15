@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/UlmUniversityNewsRESTServer.iml" filepath="$PROJECT_DIR$/UlmUniversityNewsRESTServer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/UlmUniversityNews.iml" filepath="$PROJECT_DIR$/UlmUniversityNews.iml" />
     </modules>
   </component>
 </project>
