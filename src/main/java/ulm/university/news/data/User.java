@@ -1,5 +1,7 @@
 package ulm.university.news.data;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ulm.university.news.data.enums.Platform;
 
 import java.security.MessageDigest;
@@ -16,6 +18,9 @@ import java.security.SecureRandom;
  */
 public class User {
 
+    /** An instance of the Logger class which performs logging for the User class. */
+    private static final Logger logger = LoggerFactory.getLogger(User.class);
+
     /** The id of the user. */
     private int id;
     /** The username of the user. The username is used to make users identifiable in a Group.*/
@@ -31,14 +36,15 @@ public class User {
     private Platform platform;
 
     /**
-     * Create an instance of User.
+     * Creates an instance of the User class.
      */
     public User(){
 
     }
 
     /**
-     * Create an instance of User.
+     * Creates an instance of the User class.
+     *
      * @param name The username of the user.
      * @param serverAccessToken The access token which is assigned to this user.
      * @param pushAccessToken The push access token which identifies the user in the push notification service.
@@ -52,7 +58,8 @@ public class User {
     }
 
     /**
-     * Create an instance of User.
+     * Creates an instance of the User class.
+     *
      * @param id The id of the user.
      * @param name The username of the user.
      * @param serverAccessToken The access token which is assigned to this user.
@@ -69,6 +76,7 @@ public class User {
 
     /**
      * Get the id of the user.
+     *
      * @return The id of the user.
      */
     public int getId() {
@@ -77,6 +85,7 @@ public class User {
 
     /**
      * Set the id of the user.
+     *
      * @param id The id of the user.
      */
     public void setId(int id) {
@@ -85,6 +94,7 @@ public class User {
 
     /**
      * Get the username of the user.
+     *
      * @return The username of the user.
      */
     public String getName() {
@@ -93,6 +103,7 @@ public class User {
 
     /**
      * Set the username of the user.
+     *
      * @param name The username of the user.
      */
     public void setName(String name) {
@@ -101,6 +112,7 @@ public class User {
 
     /**
      * Get the access token which identifies the user on the server.
+     *
      * @return The access token.
      */
     public String getServerAccessToken() {
@@ -109,6 +121,7 @@ public class User {
 
     /**
      * Set the access token which identifies the user on the server.
+     *
      * @param serverAccessToken The access token.
      */
     public void setServerAccessToken(String serverAccessToken) {
@@ -117,6 +130,7 @@ public class User {
 
     /**
      * Get the push access token which identifies the user in the push notification service.
+     *
      * @return The push access token.
      */
     public String getPushAccessToken() {
@@ -125,6 +139,7 @@ public class User {
 
     /**
      * Set the push access token which identifies the user in the push notification service.
+     *
      * @param pushAccessToken The push access token.
      */
     public void setPushAccessToken(String pushAccessToken) {
@@ -133,6 +148,7 @@ public class User {
 
     /**
      * Get the platform of the user's device.
+     *
      * @return The platform of the user's device.
      */
     public Platform getPlatform() {
@@ -141,6 +157,7 @@ public class User {
 
     /**
      * Set the platform of the user's device.
+     *
      * @param platform The platform of the user's device.
      */
     public void setPlatform(Platform platform) {
@@ -180,16 +197,28 @@ public class User {
                 tokenString.append(String.format("%02x", token[i]));
             }
             String accessToken = tokenString.toString();
+            logger.info("Created an access token for the user.");
 
             //Set the generated access token in the serverAccessToken variable of this instance.
             this.serverAccessToken = accessToken;
 
         } catch (NoSuchAlgorithmException e) {
-            //TODO
-            e.printStackTrace();
+            logger.error("Could not generate an access token for the user. The expected digest algorithm is not " +
+                    "available.", e);
         } catch (NoSuchProviderException e) {
-            //TODO
-            e.printStackTrace();
+            logger.error("Could not generate an access token for the user. The expected provider could not be " +
+                    "localized.", e);
         }
+    }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", serverAccessToken='" + serverAccessToken + '\'' +
+                ", pushAccessToken='" + pushAccessToken + '\'' +
+                ", platform=" + platform +
+                '}';
     }
 }
