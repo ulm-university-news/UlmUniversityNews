@@ -13,13 +13,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * TODO
+ * The class UserDatabaseManager contains methods to receive data about users from the database as well as methods to
+ * insert or update this data.
  *
  * @author Matthias Mak
  * @author Philipp Speidel
  */
 public class UserDatabaseManager extends DatabaseManager {
 
+    /** An instance of the Logger class which performs logging for the UserDatabaseManager. */
     private static final Logger logger = LoggerFactory.getLogger(UserDatabaseManager.class);
 
     /**
@@ -38,7 +40,7 @@ public class UserDatabaseManager extends DatabaseManager {
      * @throws DatabaseException If the data could not be stored in the database due to database failure.
      */
     public void storeUser(User user) throws TokenAlreadyExistsException, DatabaseException {
-        logger.debug("Start with user:{}.", user.toString());
+        logger.debug("Start with user:{}.", user);
         Connection con = null;
         try {
             con = getDatabaseConnection();
@@ -74,7 +76,7 @@ public class UserDatabaseManager extends DatabaseManager {
             }
 
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
-            // Throw back DatabaseException to the Controller
+            // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
         }
         finally {
@@ -92,6 +94,7 @@ public class UserDatabaseManager extends DatabaseManager {
      * @throws DatabaseException If connection to the database has failed.
      */
     public boolean isValidUserToken(String accessToken) throws DatabaseException {
+        logger.debug("Start with accessToken:{}", accessToken);
         Connection con = null;
         boolean valid = false;
         try {
@@ -110,14 +113,14 @@ public class UserDatabaseManager extends DatabaseManager {
             }
             getUserStmt.close();
         } catch (SQLException e) {
-            //TODO Logging
-            e.printStackTrace();
-            throw new DatabaseException("Database failure with SqlState " + e.getSQLState() +
-                    " and error code " + e.getErrorCode() + "; message " + e.getMessage(), e);
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
         }
         finally {
             returnConnection(con);
         }
+        logger.debug("End with valid:{}.", valid);
         return valid;
     }
 
@@ -128,6 +131,7 @@ public class UserDatabaseManager extends DatabaseManager {
      * @throws DatabaseException If connection to the database has failed.
      */
     public List<User> getUsers() throws DatabaseException {
+        logger.debug("Start.");
         List<User> users = new ArrayList<User>();
         Connection con = null;
         try {
@@ -149,16 +153,17 @@ public class UserDatabaseManager extends DatabaseManager {
                 User tmp = new User(id, name, null, pushAccessToken, platform);
                 users.add(tmp);
             }
+            logger.info("Returns list of users with {} entries.", users.size());
             getUsersStmt.close();
         } catch (SQLException e) {
-            // TODO Logging
-            e.printStackTrace();
-            throw new DatabaseException("Database failure with SqlState " + e.getSQLState() +
-                    " and error code " + e.getErrorCode() + "; message " + e.getMessage());
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
         }
         finally {
             returnConnection(con);
         }
+        logger.debug("End with users:{}.", users);
         return users;
     }
 
@@ -170,6 +175,7 @@ public class UserDatabaseManager extends DatabaseManager {
      * @throws DatabaseException If connection to the database has failed.
      */
     public User getUser(int userId) throws DatabaseException {
+        logger.debug("Start with userId:{}.", userId);
         User user = null;
         Connection con = null;
         try {
@@ -193,14 +199,14 @@ public class UserDatabaseManager extends DatabaseManager {
             }
             getUserStmt.close();
         } catch (SQLException e) {
-            // TODO Logging
-            e.printStackTrace();
-            throw new DatabaseException("Database failure with SqlState " + e.getSQLState() +
-                    " and error code " + e.getErrorCode() + "; message " + e.getMessage());
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
         }
         finally {
             returnConnection(con);
         }
+        logger.debug("End with user:{}.", user);
         return user;
     }
 
@@ -212,6 +218,7 @@ public class UserDatabaseManager extends DatabaseManager {
      * @throws DatabaseException If connection to the database has failed.
      */
     public User getUserByToken(String accessToken) throws DatabaseException {
+        logger.debug("Start with accessToken:{}.", accessToken);
         Connection con = null;
         User user = null;
         try {
@@ -236,14 +243,14 @@ public class UserDatabaseManager extends DatabaseManager {
             }
             getUserStmt.close();
         } catch (SQLException e) {
-            // TODO Logging
-            e.printStackTrace();
-            throw new DatabaseException("Database failure with SqlState " + e.getSQLState() +
-                    " and error code " + e.getErrorCode() + "; message " + e.getMessage());
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
         }
         finally {
             returnConnection(con);
         }
+        logger.debug("End with user:{}.", user);
         return user;
     }
 
@@ -254,10 +261,12 @@ public class UserDatabaseManager extends DatabaseManager {
      * @throws DatabaseException If connection to the database has failed or the update caused an Exception.
      */
     public void updateUser(User user) throws DatabaseException {
+        logger.debug("Start with user:{}.", user);
         Connection con = null;
         try {
             con = getDatabaseConnection();
-            String query = "UPDATE User " +
+            String query =
+                    "UPDATE User " +
                     "SET Name=?, PushAccessToken=?, Platform=? " +
                     "WHERE Id=?;";
 
@@ -269,15 +278,16 @@ public class UserDatabaseManager extends DatabaseManager {
 
             updateUserStmt.executeUpdate();
             updateUserStmt.close();
+            logger.info("Updated user with id {}.", user.getId());
         } catch (SQLException e) {
-            // TODO Logging
-            e.printStackTrace();
-            throw new DatabaseException("Database failure with SqlState " + e.getSQLState() +
-                    " and error code " + e.getErrorCode() + "; message " + e.getMessage());
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
         }
         finally {
             returnConnection(con);
         }
+        logger.debug("End.");
     }
 
 
