@@ -44,13 +44,10 @@ public class ModeratorAPI {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response createModerator(Moderator moderator,@Context UriInfo uriInfo){
-        try {
-            moderator = moderatorCtrl.createModerator(moderator);
-        } catch (ServerException e) {
-            e.printStackTrace();
-            return Response.status(e.getHttpStatusCode()).entity(e).build();    // TODO
-        }
+    public Response createModerator(Moderator moderator,@Context UriInfo uriInfo) throws ServerException {
+
+        moderator = moderatorCtrl.createModerator(moderator);
+
         // Create the URI for the generated resource.
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "moderator" + "/" + moderator.getId());
         // Return the generated user resource and set the Location Header.

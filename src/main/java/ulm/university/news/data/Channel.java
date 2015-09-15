@@ -34,8 +34,6 @@ public class Channel {
     String contacts;
     /** The website of the Channel. */
     String website;
-    /** Why? */
-    boolean deleted;
     /** A list of all Announcements of the Channel. */
     List<Announcement> announcements;
     /** A list of all Reminders of the Channel. */

@@ -1,7 +1,10 @@
 package ulm.university.news.controller;
 
 import org.apache.commons.validator.routines.EmailValidator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Moderator;
+import ulm.university.news.data.enums.Language;
 import ulm.university.news.manager.database.ModeratorDatabaseManager;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
@@ -9,9 +12,7 @@ import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
 
 import java.util.regex.Pattern;
 
-import static ulm.university.news.util.Constants.MODERATOR_DATA_INCOMPLETE;
-import static ulm.university.news.util.Constants.NAME_PATTERN;
-import static ulm.university.news.util.Constants.PASSWORD_PATTERN;
+import static ulm.university.news.util.Constants.*;
 
 /**
  * TODO
@@ -21,6 +22,7 @@ import static ulm.university.news.util.Constants.PASSWORD_PATTERN;
  */
 public class ModeratorController {
 
+    private static final Logger logger = LoggerFactory.getLogger(ModeratorController.class);
 
     /** An instance of the ModeratorDatabaseManager. */
     ModeratorDatabaseManager moderatorDB = new ModeratorDatabaseManager();
@@ -42,6 +44,7 @@ public class ModeratorController {
         if (moderator.getName() == null || moderator.getPassword() == null || moderator.getEmail() == null ||
                 moderator.getFirstName() == null || moderator.getLastName() == null ||
                 moderator.getMotivation() == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_DATA_INCOMPLETE, "Moderator data is incomplete.");
             throw new ServerException(400, MODERATOR_DATA_INCOMPLETE);
         } else if (!Pattern.compile(NAME_PATTERN).matcher(moderator.getName()).matches()) {
             throw new ServerException(400, 1, "Name is invalid.");
@@ -58,6 +61,9 @@ public class ModeratorController {
         moderator.setLocked(true);
         moderator.setAdmin(false);
         moderator.setDeleted(false);
+        if (moderator.getLanguage() == null) {
+            moderator.setLanguage(Language.ENGLISH);
+        }
 
         boolean successful = false;
         while (!successful) {

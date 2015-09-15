@@ -16,7 +16,7 @@ import javax.ws.rs.ext.Provider;
  * @author Philipp Speidel
  */
 @Provider
-public class ErrorHandler implements ExceptionMapper<ServerException>{
+public class ErrorHandler implements ExceptionMapper<ServerException> {
 
     /**
      * Constructs server error messages which are sent via HTTP Response to the client if an ServerException
@@ -27,6 +27,7 @@ public class ErrorHandler implements ExceptionMapper<ServerException>{
      */
     @Override
     public Response toResponse(ServerException e) {
+
         ServerError se = new ServerError(e.getHttpStatusCode(), e.getErrorCode(), e.getMessage());
         return Response.status(e.getHttpStatusCode()).entity(se).build();
     }

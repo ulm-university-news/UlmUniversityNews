@@ -1,5 +1,7 @@
 package ulm.university.news.manager.database;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
@@ -13,6 +15,8 @@ import java.sql.*;
  * @author Philipp Speidel
  */
 public class ModeratorDatabaseManager extends DatabaseManager {
+
+    private static final Logger logger = LoggerFactory.getLogger(ModeratorDatabaseManager.class);
 
     /**
      * Creates an instance of the ModeratorDatabaseManager class.
@@ -30,6 +34,7 @@ public class ModeratorDatabaseManager extends DatabaseManager {
      * @throws DatabaseException If connection to the database has failed.
      */
     public boolean isValidModeratorToken(String accessToken) throws DatabaseException {
+        logger.debug("Start with accessToken:{}.", accessToken);
         Connection con = null;
         boolean valid = false;
         try {
@@ -55,6 +60,7 @@ public class ModeratorDatabaseManager extends DatabaseManager {
         } finally {
             returnConnection(con);
         }
+        logger.debug("End with valid:{}.", valid);
         return valid;
     }
 
@@ -153,8 +159,9 @@ public class ModeratorDatabaseManager extends DatabaseManager {
                 boolean admin = getModeratorRs.getBoolean("Admin");
                 boolean deleted = getModeratorRs.getBoolean("Deleted");
 
-                moderator = new Moderator(id, name, firstName, lastName, email, serverAccessToken, password,
-                        motivation, locked, admin, deleted, false);
+                // TODO
+                // moderator = new Moderator(id, name, firstName, lastName, email, serverAccessToken, password,
+                //        motivation, locked, admin, deleted, false);
             }
             getModeratorStmt.close();
         } catch (SQLException e) {
