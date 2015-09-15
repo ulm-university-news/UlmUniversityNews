@@ -22,6 +22,19 @@ public class ServerException extends Exception{
      * @param httpStatusCode The HTTP status code which should be returned in the response after this exception
      *                       has occurred.
      * @param errorCode The application specific error code for the occurred error.
+     */
+    public ServerException(int httpStatusCode, int errorCode){
+        super();
+        this.httpStatusCode = httpStatusCode;
+        this.errorCode = errorCode;
+    }
+
+    /**
+     * Constructs a new ServerException with the specified HTTP status code, error code and error message.
+     *
+     * @param httpStatusCode The HTTP status code which should be returned in the response after this exception
+     *                       has occurred.
+     * @param errorCode The application specific error code for the occurred error.
      * @param message A message describing the occurred error.
      */
     public ServerException(int httpStatusCode, int errorCode, String message){
