@@ -1,4 +1,4 @@
-package ulm.university.news.util;
+package ulm.university.news.util.exceptions;
 
 /**
  * The ServerException indicates that the execution of the request has failed and cannot be continued. The server

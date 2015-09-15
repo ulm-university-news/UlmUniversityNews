@@ -1,4 +1,4 @@
-package ulm.university.news.util;
+package ulm.university.news.util.exceptions;
 
 /**
  * TODO

@@ -1,4 +1,4 @@
-package ulm.university.news.util;
+package ulm.university.news.util.exceptions;
 
 /**
  * The TokenAlreadyExistsException is thrown when the uniqueness of the access token is harmed. An access token needs

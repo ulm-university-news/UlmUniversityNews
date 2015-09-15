@@ -3,9 +3,9 @@ package ulm.university.news.controller;
 import org.apache.commons.validator.routines.EmailValidator;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.manager.database.ModeratorDatabaseManager;
-import ulm.university.news.util.DatabaseException;
-import ulm.university.news.util.ServerException;
-import ulm.university.news.util.TokenAlreadyExistsException;
+import ulm.university.news.util.exceptions.DatabaseException;
+import ulm.university.news.util.exceptions.ServerException;
+import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
 
 import java.util.regex.Pattern;
 

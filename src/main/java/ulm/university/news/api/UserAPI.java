@@ -3,8 +3,7 @@ package ulm.university.news.api;
 
 import ulm.university.news.controller.UserController;
 import ulm.university.news.data.User;
-import ulm.university.news.manager.email.EmailManager;
-import ulm.university.news.util.ServerException;
+import ulm.university.news.util.exceptions.ServerException;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;

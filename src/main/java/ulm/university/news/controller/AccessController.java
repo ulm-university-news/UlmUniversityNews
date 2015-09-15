@@ -2,8 +2,8 @@ package ulm.university.news.controller;
 
 import ulm.university.news.manager.database.ModeratorDatabaseManager;
 import ulm.university.news.manager.database.UserDatabaseManager;
-import ulm.university.news.util.DatabaseException;
-import ulm.university.news.util.ServerException;
+import ulm.university.news.util.exceptions.DatabaseException;
+import ulm.university.news.util.exceptions.ServerException;
 import ulm.university.news.data.enums.TokenType;
 
 

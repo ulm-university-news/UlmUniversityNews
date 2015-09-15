@@ -1,9 +1,9 @@
 package ulm.university.news.manager.database;
 
 import ulm.university.news.data.User;
-import ulm.university.news.util.DatabaseException;
+import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.data.enums.Platform;
-import ulm.university.news.util.TokenAlreadyExistsException;
+import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
 
 import java.sql.*;
 import java.util.ArrayList;
