@@ -1,4 +1,4 @@
-package ulm.university.news.util;
+package ulm.university.news.data.enums;
 
 /**
  * The GroupType defines a Group as a WORKING or TUTORIAL group.

@@ -1,4 +1,4 @@
-package ulm.university.news.util;
+package ulm.university.news.data.enums;
 
 /**
  * The TokenType defines to which resources a received token belongs. If it is of type USER, it identifies an user

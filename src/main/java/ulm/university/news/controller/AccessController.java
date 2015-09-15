@@ -4,7 +4,7 @@ import ulm.university.news.manager.database.ModeratorDatabaseManager;
 import ulm.university.news.manager.database.UserDatabaseManager;
 import ulm.university.news.util.DatabaseException;
 import ulm.university.news.util.ServerException;
-import ulm.university.news.util.TokenType;
+import ulm.university.news.data.enums.TokenType;
 
 
 /**
@@ -40,6 +40,9 @@ public class AccessController {
      */
     public TokenType verifyAccessToken(String accessToken) throws ServerException {
         TokenType tokenType = null;
+        if(accessToken == null){
+            return TokenType.INVALID;
+        }
         try {
             if (accessToken.matches("[a-fA-F0-9]{56}") && userDB.isValidUserToken(accessToken)) {
                 tokenType = TokenType.USER;

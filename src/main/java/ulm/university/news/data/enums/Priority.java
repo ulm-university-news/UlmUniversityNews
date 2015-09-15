@@ -1,4 +1,4 @@
-package ulm.university.news.util;
+package ulm.university.news.data.enums;
 
 /**
  * The Priority describes the importance of a Message. Possible values are NORMAL and HIGH.

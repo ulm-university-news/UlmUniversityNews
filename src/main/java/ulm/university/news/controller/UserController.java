@@ -6,7 +6,7 @@ import ulm.university.news.manager.database.UserDatabaseManager;
 import ulm.university.news.util.DatabaseException;
 import ulm.university.news.util.ServerException;
 import ulm.university.news.util.TokenAlreadyExistsException;
-import ulm.university.news.util.TokenType;
+import ulm.university.news.data.enums.TokenType;
 
 import java.util.List;
 

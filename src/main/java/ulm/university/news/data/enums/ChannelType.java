@@ -1,4 +1,4 @@
-package ulm.university.news.util;
+package ulm.university.news.data.enums;
 
 /**
  * The ChannelType defines the type of a Channel as a LECTURE, EVENT, SPORT or STUDENT_GROUP.

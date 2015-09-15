@@ -2,7 +2,7 @@ package ulm.university.news.manager.database;
 
 import ulm.university.news.data.User;
 import ulm.university.news.util.DatabaseException;
-import ulm.university.news.util.Platform;
+import ulm.university.news.data.enums.Platform;
 import ulm.university.news.util.TokenAlreadyExistsException;
 
 import java.sql.*;

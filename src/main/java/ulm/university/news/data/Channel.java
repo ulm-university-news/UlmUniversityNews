@@ -1,6 +1,6 @@
 package ulm.university.news.data;
 
-import ulm.university.news.util.ChannelType;
+import ulm.university.news.data.enums.ChannelType;
 
 import java.time.ZonedDateTime;
 import java.util.List;

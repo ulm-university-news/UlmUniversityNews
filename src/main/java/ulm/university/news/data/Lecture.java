@@ -1,6 +1,6 @@
 package ulm.university.news.data;
 
-import ulm.university.news.util.Faculty;
+import ulm.university.news.data.enums.Faculty;
 
 /**
  * The Lecture class is a sub class of Channel. This class adds fields to describe a Lecture.

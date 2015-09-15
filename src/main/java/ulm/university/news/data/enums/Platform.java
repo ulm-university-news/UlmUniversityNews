@@ -1,4 +1,4 @@
-package ulm.university.news.util;
+package ulm.university.news.data.enums;
 
 /**
  * The Platform on which the users app is running. Possible values are ANDROID, WINDOWS and IOS.

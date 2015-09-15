@@ -1,4 +1,4 @@
-package ulm.university.news.util;
+package ulm.university.news.data.enums;
 
 /**
  * The Faculty to which the Lecture belongs. Possible values are NATURAL_SCIENCES,

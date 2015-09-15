@@ -1,6 +1,6 @@
 package ulm.university.news.data;
 
-import ulm.university.news.util.Priority;
+import ulm.university.news.data.enums.Priority;
 
 import java.time.ZonedDateTime;
 

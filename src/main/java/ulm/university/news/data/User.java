@@ -1,6 +1,6 @@
 package ulm.university.news.data;
 
-import ulm.university.news.util.Platform;
+import ulm.university.news.data.enums.Platform;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
