@@ -16,9 +16,9 @@ import ulm.university.news.data.enums.TokenType;
 public class AccessController {
 
     /** Instance of the UserDatabaseManager. */
-    private UserDatabaseManager userDB = new UserDatabaseManager();
+    protected UserDatabaseManager userDB = new UserDatabaseManager();
     /** Instance of the ModeratorDatabaseManager. */
-    private ModeratorDatabaseManager moderatorDB = new ModeratorDatabaseManager();
+    protected ModeratorDatabaseManager moderatorDB = new ModeratorDatabaseManager();
 
 
     /**

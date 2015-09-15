@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.data.enums.Language;
-import ulm.university.news.manager.database.ModeratorDatabaseManager;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
@@ -20,12 +19,9 @@ import static ulm.university.news.util.Constants.*;
  * @author Matthias Mak
  * @author Philipp Speidel
  */
-public class ModeratorController {
-
+public class ModeratorController extends AccessController {
+    /** TODO */
     private static final Logger logger = LoggerFactory.getLogger(ModeratorController.class);
-
-    /** An instance of the ModeratorDatabaseManager. */
-    ModeratorDatabaseManager moderatorDB = new ModeratorDatabaseManager();
 
     /**
      * Create a new moderator account in the system. This method takes the data which have been received with the
@@ -38,7 +34,6 @@ public class ModeratorController {
      * @throws ServerException If moderator account creation failed.
      */
     public Moderator createModerator(Moderator moderator) throws ServerException {
-        System.out.println(moderator.getPassword());
         // Perform checks on the received data. If the data isn't accurate the moderator can't be created.
         // In case of inaccuracy, send 400 Bad Request and abort execution.
         if (moderator.getName() == null || moderator.getPassword() == null || moderator.getEmail() == null ||
