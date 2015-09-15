@@ -1,8 +1,7 @@
 package ulm.university.news.controller;
 
+import ulm.university.news.data.Moderator;
 import ulm.university.news.data.User;
-import ulm.university.news.manager.database.ModeratorDatabaseManager;
-import ulm.university.news.manager.database.UserDatabaseManager;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
@@ -17,12 +16,7 @@ import java.util.List;
  * @author Matthias Mak
  * @author Philipp Speidel
  */
-public class UserController {
-
-    /** An instance of the UserDatabaseManager. */
-    UserDatabaseManager userDBManager = new UserDatabaseManager();
-    ModeratorDatabaseManager moderatorDBManager = new ModeratorDatabaseManager();
-    AccessController accessController = new AccessController();
+public class UserController extends AccessController{
 
     /**
      * Creates an instance of the UserController class.
@@ -56,7 +50,7 @@ public class UserController {
         boolean successful =false;
         while(successful == false){
             try {
-                userDBManager.storeUser(user);
+                userDB.storeUser(user);
                 successful = true;
             } catch (TokenAlreadyExistsException e) {
                 // TODO logging
@@ -84,27 +78,30 @@ public class UserController {
      */
     public List<User> getUsers(String accessToken) throws ServerException {
         List<User> users = null;
-        TokenType tokenType= accessController.verifyAccessToken(accessToken);
+        TokenType tokenType= verifyAccessToken(accessToken);
 
         if(tokenType == TokenType.USER){
+            // TODO Logging
             throw new ServerException(403,0, "User is not allowed to perform the requested operation.");
         }
         else if(tokenType == TokenType.INVALID){
+            // TODO Logging
             throw new ServerException(401, 0, "To perform this operation a valid access token needs to be provided.");
         }
 
-//        Moderator moderator = moderatorDB.getModeratorByToken(accessToken);
-//        if(moderator.isAdmin() == false){
-//            throw new ServerException(403, 0, "Moderator is not allowed to perform the requested operation.");
-//        }
-//
-//        try {
-//            users = userDBManager.getUsers();
-//        } catch (DatabaseException e) {
-//            //TODO Logging
-//            e.printStackTrace();
-//            throw new ServerException(500, 0, "Database failure.");
-//        }
+        try {
+            Moderator moderator = moderatorDB.getModeratorByToken(accessToken);
+            if(moderator.isAdmin() == false){
+                // TODO Logging
+                throw new ServerException(403, 0, "Moderator is not allowed to perform the requested operation.");
+            }
+
+            users = userDB.getUsers();
+        } catch (DatabaseException e) {
+            // TODO Logging
+            e.printStackTrace();
+            throw new ServerException(500, 0, "Database failure.");
+        }
 
         return users;
     }
@@ -120,15 +117,17 @@ public class UserController {
      */
     public User getUser(String accessToken, int userId) throws ServerException {
         User user = null;
-        TokenType tokenType = accessController.verifyAccessToken(accessToken);
+        TokenType tokenType = verifyAccessToken(accessToken);
 
         if(tokenType == TokenType.INVALID){
+            // TODO Logging
             throw new ServerException(401, 0, "To perform this operation a valid access token needs to be provided.");
         }
 
         try {
-            user = userDBManager.getUser(userId);
+            user = userDB.getUser(userId);
             if(user == null){
+                // TODO Logging
                 throw new ServerException(404, 0, "User resource not found.");
             }
         } catch (DatabaseException e) {
@@ -152,25 +151,28 @@ public class UserController {
      * doesn't have the required permissions and if a database failure has occurred.
      */
     public User changeUser(String accessToken, int userId, User user) throws ServerException {
-        User userDB = null;
-        TokenType tokenType = accessController.verifyAccessToken(accessToken);
+        User userDBObject = null;
+        TokenType tokenType = verifyAccessToken(accessToken);
 
         if(tokenType == TokenType.MODERATOR){
+            // TODO Logging
             throw new ServerException(403,0, "Moderator is not allowed to perform the requested operation.");
         }
         else if(tokenType == TokenType.INVALID){
+            // TODO Logging
             throw new ServerException(401, 0, "To perform this operation a valid access token needs to be provided.");
         }
 
         try {
-            userDB = userDBManager.getUserByToken(accessToken);
+            userDBObject = userDB.getUserByToken(accessToken);
 
-            if(userDB.getId() != userId){
+            if(userDBObject.getId() != userId){
+                // TODO Logging
                 throw new ServerException(403, 0, "User is only allowed to change his own account.");
             }
 
-            userDB = updateUser(user, userDB);
-            userDBManager.updateUser(userDB);
+            userDBObject = updateUser(user, userDBObject);
+            userDB.updateUser(userDBObject);
 
         } catch (DatabaseException e) {
             // TODO Logging
@@ -178,7 +180,7 @@ public class UserController {
             throw new ServerException(500, 0, "Database failure. Update user account failed.");
         }
 
-        return userDB;
+        return userDBObject;
     }
 
     /**

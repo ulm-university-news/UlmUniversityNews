@@ -1,5 +1,7 @@
 package ulm.university.news.manager.database;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ulm.university.news.data.User;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.data.enums.Platform;
@@ -17,6 +19,8 @@ import java.util.List;
  */
 public class UserDatabaseManager extends DatabaseManager {
 
+    private static final Logger logger = LoggerFactory.getLogger(UserDatabaseManager.class);
+
     /**
      * Creates an instance of the UserDatabaseManager class.
      */
@@ -33,6 +37,7 @@ public class UserDatabaseManager extends DatabaseManager {
      * @throws DatabaseException If the data could not be stored in the database due to database failure.
      */
     public void storeUser(User user) throws TokenAlreadyExistsException, DatabaseException {
+        logger.debug("Start with user:{}.", user.toString());
         Connection con = null;
         try {
             con = getDatabaseConnection();
@@ -59,23 +64,23 @@ public class UserDatabaseManager extends DatabaseManager {
 
             storeUserStmt.close();
             getIdStmt.close();
+            logger.info("Stored user with id {}.", user.getId());
         } catch (SQLException e) {
             // Check if the uniqueness of the access token was harmed.
             if(e.getErrorCode() == 1062){
-                // TODO Logging
+                logger.warn("Uniqueness of the access token harmed. Cannot store user with id {}.", user.getId());
                 throw new TokenAlreadyExistsException("Token already in database, a new token needs to be created.");
             }
 
-            // TODO Logging
-            System.err.println("SQL error occurred, SQLState " + e.getSQLState() + ", ErrorCode " + e.getErrorCode());
-            e.printStackTrace();
-
+            logger.error("SQLException occurred with SQLState: {}, ErrorCode: {} and message: {}.", e.getSQLState(),
+                    e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller
-            throw new DatabaseException(e.getMessage(), e);
+            throw new DatabaseException("Database failure.");
         }
         finally {
             returnConnection(con);
         }
+        logger.debug("End.");
     }
 
     /**
