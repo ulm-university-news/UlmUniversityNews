@@ -28,6 +28,7 @@ public class Constants {
     public static final int USER_NOT_FOUND = 1000;
     public static final int USER_FORBIDDEN = 1001;
     public static final int USER_DATA_INCOMPLETE = 1002;
+    public static final int USER_NAME_INVALID = 1003;
 
     // Moderator:
     public static final int MODERATOR_NOT_FOUND = 2000;

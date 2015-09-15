@@ -1,5 +1,7 @@
 package ulm.university.news.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.data.User;
 import ulm.university.news.util.exceptions.DatabaseException;
@@ -7,16 +9,22 @@ import ulm.university.news.util.exceptions.ServerException;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
 import ulm.university.news.data.enums.TokenType;
 
+import static ulm.university.news.util.Constants.*;
+
 import java.util.List;
 
 
 /**
- * TODO
+ * The UserController handles requests concerning the user resources. It offers methods to query user account data as
+ * well as methods to create new user accounts or update existing ones.
  *
  * @author Matthias Mak
  * @author Philipp Speidel
  */
 public class UserController extends AccessController{
+
+    /** An instance of the Logger class which performs logging for the UserController class. */
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     /**
      * Creates an instance of the UserController class.
@@ -36,12 +44,15 @@ public class UserController extends AccessController{
      */
     public User createUser(User user) throws ServerException {
         // Perform checks on the received data. If the data is incomplete the user can't be created.
-        if(user.getName() == null || user.getPlatform() == null || user.getPushAccessToken() == null){
-            // TODO send 400 Bad Request and abort execution
-            throw new ServerException(400, 0, "Incomplete data record.");
+        if(user == null || user.getName() == null || user.getPlatform() == null || user.getPushAccessToken() == null){
+            logger.error(LOG_SERVER_EXCEPTION, 400, USER_DATA_INCOMPLETE, "Incomplete data record. The given user " +
+                    "object is: " + user + ".");
+            throw new ServerException(400, USER_DATA_INCOMPLETE);
         }
-        else if(user.getName().length() >= 35){
-            throw new ServerException(400, 0, "Name exceeded maximum length.");
+        else if(!user.getName().matches(NAME_PATTERN)){
+            logger.error(LOG_SERVER_EXCEPTION, 400, USER_NAME_INVALID, "Invalid username. The given username is: " +
+                    user.getName() + ".");
+            throw new ServerException(400, USER_NAME_INVALID);
         }
 
         // Create the accessToken which will identify the new user in the system.
@@ -53,14 +64,13 @@ public class UserController extends AccessController{
                 userDB.storeUser(user);
                 successful = true;
             } catch (TokenAlreadyExistsException e) {
-                // TODO logging
-                System.out.println("Need to create a new access token for the user!");
+                logger.info("The created user access token has been rejected. Create a new access token.");
                 // Create a new access token for the user.
                 user.createUserToken();
             } catch (DatabaseException e) {
-                // TODO Logging
-                e.printStackTrace();
-                throw new ServerException(500, 1000, "Database failure. Creation of user account failed.");
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Creation of user account" +
+                        " failed.");
+                throw new ServerException(500, DATABASE_FAILURE);
             }
         }
 
@@ -80,27 +90,33 @@ public class UserController extends AccessController{
         List<User> users = null;
         TokenType tokenType= verifyAccessToken(accessToken);
 
+        // Check the given access token.
         if(tokenType == TokenType.USER){
-            // TODO Logging
-            throw new ServerException(403,0, "User is not allowed to perform the requested operation.");
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is not allowed to perform the requested " +
+                    "operation.");
+            throw new ServerException(403, USER_FORBIDDEN);
         }
         else if(tokenType == TokenType.INVALID){
-            // TODO Logging
-            throw new ServerException(401, 0, "To perform this operation a valid access token needs to be provided.");
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
+                    "needs to be provided.");
+            throw new ServerException(401, TOKEN_INVALID);
         }
 
         try {
+            // Get the moderator which is identified by the access token and check whether he is an administrator.
             Moderator moderator = moderatorDB.getModeratorByToken(accessToken);
             if(moderator.isAdmin() == false){
-                // TODO Logging
-                throw new ServerException(403, 0, "Moderator is not allowed to perform the requested operation.");
+                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Moderator is not allowed to perform " +
+                        "the requested operation.");
+                throw new ServerException(403, MODERATOR_FORBIDDEN);
             }
 
+            // Get the user account data from the database.
             users = userDB.getUsers();
+
         } catch (DatabaseException e) {
-            // TODO Logging
-            e.printStackTrace();
-            throw new ServerException(500, 0, "Database failure.");
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
         }
 
         return users;
@@ -120,20 +136,22 @@ public class UserController extends AccessController{
         TokenType tokenType = verifyAccessToken(accessToken);
 
         if(tokenType == TokenType.INVALID){
-            // TODO Logging
-            throw new ServerException(401, 0, "To perform this operation a valid access token needs to be provided.");
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
+                    "needs to be provided.");
+            throw new ServerException(401, TOKEN_INVALID);
         }
 
         try {
+            // Query the user data from the database.
             user = userDB.getUser(userId);
             if(user == null){
-                // TODO Logging
-                throw new ServerException(404, 0, "User resource not found.");
+                logger.error(LOG_SERVER_EXCEPTION, 404, USER_NOT_FOUND, "User resource with id " + userId + " not " +
+                        "found.");
+                throw new ServerException(404, USER_NOT_FOUND);
             }
         } catch (DatabaseException e) {
-            // TODO Logging
-            e.printStackTrace();
-            throw new ServerException(500, 0, "Database failure.");
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
         }
         return user;
     }
@@ -154,30 +172,43 @@ public class UserController extends AccessController{
         User userDBObject = null;
         TokenType tokenType = verifyAccessToken(accessToken);
 
+        if(user == null){
+            // TODO user USER_DATA_INCOMPLETE here or rather something like USER_PATCH_DATA_INVALID?
+            logger.error(LOG_SERVER_EXCEPTION, 400, USER_DATA_INCOMPLETE, "No valid data sent with patch request.");
+            throw new ServerException(400, USER_DATA_INCOMPLETE);
+        }
+
+        // Perform access token validation.
         if(tokenType == TokenType.MODERATOR){
-            // TODO Logging
-            throw new ServerException(403,0, "Moderator is not allowed to perform the requested operation.");
+            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Moderator is not allowed to perform " +
+                    "the requested operation.");
+            throw new ServerException(403, MODERATOR_FORBIDDEN);
         }
         else if(tokenType == TokenType.INVALID){
-            // TODO Logging
-            throw new ServerException(401, 0, "To perform this operation a valid access token needs to be provided.");
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
+                    "needs to be provided.");
+            throw new ServerException(401, TOKEN_INVALID);
         }
 
         try {
+            // Note, at this point it is known that the access token is valid, so userDBObject won't be null.
             userDBObject = userDB.getUserByToken(accessToken);
 
+            // User is only allowed to change the data of his own account.
             if(userDBObject.getId() != userId){
-                // TODO Logging
-                throw new ServerException(403, 0, "User is only allowed to change his own account.");
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is only allowed to change his own " +
+                        "account.");
+                throw new ServerException(403, USER_FORBIDDEN);
             }
 
+            // Determine what needs to be updated and update the corresponding fields in the database.
             userDBObject = updateUser(user, userDBObject);
             userDB.updateUser(userDBObject);
 
         } catch (DatabaseException e) {
-            // TODO Logging
-            e.printStackTrace();
-            throw new ServerException(500, 0, "Database failure. Update user account failed.");
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure. Update of user account data " +
+                    "failed.");
+            throw new ServerException(500, DATABASE_FAILURE);
         }
 
         return userDBObject;
@@ -197,13 +228,16 @@ public class UserController extends AccessController{
         String newName = user.getName();
         if(newName != null){
             // Update name if conditions are met.
-            if(user.getName().length() <= 35){
+            if(user.getName().matches(NAME_PATTERN)){
                 userDB.setName(newName);
             }
             else{
-                throw new ServerException(400,0, "Name exceeded maximum length.");
+                logger.error(LOG_SERVER_EXCEPTION, 400, USER_NAME_INVALID, "Invalid username. The given username is: " +
+                        user.getName() + ".");
+                throw new ServerException(400, USER_NAME_INVALID);
             }
         }
+        // TODO validation of push token necessary?
         String newPushToken = user.getPushAccessToken();
         if(newPushToken != null){
             userDB.setPushAccessToken(newPushToken);
