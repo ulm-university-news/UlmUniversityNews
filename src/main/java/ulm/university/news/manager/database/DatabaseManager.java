@@ -29,7 +29,7 @@ public class DatabaseManager {
             Context environmentContext = (Context) initialContext.lookup("java:comp/env");
             DataSource dataSource = (DataSource) environmentContext.lookup(resourceName);
 
-            //Request a connetion from the pool.
+            //Request a connection from the pool.
             con = dataSource.getConnection();
         } catch (NamingException e) {
             //TODO
