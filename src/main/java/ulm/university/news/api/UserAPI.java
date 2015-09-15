@@ -3,6 +3,7 @@ package ulm.university.news.api;
 
 import ulm.university.news.controller.UserController;
 import ulm.university.news.data.User;
+import ulm.university.news.util.PATCH;
 import ulm.university.news.util.exceptions.ServerException;
 
 import javax.ws.rs.*;
@@ -22,7 +23,9 @@ import java.util.List;
 @Path("/user")
 public class UserAPI {
 
-    /** Instance of the UserController class. */
+    /**
+     * Instance of the UserController class.
+     */
     private UserController userCtrl = new UserController();
 
 //    @GET
@@ -35,57 +38,42 @@ public class UserAPI {
 //
 //    }
 
-    @POST
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response createUser(User user,@Context UriInfo uriInfo){
-        return createUserAccount(user, uriInfo);
-    }
-
     /**
      * Create a new user account. The data of the new user is provided within the user object. The generated
      * user resource will be returned including the URI which can be used to access the resource.
      *
-     * @param user An user object including the data of the new user.
+     * @param user    An user object including the data of the new user.
      * @param uriInfo Information about the URI of this request.
      * @return Response object including the generated user object and a set Location Header.
+     * @throws ServerException // TODO
      */
-    private Response createUserAccount(User user, @Context UriInfo uriInfo){
-        try {
-            user = userCtrl.createUser(user);
-        } catch (ServerException e) {
-            ServerError se = new ServerError(e.getHttpStatusCode(),e.getErrorCode(), e.getMessage());
-            return Response.status(e.getHttpStatusCode()).entity(se).build();    // TODO
-        }
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response createUser(User user, @Context UriInfo uriInfo) throws ServerException {
+        user = userCtrl.createUser(user);
         // Create the URI for the generated resource.
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "user" + "/" + user.getId());
         // Return the generated user resource and set the Location Header.
         return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(user).build();
     }
 
+
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public List<User> getAllUsers(@HeaderParam("Authorization") String accessToken){
+    public List<User> getAllUsers(@HeaderParam("Authorization") String accessToken) throws ServerException {
         List<User> users;
-        try {
-            users = userCtrl.getUsers(accessToken);
-        } catch (ServerException e) {
-            return null;    // TODO
-        }
+        users = userCtrl.getUsers(accessToken);
         return users;
     }
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{id}")
-    public Response getUser(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id){
+    public Response getUser(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id)
+            throws ServerException {
         User user = null;
-        try {
-            user = userCtrl.getUser(accessToken, id);
-        } catch (ServerException e) {
-            ServerError se = new ServerError(e.getHttpStatusCode(),e.getErrorCode(), e.getMessage());
-            return Response.status(e.getHttpStatusCode()).entity(se).build();    // TODO
-        }
+        user = userCtrl.getUser(accessToken, id);
         return Response.status(Response.Status.OK).entity(user).build();
     }
 
@@ -93,13 +81,9 @@ public class UserAPI {
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("/{id}")
-    public Response changeUser(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id, User user){
-        try {
-            user = userCtrl.changeUser(accessToken, id, user);
-        } catch (ServerException e) {
-            ServerError se = new ServerError(e.getHttpStatusCode(),e.getErrorCode(), e.getMessage());
-            return Response.status(e.getHttpStatusCode()).entity(se).build();    // TODO
-        }
+    public Response changeUser(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id, User user)
+            throws ServerException {
+        user = userCtrl.changeUser(accessToken, id, user);
         return Response.status(Response.Status.OK).entity(user).build();
     }
 

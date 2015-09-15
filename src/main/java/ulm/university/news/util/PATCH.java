@@ -1,4 +1,4 @@
-package ulm.university.news.api;
+package ulm.university.news.util;
 
 import javax.ws.rs.HttpMethod;
 import java.lang.annotation.ElementType;

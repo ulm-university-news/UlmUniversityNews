@@ -2,6 +2,7 @@ package ulm.university.news.api;
 
 import ulm.university.news.controller.ModeratorController;
 import ulm.university.news.data.Moderator;
+import ulm.university.news.util.PATCH;
 import ulm.university.news.util.exceptions.ServerException;
 
 import javax.ws.rs.*;
