@@ -15,7 +15,10 @@ import java.net.URI;
 import java.util.List;
 
 /**
- * TODO
+ * The UserAPI is responsible for accepting incoming requests, reading the required data and handing it over to the
+ * appropriate controller methods. After the request has been executed successfully, the UserAPI generates the
+ * response message. If the execution of the request has failed for whatever reasons, the ServerException is handed
+ * over to the ErrorHandler class.
  *
  * @author Matthias Mak
  * @author Philipp Speidel
@@ -39,13 +42,14 @@ public class UserAPI {
 //    }
 
     /**
-     * Create a new user account. The data of the new user is provided within the user object. The generated
+     * Creates a new user account. The data of the new user is provided within the user object. The generated
      * user resource will be returned including the URI which can be used to access the resource.
      *
      * @param user    An user object including the data of the new user.
      * @param uriInfo Information about the URI of this request.
      * @return Response object including the generated user object and a set Location Header.
-     * @throws ServerException // TODO
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
      */
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
@@ -58,7 +62,14 @@ public class UserAPI {
         return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(user).build();
     }
 
-
+    /**
+     * Returns a list of all user accounts which are stored within the system.
+     *
+     * @param accessToken The access token of the requestor.
+     * @return Returns a list of users.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public List<User> getAllUsers(@HeaderParam("Authorization") String accessToken) throws ServerException {
@@ -67,6 +78,15 @@ public class UserAPI {
         return users;
     }
 
+    /**
+     * Returns the data of the user account which is identified with the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param id The id of the user account.
+     * @return Returns the data of the user account.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{id}")
@@ -77,6 +97,18 @@ public class UserAPI {
         return Response.status(Response.Status.OK).entity(user).build();
     }
 
+    /**
+     * Updates the account information of the user which is identified by the given id based on a description of
+     * changes. The description of changes is provided in the JSON Merge Patch format which is automatically
+     * translated into a user object.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param id The id of the user account which should be updated.
+     * @param user The new data values taken from the JSON Merge Patch document and stored in an user object.
+     * @return The updated version of the user resource.
+     * @throws ServerException If the execution of the PATCH reuquest has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
     @PATCH
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
