@@ -16,7 +16,7 @@ public class Constants {
     public static final String NAME_PATTERN = "^[a-zA-Z0-9]{3,35}$";
 
     /** A pattern which describes the valid form of a moderator password. */
-    public static final String PASSWORD_PATTERN = "^[a-zA-Z0-9]{3,35}$";
+    public static final String PASSWORD_PATTERN = "^[a-zA-Z0-9]{10,35}$";
 
     /** A pattern which describes the valid form of an user access token. */
     public static final String USER_TOKEN_PATTERN = "^[a-fA-F0-9]{56}$";
@@ -40,6 +40,10 @@ public class Constants {
     public static final int MODERATOR_NOT_FOUND = 2000;
     public static final int MODERATOR_FORBIDDEN = 2001;
     public static final int MODERATOR_DATA_INCOMPLETE = 2002;
+    public static final int MODERATOR_INVALID_NAME = 2003;
+    public static final int MODERATOR_INVALID_EMAIL = 2004;
+    public static final int MODERATOR_INVALID_PASSWORD = 2005;
+    public static final int MODERATOR_NAME_ALREADY_EXISTS = 2006;
 
     // Group:
     public static final int GROUP_NOT_FOUND = 4000;

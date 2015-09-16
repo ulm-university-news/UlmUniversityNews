@@ -24,12 +24,14 @@ public class ModeratorAPI {
     /** Instance of the ModeratorController class. */
     private ModeratorController moderatorCtrl = new ModeratorController();
 
+    /* The logger instance for ModeratorAPI.
+    private static final Logger logger = LoggerFactory.getLogger(ModeratorAPI.class);
+     */
+
     @GET
     @Path("/{id}")
     public Response getModerator(@PathParam("id") int id) {
-
         String output = "Moderator id: " + id;
-
         return Response.status(200).entity(output).build();
     }
 
@@ -44,13 +46,11 @@ public class ModeratorAPI {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response createModerator(Moderator moderator,@Context UriInfo uriInfo) throws ServerException {
-
+    public Response createModerator(Moderator moderator, @Context UriInfo uriInfo) throws ServerException {
         moderator = moderatorCtrl.createModerator(moderator);
-
-        // Create the URI for the generated resource.
+        // Create the URI for the generated moderator resource.
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "moderator" + "/" + moderator.getId());
-        // Return the generated user resource and set the Location Header.
+        // Return the generated moderator resource and set the Location Header.
         return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(moderator).build();
     }
 
@@ -68,13 +68,9 @@ public class ModeratorAPI {
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("/{id}")
     public Response changeModerator(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id,
-                                    Moderator moderator){
-        try {
-            moderator = moderatorCtrl.changeModerator(accessToken, id, moderator);
-        } catch (ServerException e) {
-            ServerError se = new ServerError(e.getHttpStatusCode(),e.getErrorCode(), e.getMessage());
-            return Response.status(e.getHttpStatusCode()).entity(se).build();    // TODO
-        }
+                                    Moderator moderator) throws ServerException {
+        moderator = moderatorCtrl.changeModerator(accessToken, id, moderator);
+        // Return the changed moderator resource.
         return Response.status(Response.Status.OK).entity(moderator).build();
     }
 

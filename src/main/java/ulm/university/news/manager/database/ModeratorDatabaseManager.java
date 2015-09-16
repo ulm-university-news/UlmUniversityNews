@@ -3,10 +3,14 @@ package ulm.university.news.manager.database;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Moderator;
+import ulm.university.news.data.enums.Language;
 import ulm.university.news.util.exceptions.DatabaseException;
+import ulm.university.news.util.exceptions.ModeratorNameAlreadyExistsException;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
 
 import java.sql.*;
+
+import static ulm.university.news.util.Constants.LOG_SQL_EXCEPTION;
 
 /**
  * TODO
@@ -16,6 +20,7 @@ import java.sql.*;
  */
 public class ModeratorDatabaseManager extends DatabaseManager {
 
+    /** The logger instance for ModeratorDatabaseManager. */
     private static final Logger logger = LoggerFactory.getLogger(ModeratorDatabaseManager.class);
 
     /**
@@ -53,10 +58,9 @@ public class ModeratorDatabaseManager extends DatabaseManager {
             }
             getModeratorStmt.close();
         } catch (SQLException e) {
-            //TODO Logging
-            e.printStackTrace();
-            throw new DatabaseException("Database failure with SqlState " + e.getSQLState() +
-                    " and error code " + e.getErrorCode() + "; message " + e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
         } finally {
             returnConnection(con);
         }
@@ -72,15 +76,17 @@ public class ModeratorDatabaseManager extends DatabaseManager {
      * another moderator. The access token needs to be unique in the whole system so the storing of the data is aborted.
      * @throws DatabaseException If the data could not be stored in the database due to database failure.
      */
-    public void storeModerator(Moderator moderator) throws TokenAlreadyExistsException, DatabaseException {
+    public void storeModerator(Moderator moderator) throws TokenAlreadyExistsException,
+            ModeratorNameAlreadyExistsException, DatabaseException {
+        logger.debug("Start with moderator:{}.", moderator);
         Connection con = null;
         try {
             con = getDatabaseConnection();
 
             String query =
                     "INSERT INTO Moderator (Name, LastName, FirstName, Email, Password, Motivation, " +
-                            "ServerAccessToken, Locked, Admin, Deleted) " +
-                            "VALUES (?,?,?,?,?,?,?,?,?,?); ";
+                            "ServerAccessToken, Language, Locked, Admin, Deleted) " +
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?); ";
 
             PreparedStatement storeModeratorStmt = con.prepareStatement(query);
             storeModeratorStmt.setString(1, moderator.getName());
@@ -90,9 +96,10 @@ public class ModeratorDatabaseManager extends DatabaseManager {
             storeModeratorStmt.setString(5, moderator.getPassword());
             storeModeratorStmt.setString(6, moderator.getMotivation());
             storeModeratorStmt.setString(7, moderator.getServerAccessToken());
-            storeModeratorStmt.setBoolean(8, moderator.isLocked());
-            storeModeratorStmt.setBoolean(9, moderator.isAdmin());
-            storeModeratorStmt.setBoolean(10, moderator.isDeleted());
+            storeModeratorStmt.setInt(8, moderator.getLanguage().ordinal());
+            storeModeratorStmt.setBoolean(9, moderator.isLocked());
+            storeModeratorStmt.setBoolean(10, moderator.isAdmin());
+            storeModeratorStmt.setBoolean(11, moderator.isDeleted());
 
             storeModeratorStmt.execute();
 
@@ -107,22 +114,29 @@ public class ModeratorDatabaseManager extends DatabaseManager {
 
             storeModeratorStmt.close();
             getIdStmt.close();
+            logger.info("Stored moderator with id:{}.", moderator.getId());
         } catch (SQLException e) {
-            // Check if the uniqueness of the access token was harmed.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Check if the uniqueness of a column was harmed.
             if (e.getErrorCode() == 1062) {
-                // TODO Logging
-                throw new TokenAlreadyExistsException("Token already in database, a new token needs to be created.");
+                // Check which column is affected and throw back appropriate exception to the controller.
+                if (e.getMessage().contains("ServerAccessToken_UNIQUE")) {
+                    logger.warn("Uniqueness of the access token harmed. Cannot store moderator.");
+                    throw new TokenAlreadyExistsException("Token already exists in database. A new token will be " +
+                            "created.");
+                } else if (e.getMessage().contains("Name_UNIQUE")) {
+                    logger.error("Uniqueness of the moderator name harmed. Cannot store moderator.");
+                    throw new ModeratorNameAlreadyExistsException("Name already exits in database. Requestor will be " +
+                            "notified.");
+                }
             }
-
-            // TODO Logging
-            System.err.println("SQL error occurred, SQLState " + e.getSQLState() + ", ErrorCode " + e.getErrorCode());
-            e.printStackTrace();
-
-            // Throw back DatabaseException to the Controller
-            throw new DatabaseException(e.getMessage(), e);
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
         } finally {
             returnConnection(con);
         }
+        logger.debug("End.");
     }
 
     /**
@@ -133,6 +147,7 @@ public class ModeratorDatabaseManager extends DatabaseManager {
      * @throws DatabaseException If connection to the database has failed.
      */
     public Moderator getModeratorByToken(String accessToken) throws DatabaseException {
+        logger.debug("Start with accessToken:{}.", accessToken);
         Connection con = null;
         Moderator moderator = null;
         try {
@@ -154,24 +169,24 @@ public class ModeratorDatabaseManager extends DatabaseManager {
                 String email = getModeratorRs.getString("Email");
                 String password = getModeratorRs.getString("Password");
                 String motivation = getModeratorRs.getString("Motivation");
+                Language language = Language.values[getModeratorRs.getInt("Language")];
                 String serverAccessToken = getModeratorRs.getString("ServerAccessToken");
                 boolean locked = getModeratorRs.getBoolean("Locked");
                 boolean admin = getModeratorRs.getBoolean("Admin");
                 boolean deleted = getModeratorRs.getBoolean("Deleted");
 
-                // TODO
-                // moderator = new Moderator(id, name, firstName, lastName, email, serverAccessToken, password,
-                //        motivation, locked, admin, deleted, false);
+                moderator = new Moderator(id, name, firstName, lastName, email, serverAccessToken, password,
+                        motivation, language, locked, admin, deleted, false);
             }
             getModeratorStmt.close();
         } catch (SQLException e) {
-            // TODO Logging
-            e.printStackTrace();
-            throw new DatabaseException("Database failure with SqlState " + e.getSQLState() +
-                    " and error code " + e.getErrorCode() + "; message " + e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
         } finally {
             returnConnection(con);
         }
+        logger.debug("End with moderator:{}.", moderator);
         return moderator;
     }
 
@@ -184,6 +199,7 @@ public class ModeratorDatabaseManager extends DatabaseManager {
      * @return true if the Moderator is responsible for the Channel.
      */
     public boolean isResponsibleForChannel(int moderatorId, int channelId) throws DatabaseException {
+        logger.debug("Start with moderatorId:{} and channelId:{}.", moderatorId, channelId);
         Connection con = null;
         boolean responsible = false;
         try {
@@ -203,13 +219,13 @@ public class ModeratorDatabaseManager extends DatabaseManager {
             }
             getResponsibleStmt.close();
         } catch (SQLException e) {
-            //TODO Logging
-            e.printStackTrace();
-            throw new DatabaseException("Database failure with SqlState " + e.getSQLState() +
-                    " and error code " + e.getErrorCode() + "; message " + e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
         } finally {
             returnConnection(con);
         }
+        logger.debug("End with responsible:{}.", responsible);
         return responsible;
     }
 

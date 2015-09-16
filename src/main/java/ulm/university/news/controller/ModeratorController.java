@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.data.enums.Language;
 import ulm.university.news.util.exceptions.DatabaseException;
+import ulm.university.news.util.exceptions.ModeratorNameAlreadyExistsException;
 import ulm.university.news.util.exceptions.ServerException;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
 
@@ -14,13 +15,16 @@ import java.util.regex.Pattern;
 import static ulm.university.news.util.Constants.*;
 
 /**
- * TODO
+ * The ModeratorController handles requests concerning the moderator resources. It offers methods to query moderator
+ * account data as well as methods to create new moderator accounts or update existing ones. This class also handles
+ * requests of administrators.
  *
  * @author Matthias Mak
  * @author Philipp Speidel
  */
 public class ModeratorController extends AccessController {
-    /** TODO */
+
+    /** The logger instance for ModeratorController. */
     private static final Logger logger = LoggerFactory.getLogger(ModeratorController.class);
 
     /**
@@ -34,6 +38,7 @@ public class ModeratorController extends AccessController {
      * @throws ServerException If moderator account creation failed.
      */
     public Moderator createModerator(Moderator moderator) throws ServerException {
+        logger.debug("Start with moderator:{}.", moderator);
         // Perform checks on the received data. If the data isn't accurate the moderator can't be created.
         // In case of inaccuracy, send 400 Bad Request and abort execution.
         if (moderator.getName() == null || moderator.getPassword() == null || moderator.getEmail() == null ||
@@ -42,15 +47,15 @@ public class ModeratorController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_DATA_INCOMPLETE, "Moderator data is incomplete.");
             throw new ServerException(400, MODERATOR_DATA_INCOMPLETE);
         } else if (!Pattern.compile(NAME_PATTERN).matcher(moderator.getName()).matches()) {
-            throw new ServerException(400, 1, "Name is invalid.");
+            logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_INVALID_NAME, "Name is invalid.");
+            throw new ServerException(400, MODERATOR_INVALID_NAME);
         } else if (!EmailValidator.getInstance().isValid(moderator.getEmail())) {
-            throw new ServerException(400, 2, "Email address is invalid.");
-        } else if (!Pattern.compile(PASSWORD_PATTERN).matcher(moderator.getName()).matches()) {
-            throw new ServerException(400, 3, "Password is invalid.");
+            logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_INVALID_EMAIL, "Email address is invalid.");
+            throw new ServerException(400, MODERATOR_INVALID_EMAIL);
+        } else if (!Pattern.compile(PASSWORD_PATTERN).matcher(moderator.getPassword()).matches()) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_INVALID_PASSWORD, "Password is invalid.");
+            throw new ServerException(400, MODERATOR_INVALID_PASSWORD);
         }
-
-        // Create the accessToken which will identify the new moderator in the system.
-        moderator.createModeratorToken();
 
         // Initialize remaining fields.
         moderator.setLocked(true);
@@ -60,22 +65,35 @@ public class ModeratorController extends AccessController {
             moderator.setLanguage(Language.ENGLISH);
         }
 
+        // Create the accessToken which will identify the new moderator in the system.
+        moderator.createModeratorToken();
+
+        // Encrypt the given password.
+        moderator.encryptPassword();
+
         boolean successful = false;
         while (!successful) {
             try {
                 moderatorDB.storeModerator(moderator);
                 successful = true;
             } catch (TokenAlreadyExistsException e) {
-                // TODO logging
-                System.out.println("Need to create a new access token for the moderator!");
+                logger.info(e.getMessage());
                 // Create a new access token for the moderator.
                 moderator.createModeratorToken();
+            } catch (ModeratorNameAlreadyExistsException e) {
+                logger.info(e.getMessage());
+                logger.error(LOG_SERVER_EXCEPTION, 500, MODERATOR_NAME_ALREADY_EXISTS, "Moderator name already exits.");
+                throw new ServerException(500, MODERATOR_NAME_ALREADY_EXISTS);
             } catch (DatabaseException e) {
-                // TODO Logging
-                e.printStackTrace();
-                throw new ServerException(500, 1000, "Database failure. Creation of moderator account failed.");
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Creation of moderator " +
+                        "account failed.");
+                throw new ServerException(500, DATABASE_FAILURE);
             }
         }
+
+        // Do not return the encrypted password to the requestor.
+        moderator.setPassword(null);
+
         return moderator;
     }
 
