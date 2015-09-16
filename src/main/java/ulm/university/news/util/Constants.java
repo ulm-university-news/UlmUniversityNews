@@ -18,6 +18,12 @@ public class Constants {
     /** A pattern which describes the valid form of a moderator password. */
     public static final String PASSWORD_PATTERN = "^[a-zA-Z0-9]{3,35}$";
 
+    /** A pattern which describes the valid form of an user access token. */
+    public static final String USER_TOKEN_PATTERN = "^[a-fA-F0-9]{56}$";
+
+    /** A pattern which describes the valid form of a moderator access token. */
+    public static final String MODERATOR_TOKEN_PATTERN = "^[a-fA-F0-9]{64}$";
+
     // Logging:
     public static final String LOG_SERVER_EXCEPTION = "httpStatusCode:{}, errorCode:{}, message:{}";
     public static final String LOG_SQL_EXCEPTION = "SQLException occurred with SQLState:{}, errorCode:{} and " +

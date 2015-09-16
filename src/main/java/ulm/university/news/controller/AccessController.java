@@ -1,25 +1,35 @@
 package ulm.university.news.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ulm.university.news.manager.database.ModeratorDatabaseManager;
 import ulm.university.news.manager.database.UserDatabaseManager;
+import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
 import ulm.university.news.data.enums.TokenType;
 
+import static ulm.university.news.util.Constants.DATABASE_FAILURE;
+import static ulm.university.news.util.Constants.LOG_SERVER_EXCEPTION;
+
 
 /**
- * TODO
+ * The AccessController provides the basic functionality of verifying an access token and the determination of the
+ * type of an access token. This functionality is required by any other controller classes in order to identify the
+ * requestor and to perform the authorization.
  *
  * @author Matthias Mak
  * @author Philipp Speidel
  */
 public class AccessController {
 
-    /** Instance of the UserDatabaseManager. */
-    protected UserDatabaseManager userDB = new UserDatabaseManager();
-    /** Instance of the ModeratorDatabaseManager. */
-    protected ModeratorDatabaseManager moderatorDB = new ModeratorDatabaseManager();
+    /** An instance of the Logger class which performs logging for the AccessController class. */
+    private static final Logger logger = LoggerFactory.getLogger(AccessController.class);
 
+    /** Instance of the UserDatabaseManager class. */
+    protected UserDatabaseManager userDB = new UserDatabaseManager();
+    /** Instance of the ModeratorDatabaseManager class. */
+    protected ModeratorDatabaseManager moderatorDB = new ModeratorDatabaseManager();
 
     /**
      * Creates an instance of the AccessController class.
@@ -44,16 +54,18 @@ public class AccessController {
             return TokenType.INVALID;
         }
         try {
-            if (accessToken.matches("[a-fA-F0-9]{56}") && userDB.isValidUserToken(accessToken)) {
+            if (accessToken.matches(Constants.USER_TOKEN_PATTERN) && userDB.isValidUserToken(accessToken)) {
                 tokenType = TokenType.USER;
-            } else if (accessToken.matches("[a-fA-F0-9]{64}") && moderatorDB.isValidModeratorToken(accessToken)) {
+            } else if (accessToken.matches(Constants.MODERATOR_TOKEN_PATTERN) &&
+                    moderatorDB.isValidModeratorToken(accessToken)) {
                 tokenType = TokenType.MODERATOR;
             } else {
                 tokenType = TokenType.INVALID;
             }
         }catch(DatabaseException e){
-            //TODO Logging
-            throw new ServerException(500, 0, e.getMessage());
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure. Verification of access token" +
+                    " failed.");
+            throw new ServerException(500, DATABASE_FAILURE);
         }
         return tokenType;
     }
