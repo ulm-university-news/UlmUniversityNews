@@ -24,6 +24,22 @@ public class Constants {
     /** A pattern which describes the valid form of a moderator access token. */
     public static final String MODERATOR_TOKEN_PATTERN = "^[a-fA-F0-9]{64}$";
 
+    /** A pattern which describes the valid form of a group name. */
+    public static final String GROUP_NAME_PATTERN = "^[a-zA-Z0-9\\p{Blank}]{3,45}$";
+
+    /** A pattern which describes the valid form of a group password. TODO Don't we except an hash here? */
+    public static final String GROUP_PASSWORD_PATTERN = "^[a-zA-Z0-9\\p{Punct}]{3,64}$";
+
+    /** A pattern which describes the valid form of a term string. The term is always noted in the form WS or SS plus
+     *  the year yyyy. In WS, the year can also be given as yyyyy/yy, e.g. 2015/16.*/
+    public static final String TERM_PATTERN = "^[W,S][S][0-9]{4}[/]?[0-9]{0,2}$";
+
+    /** A pattern which describes a valid resource description. A resource description can contain any ASCII characters,
+     *  but is limited to 500 characters. */
+    public static final String DESCRIPTION_PATTERN = "^[.\\p{Print}\\p{Blank}]{1,500}$";
+
+
+
     // Logging:
     public static final String LOG_SERVER_EXCEPTION = "httpStatusCode:{}, errorCode:{}, message:{}";
     public static final String LOG_SQL_EXCEPTION = "SQLException occurred with SQLState:{}, errorCode:{} and " +
@@ -47,6 +63,12 @@ public class Constants {
 
     // Group:
     public static final int GROUP_NOT_FOUND = 4000;
+    public static final int GROUP_DATA_INCOMPLETE = 4002;
+    public static final int GROUP_INVALID_NAME = 4002;
+    public static final int GROUP_INVALID_PASSWORD = 4003;
+    public static final int GROUP_INVALID_DESCRIPTION = 4004;
+    public static final int GROUP_INVALID_TERM = 4005;
+
     public static final int CONVERSATION_NOT_FOUND = 4100;
 
     // General:
