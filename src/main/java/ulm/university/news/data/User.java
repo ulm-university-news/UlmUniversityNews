@@ -34,6 +34,10 @@ public class User {
     /** The platform indicates which operating system runs on the user's device. This information is required to use
      * the correct push notification service for sending the notifications to the device. */
     private Platform platform;
+    /** The active field indicates whether the user plays an active role in the current context, i.e. the value of
+     * this field always depends on the context. For instance, it indicates whether the user is still an active
+     * participant of a group or whether he has been a participant once but not anymore. */
+    private boolean active;
 
     /**
      * Creates an instance of the User class.
@@ -72,6 +76,26 @@ public class User {
         this.serverAccessToken = serverAccessToken;
         this.pushAccessToken = pushAccessToken;
         this.platform = platform;
+    }
+
+    /**
+     * Creates an instance of the User class.
+     *
+     * @param id The id of the user.
+     * @param name The username of the user.
+     * @param serverAccessToken The access token which is assigned to this user.
+     * @param pushAccessToken The push access token which identifies the user in the push notification service.
+     * @param platform The platform of the user's device.
+     * @param active Indicates whether the user is active in the current context.
+     */
+    public User(int id, String name, String serverAccessToken, String pushAccessToken, Platform platform, boolean
+            active){
+        this.id = id;
+        this.name = name;
+        this.serverAccessToken = serverAccessToken;
+        this.pushAccessToken = pushAccessToken;
+        this.platform = platform;
+        this.active = active;
     }
 
     /**
@@ -219,6 +243,7 @@ public class User {
                 ", serverAccessToken='" + serverAccessToken + '\'' +
                 ", pushAccessToken='" + pushAccessToken + '\'' +
                 ", platform=" + platform +
+                ", active=" + active +
                 '}';
     }
 }

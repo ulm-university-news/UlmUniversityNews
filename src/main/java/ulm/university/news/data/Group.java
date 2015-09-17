@@ -223,4 +223,21 @@ public class Group {
     public void setParticipants(List<User> participants) {
         this.participants = participants;
     }
+
+    @Override
+    public String toString() {
+        return "Group{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", description='" + description + '\'' +
+                ", groupType=" + groupType +
+                ", creationDate=" + creationDate +
+                ", modificationDate=" + modificationDate +
+                ", term='" + term + '\'' +
+                ", groupAdmin=" + groupAdmin +
+                ", conversations=" + conversations +
+                ", participants=" + participants +
+                ", ballots=" + ballots +
+                '}';
+    }
 }
