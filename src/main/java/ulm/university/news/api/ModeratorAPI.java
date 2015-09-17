@@ -11,6 +11,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import java.net.URI;
+import java.util.List;
 
 /**
  * TODO
@@ -28,11 +29,42 @@ public class ModeratorAPI {
     private static final Logger logger = LoggerFactory.getLogger(ModeratorAPI.class);
      */
 
+    /**
+     * Delivers the moderator data identified by a given moderator id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param id The id of the moderator account which should be delivered.
+     * @return Response object including the moderator data.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
     @GET
     @Path("/{id}")
-    public Response getModerator(@PathParam("id") int id) {
-        String output = "Moderator id: " + id;
-        return Response.status(200).entity(output).build();
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getModerator(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id)
+            throws ServerException {
+        Moderator moderator = moderatorCtrl.getModerator(accessToken, id);
+        // Return the moderator resource.
+        return Response.status(Response.Status.OK).entity(moderator).build();
+    }
+
+    /**
+     * Delivers the moderator data of all existing moderator accounts.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param isLocked Defines weather just locked or unlocked accounts are requested.
+     * @param isAdmin Defines weather just admin accounts are requested or not.
+     * @return Response object including a list with moderator data.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getModerators(@HeaderParam("Authorization") String accessToken, @QueryParam("isLocked") boolean
+            isLocked, @QueryParam("isAdmin") boolean isAdmin) throws ServerException {
+        List<Moderator> moderators = moderatorCtrl.getModerators(accessToken, isLocked, isAdmin);
+        // Return all the moderator resources.
+        return Response.status(Response.Status.OK).entity(moderators).build();
     }
 
     /**
@@ -76,6 +108,24 @@ public class ModeratorAPI {
         moderator = moderatorCtrl.changeModerator(accessToken, id, moderator);
         // Return the changed moderator resource.
         return Response.status(Response.Status.OK).entity(moderator).build();
+    }
+
+    /**
+     * Deletes the moderator account identified by the moderators id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param id The id of the moderator account which should be deleted.
+     * @return Response object with no additionally data.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Path("/{id}")
+    public Response resetPassword(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id) throws
+            ServerException {
+        moderatorCtrl.deleteModerator(accessToken, id);
+        // No resource is returned.
+        return Response.status(Response.Status.OK).build();
     }
 
     /**

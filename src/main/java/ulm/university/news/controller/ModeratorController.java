@@ -13,6 +13,7 @@ import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import java.util.Random;
 import java.util.regex.Pattern;
 
@@ -100,6 +101,73 @@ public class ModeratorController extends AccessController {
         moderator.setPassword(null);
 
         return moderator;
+    }
+
+    /**
+     * Gets the moderator data identified by a given moderator id from the database.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param moderatorId The id of the moderator account which should be delivered.
+     * @return The found moderator object.
+     * @throws ServerException If the referred resource isn't found, the authorization of the requestor fails or the
+     * requestor isn't allowed to perform the operation. Furthermore, a failure of the database also causes a
+     * ServerException.
+     */
+    public Moderator getModerator(String accessToken, int moderatorId) throws ServerException {
+        // TODO Check access.
+
+        // Get moderator from database.
+        Moderator moderatorDB;
+        try {
+            moderatorDB = moderatorDBM.getModeratorById(moderatorId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
+                    "account by name.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Verify moderator account exists.
+        if (moderatorDB == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 404, MODERATOR_NOT_FOUND, "Moderator account not found.");
+            throw new ServerException(404, MODERATOR_NOT_FOUND);
+        }
+
+        // Do not return the encrypted password to the requestor.
+        moderatorDB.setPassword(null);
+
+        return moderatorDB;
+    }
+
+    /**
+     * Get the moderator data of all existing moderator accounts from the database.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param isLocked Defines weather just locked or unlocked accounts are requested.
+     * @param isAdmin Defines weather just admin accounts are requested or not.
+     * @return A list with all found moderator objects.
+     * @throws ServerException ServerException If the authorization of the requestor fails or the requestor isn't
+     * allowed to perform the operation. Furthermore, a failure of the database also causes a ServerException.
+     */
+    public List<Moderator> getModerators(String accessToken, boolean isLocked, boolean isAdmin) throws
+            ServerException {
+        // TODO
+
+        return null;
+    }
+
+    /**
+     * Attempts to delete the moderator account identified by the moderators id. If there are still links between
+     * this moderator account and other data, the account will be marked as deleted. The actual deletion will be
+     * performed when no more links are attached to the moderator account.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param moderatorId The id of the moderator account which should be deleted.
+     * @throws ServerException If the referred resource isn't found, the authorization of the requestor fails or the
+     * requestor isn't allowed to perform the operation. Furthermore, a failure of the database also causes a
+     * ServerException.
+     */
+    public void deleteModerator(String accessToken, int moderatorId) throws ServerException {
+        // TODO
     }
 
     /**

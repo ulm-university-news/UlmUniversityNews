@@ -243,6 +243,57 @@ public class ModeratorDatabaseManager extends DatabaseManager {
     }
 
     /**
+     * Returns the moderator who is identified by the given id.
+     *
+     * @param moderatorId The id of the moderator account.
+     * @return The moderator who is identified by id.
+     * @throws DatabaseException If connection to the database has failed.
+     */
+    public Moderator getModeratorById(int moderatorId) throws DatabaseException {
+        logger.debug("Start with moderatorId:{}.", moderatorId);
+        Connection con = null;
+        Moderator moderator = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * " +
+                            "FROM Moderator " +
+                            "WHERE Id=?;";
+
+            PreparedStatement getModeratorStmt = con.prepareStatement(query);
+            getModeratorStmt.setInt(1, moderatorId);
+
+            ResultSet getModeratorRs = getModeratorStmt.executeQuery();
+            if (getModeratorRs.next()) {
+                int id = getModeratorRs.getInt("Id");
+                String name = getModeratorRs.getString("Name");
+                String firstName = getModeratorRs.getString("FirstName");
+                String lastName = getModeratorRs.getString("LastName");
+                String email = getModeratorRs.getString("Email");
+                String password = getModeratorRs.getString("Password");
+                String motivation = getModeratorRs.getString("Motivation");
+                Language language = Language.values[getModeratorRs.getInt("Language")];
+                String serverAccessToken = getModeratorRs.getString("ServerAccessToken");
+                boolean locked = getModeratorRs.getBoolean("Locked");
+                boolean admin = getModeratorRs.getBoolean("Admin");
+                boolean deleted = getModeratorRs.getBoolean("Deleted");
+
+                moderator = new Moderator(id, name, firstName, lastName, email, serverAccessToken, password,
+                        motivation, language, locked, admin, deleted, false);
+            }
+            getModeratorStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with moderator:{}.", moderator);
+        return moderator;
+    }
+
+    /**
      * Checks whether the Moderator identified by the given moderator id is responsible for the Channel identified by
      * the given channel id or not.
      *
