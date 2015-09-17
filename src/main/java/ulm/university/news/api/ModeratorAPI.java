@@ -42,6 +42,8 @@ public class ModeratorAPI {
      * @param moderator A moderator object including the data of the new moderator.
      * @param uriInfo Information about the URI of this request.
      * @return Response object including the generated moderator object and a set Location Header.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
      */
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
@@ -61,11 +63,13 @@ public class ModeratorAPI {
      * @param accessToken The access token of the requestor.
      * @param id The id of the moderator account which should be changed.
      * @param moderator The changed moderator data.
-     * @return Response object including the changed moderator object.
+     * @return Response object including the changed moderator data.
+     * @throws ServerException If the execution of the PATCH request has failed. The ServerException contains
+     * information about the error which has occurred.
      */
     @PATCH
-    @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     @Path("/{id}")
     public Response changeModerator(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id,
                                     Moderator moderator) throws ServerException {
@@ -74,13 +78,41 @@ public class ModeratorAPI {
         return Response.status(Response.Status.OK).entity(moderator).build();
     }
 
+    /**
+     * Resets the password of an existing moderator account. The data which is used to identify the moderator account
+     * is provided within the moderator object.
+     *
+     * @param moderator Includes the moderators name.
+     * @return Response object with no additionally data.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
     @POST
     @Path("/password")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response resetPassword(Moderator moderator) throws ServerException {
         moderatorCtrl.resetPassword(moderator.getName());
-        // Return the changed moderator resource.
+        // No resource is returned.
         return Response.status(Response.Status.OK).build();
+    }
+
+    /**
+     * Authenticates a moderator via name and password. The required data is provided within the moderator object.
+     * The authenticated moderator resource will be returned.
+     *
+     * @param moderator Includes the moderators name and password.
+     * @return Response object including the moderator data.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @POST
+    @Path("/authentication")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response authenticateModerator(Moderator moderator) throws ServerException {
+        moderator = moderatorCtrl.authenticateModerator(moderator.getName(), moderator.getPassword());
+        // Return the changed moderator resource.
+        return Response.status(Response.Status.OK).entity(moderator).build();
     }
 
 }

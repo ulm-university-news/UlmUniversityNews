@@ -27,7 +27,8 @@ public class Constants {
     /** A pattern which describes the valid form of a group name. */
     public static final String GROUP_NAME_PATTERN = "^[a-zA-Z0-9\\p{Blank}]{3,45}$";
 
-    /** A pattern which describes the valid form of a group password. TODO Don't we except an hash here? */
+    // TODO Don't we except a hash here? That's a topic for the next meeting.
+    /** A pattern which describes the valid form of a group password. */
     public static final String GROUP_PASSWORD_PATTERN = "^[a-zA-Z0-9\\p{Punct}]{3,64}$";
 
     /** A pattern which describes the valid form of a term string. The term is always noted in the form WS or SS plus
@@ -60,6 +61,9 @@ public class Constants {
     public static final int MODERATOR_INVALID_EMAIL = 2004;
     public static final int MODERATOR_INVALID_PASSWORD = 2005;
     public static final int MODERATOR_NAME_ALREADY_EXISTS = 2006;
+    public static final int MODERATOR_DELETED = 2007;
+    public static final int MODERATOR_LOCKED = 2008;
+    public static final int MODERATOR_INCORRECT_PASSWORD = 2009;
 
     // Group:
     public static final int GROUP_NOT_FOUND = 4000;
