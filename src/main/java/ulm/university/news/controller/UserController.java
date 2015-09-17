@@ -4,14 +4,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.data.User;
+import ulm.university.news.data.enums.TokenType;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
-import ulm.university.news.data.enums.TokenType;
-
-import static ulm.university.news.util.Constants.*;
 
 import java.util.List;
+
+import static ulm.university.news.util.Constants.*;
 
 
 /**
@@ -61,7 +61,7 @@ public class UserController extends AccessController{
         boolean successful =false;
         while(successful == false){
             try {
-                userDB.storeUser(user);
+                userDBM.storeUser(user);
                 successful = true;
             } catch (TokenAlreadyExistsException e) {
                 logger.info("The created user access token has been rejected. Create a new access token.");
@@ -104,7 +104,7 @@ public class UserController extends AccessController{
 
         try {
             // Get the moderator which is identified by the access token and check whether he is an administrator.
-            Moderator moderator = moderatorDB.getModeratorByToken(accessToken);
+            Moderator moderator = moderatorDBM.getModeratorByToken(accessToken);
             if(moderator.isAdmin() == false){
                 logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Moderator is not allowed to perform " +
                         "the requested operation.");
@@ -112,7 +112,7 @@ public class UserController extends AccessController{
             }
 
             // Get the user account data from the database.
-            users = userDB.getUsers();
+            users = userDBM.getUsers();
 
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
@@ -143,7 +143,7 @@ public class UserController extends AccessController{
 
         try {
             // Query the user data from the database.
-            user = userDB.getUser(userId);
+            user = userDBM.getUser(userId);
             if(user == null){
                 logger.error(LOG_SERVER_EXCEPTION, 404, USER_NOT_FOUND, "User resource with id " + userId + " not " +
                         "found.");
@@ -192,7 +192,7 @@ public class UserController extends AccessController{
 
         try {
             // Note, at this point it is known that the access token is valid, so userDBObject won't be null.
-            userDBObject = userDB.getUserByToken(accessToken);
+            userDBObject = userDBM.getUserByToken(accessToken);
 
             // User is only allowed to change the data of his own account.
             if(userDBObject.getId() != userId){
@@ -203,7 +203,7 @@ public class UserController extends AccessController{
 
             // Determine what needs to be updated and update the corresponding fields in the database.
             userDBObject = updateUser(user, userDBObject);
-            userDB.updateUser(userDBObject);
+            userDBM.updateUser(userDBObject);
 
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure. Update of user account data " +
@@ -243,7 +243,7 @@ public class UserController extends AccessController{
             userDB.setPushAccessToken(newPushToken);
         }
 //        if(user.getPlatform() != null){
-//            userDB.setPlatform(user.getPlatform());
+//            userDBM.setPlatform(user.getPlatform());
 //        }
 
         return userDB;

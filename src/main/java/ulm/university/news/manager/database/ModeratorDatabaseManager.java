@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.data.enums.Language;
+import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ModeratorNameAlreadyExistsException;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
@@ -191,6 +192,57 @@ public class ModeratorDatabaseManager extends DatabaseManager {
     }
 
     /**
+     * Returns the moderator who is identified by the given name.
+     *
+     * @param moderatorName The name of the moderator account.
+     * @return The moderator who is identified by name.
+     * @throws DatabaseException If connection to the database has failed.
+     */
+    public Moderator getModeratorByName(String moderatorName) throws DatabaseException {
+        logger.debug("Start with moderatorName:{}.", moderatorName);
+        Connection con = null;
+        Moderator moderator = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * " +
+                            "FROM Moderator " +
+                            "WHERE Name=?;";
+
+            PreparedStatement getModeratorStmt = con.prepareStatement(query);
+            getModeratorStmt.setString(1, moderatorName);
+
+            ResultSet getModeratorRs = getModeratorStmt.executeQuery();
+            if (getModeratorRs.next()) {
+                int id = getModeratorRs.getInt("Id");
+                String name = getModeratorRs.getString("Name");
+                String firstName = getModeratorRs.getString("FirstName");
+                String lastName = getModeratorRs.getString("LastName");
+                String email = getModeratorRs.getString("Email");
+                String password = getModeratorRs.getString("Password");
+                String motivation = getModeratorRs.getString("Motivation");
+                Language language = Language.values[getModeratorRs.getInt("Language")];
+                String serverAccessToken = getModeratorRs.getString("ServerAccessToken");
+                boolean locked = getModeratorRs.getBoolean("Locked");
+                boolean admin = getModeratorRs.getBoolean("Admin");
+                boolean deleted = getModeratorRs.getBoolean("Deleted");
+
+                moderator = new Moderator(id, name, firstName, lastName, email, serverAccessToken, password,
+                        motivation, language, locked, admin, deleted, false);
+            }
+            getModeratorStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with moderator:{}.", moderator);
+        return moderator;
+    }
+
+    /**
      * Checks whether the Moderator identified by the given moderator id is responsible for the Channel identified by
      * the given channel id or not.
      *
@@ -227,6 +279,41 @@ public class ModeratorDatabaseManager extends DatabaseManager {
         }
         logger.debug("End with responsible:{}.", responsible);
         return responsible;
+    }
+
+    /**
+     * Updates the moderator password in the database.
+     *
+     * @param moderatorId The unique id of the moderator.
+     * @param password The changed password.
+     * @throws DatabaseException If connection to the database has failed or the update caused an Exception.
+     */
+    public void updatePassword(int moderatorId, String password) throws DatabaseException {
+        logger.debug("Start with moderatorId:{} and password:{}.", moderatorId, password);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String updateModeratorQuery =
+                    "UPDATE Moderator " +
+                            "SET Password=? " +
+                            "WHERE Id=?;";
+
+            PreparedStatement updateModeratorStmt = con.prepareStatement(updateModeratorQuery);
+            updateModeratorStmt.setString(1, password);
+            updateModeratorStmt.setInt(2, moderatorId);
+
+            updateModeratorStmt.executeUpdate();
+            updateModeratorStmt.close();
+            logger.info("Updated moderator with id {}.", moderatorId);
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
     }
 
 }

@@ -56,7 +56,7 @@ public class GroupController extends AccessController {
         }
 
         try {
-            User user = userDB.getUserByToken(accessToken);
+            User user = userDBM.getUserByToken(accessToken);
 
             // Check if the received data is valid.
             if(group == null || group.getName() == null || group.getGroupType() == null ||

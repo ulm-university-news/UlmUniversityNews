@@ -5,11 +5,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.data.enums.Language;
+import ulm.university.news.manager.email.EmailManager;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ModeratorNameAlreadyExistsException;
 import ulm.university.news.util.exceptions.ServerException;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Random;
 import java.util.regex.Pattern;
 
 import static ulm.university.news.util.Constants.*;
@@ -74,7 +78,7 @@ public class ModeratorController extends AccessController {
         boolean successful = false;
         while (!successful) {
             try {
-                moderatorDB.storeModerator(moderator);
+                moderatorDBM.storeModerator(moderator);
                 successful = true;
             } catch (TokenAlreadyExistsException e) {
                 logger.info(e.getMessage());
@@ -82,6 +86,7 @@ public class ModeratorController extends AccessController {
                 moderator.createModeratorToken();
             } catch (ModeratorNameAlreadyExistsException e) {
                 logger.info(e.getMessage());
+                // TODO 500 Internal Server Error or rather 400 Bad Request or something?
                 logger.error(LOG_SERVER_EXCEPTION, 500, MODERATOR_NAME_ALREADY_EXISTS, "Moderator name already exits.");
                 throw new ServerException(500, MODERATOR_NAME_ALREADY_EXISTS);
             } catch (DatabaseException e) {
@@ -114,5 +119,119 @@ public class ModeratorController extends AccessController {
         return null;
     }
 
+    /**
+     * Resets the password of the moderator account identified by name and sends the new password to the moderators
+     * email address.
+     *
+     * @param moderatorName The name of the moderator account.
+     * @throws ServerException If moderator account was not found.
+     */
+    public void resetPassword(String moderatorName) throws ServerException {
+        // Verify proper moderator name.
+        if (moderatorName == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, DATA_INCOMPLETE, "Moderator name is not set.");
+            throw new ServerException(400, DATA_INCOMPLETE);
+        } else if (!Pattern.compile(NAME_PATTERN).matcher(moderatorName).matches()) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_INVALID_NAME, "Name is invalid.");
+            throw new ServerException(400, MODERATOR_INVALID_NAME);
+        }
 
+        // Get moderator from database.
+        Moderator moderatorDB;
+        try {
+            moderatorDB = moderatorDBM.getModeratorByName(moderatorName);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
+                    "account by name.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Verify moderator account exists.
+        if (moderatorDB == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 404, MODERATOR_NOT_FOUND, "Moderator account not found.");
+            throw new ServerException(404, MODERATOR_NOT_FOUND);
+        }
+
+        // Generate a new password.
+        String newPassword = generatePassword();
+
+        // TODO Internationalization. Get mail text from properties file.
+        String subject = "Ulm University News - Password Reset";
+        String message;
+        message = "Hello " + moderatorDB.getFirstName() + " " + moderatorDB.getLastName() + ",\n\n";
+        message += "your password has been reset.\nYour new password is: ";
+        message += newPassword + "\n\n";
+        message += "Regards, the team of Ulm University News";
+
+        // Send email with new plain text password to the moderator.
+        if (!EmailManager.getInstance().sendMail(moderatorDB.getEmail(), subject, message)) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, EMAIL_FAILURE, "Couldn't sent email to moderator. Password " +
+                    "was not reset.");
+            throw new ServerException(500, EMAIL_FAILURE);
+        }
+
+        // Hash, set and encrypt the new moderator password.
+        moderatorDB.setPassword(hashPassword(newPassword));
+        moderatorDB.encryptPassword();
+
+        // Update moderator password in database.
+        try {
+            moderatorDBM.updatePassword(moderatorDB.getId(), moderatorDB.getPassword());
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't update password.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
+    /**
+     * Generates a new random password for the Moderator.
+     *
+     * @return The generated password.
+     */
+    private String generatePassword() {
+        // Define possible characters of the generated password.
+        String alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        // Define length of the generated password.
+        int len = 12;
+
+        Random rnd = new Random();
+        StringBuilder sb = new StringBuilder(len);
+        // Choose len random characters of the alphabet as password.
+        for (int i = 0; i < len; i++) {
+            sb.append(alphabet.charAt(rnd.nextInt(alphabet.length())));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Hashes the given password for the Moderator.
+     *
+     * @return The hashed password.
+     */
+    private String hashPassword(String password) {
+        String passwordHash = null;
+        try {
+            // Calculate hash on the given password.
+            MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+            byte[] hash = sha256.digest(password.getBytes());
+
+            // Transform the bytes (8 bit signed) into a hexadecimal format.
+            StringBuilder hashString = new StringBuilder();
+            for (int i = 0; i < hash.length; i++) {
+                /*
+                Format parameters: %[flags][width][conversion]
+                Flag '0' - The result will be zero padded.
+                Width '2' - The width is 2 as 1 byte is represented by two hex characters.
+                Conversion 'x' - Result is formatted as hexadecimal integer, uppercase.
+                 */
+                hashString.append(String.format("%02x", hash[i]));
+            }
+            passwordHash = hashString.toString();
+            logger.debug("Moderator password hashed to {}.", passwordHash);
+        } catch (NoSuchAlgorithmException e) {
+            logger.error("Could not hash the moderator password. The expected digest algorithm is not available.", e);
+        }
+        return passwordHash;
+    }
 }

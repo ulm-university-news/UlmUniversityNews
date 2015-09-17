@@ -4,13 +4,11 @@ import org.mindrot.jbcrypt.BCrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.enums.Language;
-import ulm.university.news.manager.email.EmailManager;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
-import java.util.Random;
 
 /**
  * This class represents the Moderator of the application. A Moderator manages channels. In addition to his
@@ -129,6 +127,7 @@ public class Moderator {
      * it afterwards.
      */
     public void resetPassword() {
+        /*
         // Generate a new password.
         String newPassword = generatePassword();
 
@@ -146,28 +145,7 @@ public class Moderator {
         // TODO hash password
 
         // Encrypt password.
-        encryptPassword();
-    }
-
-    /**
-     * Generates a new random password for the Moderator.
-     *
-     * @return The generated password.
-     */
-    private String generatePassword() {
-        // Define possible characters of the generated password.
-        String alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-        // Define length of the generated password.
-        int len = 12;
-
-        Random rnd = new Random();
-        StringBuilder sb = new StringBuilder(len);
-        // Choose len random characters of the alphabet as password.
-        for (int i = 0; i < len; i++) {
-            sb.append(alphabet.charAt(rnd.nextInt(alphabet.length())));
-        }
-        return sb.toString();
+        encryptPassword();*/
     }
 
     /**
@@ -199,7 +177,7 @@ public class Moderator {
             StringBuilder tokenString = new StringBuilder();
             for (int i = 0; i < token.length; i++) {
                 /*
-                Format parameters: %[flags][width]conversion
+                Format parameters: %[flags][width][conversion]
                 Flag '0' - The result will be zero padded.
                 Width '2' - The width is 2 as 1 byte is represented by two hex characters.
                 Conversion 'x' - Result is formatted as hexadecimal integer, uppercase.

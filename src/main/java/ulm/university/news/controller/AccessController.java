@@ -27,9 +27,9 @@ public class AccessController {
     private static final Logger logger = LoggerFactory.getLogger(AccessController.class);
 
     /** Instance of the UserDatabaseManager class. */
-    protected UserDatabaseManager userDB = new UserDatabaseManager();
+    protected UserDatabaseManager userDBM = new UserDatabaseManager();
     /** Instance of the ModeratorDatabaseManager class. */
-    protected ModeratorDatabaseManager moderatorDB = new ModeratorDatabaseManager();
+    protected ModeratorDatabaseManager moderatorDBM = new ModeratorDatabaseManager();
 
     /**
      * Creates an instance of the AccessController class.
@@ -54,10 +54,10 @@ public class AccessController {
             return TokenType.INVALID;
         }
         try {
-            if (accessToken.matches(Constants.USER_TOKEN_PATTERN) && userDB.isValidUserToken(accessToken)) {
+            if (accessToken.matches(Constants.USER_TOKEN_PATTERN) && userDBM.isValidUserToken(accessToken)) {
                 tokenType = TokenType.USER;
             } else if (accessToken.matches(Constants.MODERATOR_TOKEN_PATTERN) &&
-                    moderatorDB.isValidModeratorToken(accessToken)) {
+                    moderatorDBM.isValidModeratorToken(accessToken)) {
                 tokenType = TokenType.MODERATOR;
             } else {
                 tokenType = TokenType.INVALID;

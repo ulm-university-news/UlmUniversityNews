@@ -74,4 +74,13 @@ public class ModeratorAPI {
         return Response.status(Response.Status.OK).entity(moderator).build();
     }
 
+    @POST
+    @Path("/password")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response resetPassword(Moderator moderator) throws ServerException {
+        moderatorCtrl.resetPassword(moderator.getName());
+        // Return the changed moderator resource.
+        return Response.status(Response.Status.OK).build();
+    }
+
 }

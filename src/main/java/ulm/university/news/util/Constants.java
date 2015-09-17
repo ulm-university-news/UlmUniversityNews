@@ -74,5 +74,7 @@ public class Constants {
     // General:
     public static final int DATABASE_FAILURE = 5000;
     public static final int TOKEN_INVALID = 5001;
+    public static final int DATA_INCOMPLETE = 5002;
+    public static final int EMAIL_FAILURE = 5003;
 
 }
