@@ -3,6 +3,7 @@ package ulm.university.news.api;
 import ulm.university.news.controller.GroupController;
 import ulm.university.news.data.Group;
 import ulm.university.news.data.enums.GroupType;
+import ulm.university.news.util.PATCH;
 import ulm.university.news.util.exceptions.ServerException;
 
 import javax.ws.rs.*;
@@ -94,6 +95,28 @@ public class GroupAPI {
                           @DefaultValue("false") @QueryParam("withParticipants") boolean withParticipants)
             throws ServerException {
         Group group = groupController.getGroup(accessToken, groupId, withParticipants);
+        return Response.status(Response.Status.OK).entity(group).build();
+    }
+
+    /**
+     * Updates the group data of the group which is identified by the id specified in the URL. The data is updated
+     * based on a description of changes. The description of changes is provided in the JSON Merge Patch format
+     * which is automatically translated into a group object.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param id The id of the group which should be updated.
+     * @param group The group object which contains the new data values for the group.
+     * @return An updated version of the group resource.
+     * @throws ServerException If the execution of the PATCH request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @PATCH
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Path("/{id}")
+    public Response changeGroup(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id, Group
+            group) throws ServerException {
+        group = groupController.changeGroup(accessToken, id, group);
         return Response.status(Response.Status.OK).entity(group).build();
     }
 

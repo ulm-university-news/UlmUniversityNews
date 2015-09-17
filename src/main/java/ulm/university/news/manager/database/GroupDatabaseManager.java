@@ -298,8 +298,9 @@ public class GroupDatabaseManager extends DatabaseManager {
      * Deletes the group with the specified id from the database.
      *
      * @param groupId The id of the group which should be deleted.
+     * @throws DatabaseException If the group could not be deleted due to a database failure.
      */
-    public void deleteGroup(int groupId){
+    public void deleteGroup(int groupId) throws DatabaseException {
         logger.debug("Start with groupId:{}.", groupId);
         Connection con = null;
         try {
@@ -315,7 +316,9 @@ public class GroupDatabaseManager extends DatabaseManager {
             deleteGroupStmt.close();
             logger.info("Deleted group with id:{}.", groupId);
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
         }
         finally {
             returnConnection(con);
@@ -323,6 +326,47 @@ public class GroupDatabaseManager extends DatabaseManager {
         logger.debug("End.");
     }
 
+    /**
+     * Checks whether the user with the specified id is an active participant of the group with the given id.
+     *
+     * @param groupId The id of the group.
+     * @param userId The id of the user.
+     * @return Returns true, if the user is an active participant of the group, false otherwise.
+     * @throws DatabaseException If the execution of the query fails due to a database failure.
+     */
+    public boolean isActiveParticipant(int groupId, int userId) throws DatabaseException {
+        logger.debug("Start with groupId:{} and userId:{}.", groupId, userId);
+        Connection con = null;
+        boolean valid = false;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * " +
+                    "FROM UserGroup " +
+                    "WHERE User_Id=? AND Group_Id=?;";
+
+            PreparedStatement stmt = con.prepareStatement(query);
+            stmt.setInt(1, userId);
+            stmt.setInt(2, groupId);
+
+            ResultSet rs = stmt.executeQuery();
+            if(rs.next()){
+                boolean active = rs.getBoolean("Active");
+                if(active){
+                    valid = true;
+                }
+            }
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End with valid:{}", valid);
+        return valid;
+    }
 
 
 }

@@ -72,6 +72,7 @@ public class Constants {
     public static final int GROUP_INVALID_PASSWORD = 4003;
     public static final int GROUP_INVALID_DESCRIPTION = 4004;
     public static final int GROUP_INVALID_TERM = 4005;
+    public static final int GROUP_INVALID_GROUP_ADMIN = 4006;
 
     public static final int CONVERSATION_NOT_FOUND = 4100;
 

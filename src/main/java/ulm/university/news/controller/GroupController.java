@@ -1,5 +1,6 @@
 package ulm.university.news.controller;
 
+import org.eclipse.persistence.sessions.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Group;
@@ -217,6 +218,160 @@ public class GroupController extends AccessController {
         }
 
         return group;
+    }
+
+    /**
+     * Performs an update on the data of the group which is identified by the specified id. The group object, which is
+     * generated from the request, contains the fields which should be updated and the new values. As far as no data
+     * conditions are harmed, the fields will be updated in the database.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group which should be updated.
+     * @param group The group object which contains the data from the request.
+     * @return Returns an updated version of the group object.
+     * @throws ServerException If the new data values harm certain conditions, the user is not authorized or
+     * doesn't have the required permissions and if a database failure occurs.
+     */
+    public Group changeGroup(String accessToken, int groupId, Group group) throws ServerException {
+        Group groupDB = null;
+        if(group == null){
+            logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_DATA_INCOMPLETE, "No valid data sent with patch request.");
+            throw new ServerException(400, GROUP_DATA_INCOMPLETE);
+        }
+
+        // Verify access token and check whether the requestor is allowed to perform the operation.
+        TokenType tokenType = verifyAccessToken(accessToken);
+        if(tokenType == TokenType.INVALID){
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
+                    "needs to be provided.");
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+        else if(tokenType == TokenType.MODERATOR){
+            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Moderator is not allowed to perform the " +
+                    "requested operation.");
+            throw new ServerException(403, MODERATOR_FORBIDDEN);
+        }
+
+        try {
+            User user = userDBM.getUserByToken(accessToken);
+
+            // Get the data of the group from the database. The group should already contain the list of participants.
+            groupDB = groupDBM.getGroup(groupId, true);
+            if(groupDB == null){
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, "The group with the id " + groupId + " could" +
+                        " not be found.");
+                throw new ServerException(404, GROUP_NOT_FOUND);
+            }
+
+            if(user.getId() != groupDB.getGroupAdmin()){
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "The user is not the group administrator of " +
+                        "this group. The user is thus not allowed to change the group data.");
+                throw new ServerException(403, USER_FORBIDDEN);
+            }
+
+            // Determine what needs to be updated and update the corresponding fields in the database.
+            groupDB = updateGroup(group, groupDB);
+            groupDBM.updateGroup(groupDB);
+
+            List<User> participants = groupDB.getParticipants();
+            // TODO send notficiation to participants
+
+            // Don't return the list of participants in the resonse.
+            groupDB.setParticipants(null);
+
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        return groupDB;
+    }
+
+    /**
+     * Compares the group object with the received data from the request with the group object taken from the
+     * database. Updates the database object with the new data which has been received through the request. Note that
+     * some fields cannot be changed, so if some changes to these fields are described, they will be ignored.
+     *
+     * @param group The group object which contains the data from the request.
+     * @param groupDB The group object which contains the data from the database.
+     * @return Returns an updated version of the group object taken from the database.
+     * @throws ServerException If some data based conditions were harmed.
+     * @throws DatabaseException If the validation of some data against the database fails.
+     */
+    private Group updateGroup(Group group, Group groupDB) throws ServerException, DatabaseException {
+        String newName = group.getName();
+        if(newName != null){
+            // Update the name if conditions are met.
+            if(newName.matches(GROUP_NAME_PATTERN)){
+                groupDB.setName(newName);
+            }
+            else{
+                logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_NAME, "Invalid group name. The given name is " +
+                        group.getName() + ".");
+                throw new ServerException(400, GROUP_INVALID_NAME);
+            }
+        }
+
+        String newDescription = group.getDescription();
+        if(newDescription != null){
+            // Update the description if conditions are met.
+            if(newDescription.matches(DESCRIPTION_PATTERN)){
+                groupDB.setDescription(newDescription);
+            }
+            else{
+                logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_DESCRIPTION, "Invalid description for group. " +
+                        "Probably the description exceeded the size or the description contains any special chars " +
+                        "which are not supported. The size of the description is: " + group.getDescription().length()
+                        + ". The description is: " + group.getDescription() + ".");
+                throw new ServerException(400, GROUP_INVALID_DESCRIPTION);
+            }
+        }
+
+        String newPassword = group.getPassword();
+        if(newPassword != null){
+            // Update the password if conditions are met.
+            if(newPassword.matches(GROUP_PASSWORD_PATTERN)){
+                groupDB.setPassword(newPassword);
+                // Prepare the password for the storing in the database.
+                groupDB.encryptPassword();
+            }
+            else{
+                logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_PASSWORD, "Invalid group password.");
+                throw new ServerException(400, GROUP_INVALID_PASSWORD);
+            }
+        }
+
+        String newTerm = group.getTerm();
+        if(newTerm != null){
+            // Update the term if conditions are met.
+            if(newTerm.matches(TERM_PATTERN)){
+                groupDB.setTerm(newTerm);
+            }
+            else{
+                logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_TERM, "Invalid term. The given term is " +
+                        group.getTerm() + ".");
+                throw new ServerException(400, GROUP_INVALID_TERM);
+            }
+        }
+
+        int newGroupAdmin = group.getGroupAdmin();
+        if(newGroupAdmin != 0){
+            // Update the group admin if conditions are met.
+            if(groupDBM.isActiveParticipant(groupDB.getId(), newGroupAdmin)){
+                groupDB.setGroupAdmin(newGroupAdmin);
+            }
+            else{
+                logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_GROUP_ADMIN, "Invalid group admin. The given " +
+                        "id for the new group admin represents a user who is no active participant of the group and " +
+                        "thus can't be set as the group admin of this group. The id is " + newGroupAdmin + ".");
+                throw new ServerException(400, GROUP_INVALID_GROUP_ADMIN);
+            }
+        }
+
+        // Update the modification date of the group resource.
+        groupDB.updateModificationDate();
+
+        return groupDB;
     }
 
 }

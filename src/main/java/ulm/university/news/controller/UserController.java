@@ -165,12 +165,11 @@ public class UserController extends AccessController{
      * @param userId The id of the user account which should be updated.
      * @param user The user object with the new data values which have been transmitted with the request.
      * @return The user object with the updated data values.
-     * @throws ServerException If the new data values have harmed certain conditions, the user is not authorized or
-     * doesn't have the required permissions and if a database failure has occurred.
+     * @throws ServerException If the new data values harm certain conditions, the user is not authorized or
+     * doesn't have the required permissions and if a database failure occurs.
      */
     public User changeUser(String accessToken, int userId, User user) throws ServerException {
-        User userDBObject = null;
-        TokenType tokenType = verifyAccessToken(accessToken);
+        User userDB = null;
 
         if(user == null){
             // TODO user USER_DATA_INCOMPLETE here or rather something like USER_PATCH_DATA_INVALID?
@@ -178,6 +177,7 @@ public class UserController extends AccessController{
             throw new ServerException(400, USER_DATA_INCOMPLETE);
         }
 
+        TokenType tokenType = verifyAccessToken(accessToken);
         // Perform access token validation.
         if(tokenType == TokenType.MODERATOR){
             logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Moderator is not allowed to perform " +
@@ -191,19 +191,19 @@ public class UserController extends AccessController{
         }
 
         try {
-            // Note, at this point it is known that the access token is valid, so userDBObject won't be null.
-            userDBObject = userDBM.getUserByToken(accessToken);
+            // Note, at this point it is known that the access token is valid, so userDB won't be null.
+            userDB = userDBM.getUserByToken(accessToken);
 
             // User is only allowed to change the data of his own account.
-            if(userDBObject.getId() != userId){
+            if(userDB.getId() != userId){
                 logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is only allowed to change his own " +
                         "account.");
                 throw new ServerException(403, USER_FORBIDDEN);
             }
 
             // Determine what needs to be updated and update the corresponding fields in the database.
-            userDBObject = updateUser(user, userDBObject);
-            userDBM.updateUser(userDBObject);
+            userDB = updateUser(user, userDB);
+            userDBM.updateUser(userDB);
 
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure. Update of user account data " +
@@ -211,7 +211,7 @@ public class UserController extends AccessController{
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        return userDBObject;
+        return userDB;
     }
 
     /**
@@ -237,11 +237,13 @@ public class UserController extends AccessController{
                 throw new ServerException(400, USER_NAME_INVALID);
             }
         }
+
         // TODO validation of push token necessary?
         String newPushToken = user.getPushAccessToken();
         if(newPushToken != null){
             userDB.setPushAccessToken(newPushToken);
         }
+
 //        if(user.getPlatform() != null){
 //            userDBM.setPlatform(user.getPlatform());
 //        }

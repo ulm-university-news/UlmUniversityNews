@@ -117,6 +117,14 @@ public class Group {
     }
 
     /**
+     * Sets the current date and time as the new value for the modification date.
+     */
+    public void updateModificationDate(){
+        java.util.Date date = new java.util.Date();
+        modificationDate = new Timestamp(date.getTime());
+    }
+
+    /**
      * The password should be hashed on the server before storing it into the database. This method takes the current
      * password and encrypts it using a hash function.
      */
