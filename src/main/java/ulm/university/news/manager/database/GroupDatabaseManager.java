@@ -91,7 +91,7 @@ public class GroupDatabaseManager extends DatabaseManager {
      *                  which contain this value in their name.
      * @param groupType The search parameter for the group type. If it is set, the method will only return groups
      *                  which are of the specified type.
-     * @return A list of groups.
+     * @return A list of groups. List can also be empty.
      * @throws DatabaseException If the search query could not be executed due to database failure.
      */
     public List<Group> getGroups(String groupName, GroupType groupType) throws DatabaseException {

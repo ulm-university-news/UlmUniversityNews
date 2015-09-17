@@ -3,11 +3,15 @@ package ulm.university.news.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Group;
+import ulm.university.news.data.Moderator;
 import ulm.university.news.data.User;
+import ulm.university.news.data.enums.GroupType;
 import ulm.university.news.data.enums.TokenType;
 import ulm.university.news.manager.database.GroupDatabaseManager;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
+
+import java.util.List;
 
 import static ulm.university.news.util.Constants.*;
 
@@ -23,7 +27,7 @@ public class GroupController extends AccessController {
     private static final Logger logger = LoggerFactory.getLogger(GroupController.class);
 
     /** Instance of the GroupDatabaseManager class. */
-    private GroupDatabaseManager groupDB = new GroupDatabaseManager();
+    private GroupDatabaseManager groupDBM = new GroupDatabaseManager();
 
     /**
      * Creates an instance of the GroupController class.
@@ -39,7 +43,8 @@ public class GroupController extends AccessController {
      * @param accessToken The access token of the requestor.
      * @param group The group object which contains the data for the new group.
      * @return The created group with all corresponding data.
-     * @throws ServerException If the creation of the group fails.
+     * @throws ServerException If the creation of the group fails due to database failure or invalid data. If the
+     * requestor is not allowed to perform the operation, a ServerException is thrown as well.
      */
     public Group createGroup(String accessToken, Group group) throws ServerException {
         // Verify access token and check whether the requestor is allowed to perform the operation.
@@ -76,8 +81,9 @@ public class GroupController extends AccessController {
             }
             else if(group.getDescription() != null && !group.getDescription().matches(DESCRIPTION_PATTERN)){
                 logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_DESCRIPTION, "Invalid description for group. " +
-                        "Probably the description exceeded the size. The size of the description is: "
-                        + group.getDescription().length() + ".");
+                        "Probably the description exceeded the size or the description contains any special chars " +
+                        "which are not supported. The size of the description is: " + group.getDescription().length()
+                        + ". The description is: " + group.getDescription() + ".");
                 throw new ServerException(400, GROUP_INVALID_DESCRIPTION);
             }
             else if(group.getTerm() != null && !group.getTerm().matches(TERM_PATTERN)){
@@ -102,10 +108,108 @@ public class GroupController extends AccessController {
             group.setModificationDate(group.getCreationDate());
 
             // Store group in database.
-            groupDB.storeGroup(group);
+            groupDBM.storeGroup(group);
 
             // Password should not be returned in response.
             group.setPassword(null);
+
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        return group;
+    }
+
+    /**
+     * Returns a list of groups. Search parameters, the name and the type of the group, can be used to influence the
+     * result of the query. If the search parameters are set, the method will only return groups which contain the
+     * the specified name string in their name or groups which are of a given type.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupName The search parameter for the name of the group.
+     * @param groupType The search parameter for the type of the group.
+     * @return A list of groups. The list can also be empty.
+     * @throws ServerException If the requestor is not allowed to perform the operation or the execution fails due to
+     * a database failure.
+     */
+    public List<Group> getGroups(String accessToken, String groupName, GroupType groupType) throws ServerException {
+        List<Group> groups = null;
+        // Verify access token and check whether the requestor is allowed to perform the operation.
+        TokenType tokenType = verifyAccessToken(accessToken);
+        if(tokenType == TokenType.INVALID){
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
+                    "needs to be provided.");
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+
+        try {
+            if (tokenType == TokenType.MODERATOR) {
+                Moderator moderator = moderatorDBM.getModeratorByToken(accessToken);
+                // Besides users, only administrators have the permission to perform this operation.
+                if(moderator.isAdmin() == false){
+                    logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Moderator is not allowed to perform" +
+                            " the requested operation.");
+                    throw new ServerException(403, MODERATOR_FORBIDDEN);
+                }else{
+                    logger.info("Administrator with id {} requests groups.", moderator.getId());
+                }
+            }
+
+            // Get the groups from the database.
+            groups = groupDBM.getGroups(groupName,groupType);
+            logger.info("Returns list of groups with size {}.", groups.size());
+
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        return groups;
+    }
+
+    /**
+     * Returns the group which is identified by the specified id. It can be defined whether the group object should
+     * contain a list of all participants of this group.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group which should be returned.
+     * @param withParticipants Indicates whether the group object should contain a list of all participants of the
+     *                         group.
+     * @return The group object.
+     * @throws ServerException If the requestor is not allowed to perform the operation or the execution fails due to
+     * a database failure.
+     */
+    public Group getGroup(String accessToken, int groupId, boolean withParticipants) throws ServerException {
+        Group group = null;
+        // Verify access token and check whether the requestor is allowed to perform the operation.
+        TokenType tokenType = verifyAccessToken(accessToken);
+        if(tokenType == TokenType.INVALID){
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
+                    "needs to be provided.");
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+
+        try {
+            if (tokenType == TokenType.MODERATOR) {
+                Moderator moderator = moderatorDBM.getModeratorByToken(accessToken);
+                // Besides users, only administrators have the permission to perform this operation.
+                if(moderator.isAdmin() == false){
+                    logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Moderator is not allowed to perform" +
+                            " the requested operation.");
+                    throw new ServerException(403, MODERATOR_FORBIDDEN);
+                }else{
+                    logger.info("Administrator with id {} requests group with id {}.", moderator.getId(), groupId);
+                }
+            }
+
+            //get the group from the database.
+            group = groupDBM.getGroup(groupId, withParticipants);
+            if(group == null){
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, "The group with the id " + groupId + " could" +
+                        " not be found.");
+                throw new ServerException(404, GROUP_NOT_FOUND);
+            }
 
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");

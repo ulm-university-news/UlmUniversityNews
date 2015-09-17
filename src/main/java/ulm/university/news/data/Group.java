@@ -94,6 +94,7 @@ public class Group {
      */
     public Group(int id, String name, String description, GroupType groupType, Timestamp creationDate, Timestamp
             modificationDate, String term, String password, int groupAdmin){
+        this.id = id;
         this.name = name;
         this.description = description;
         this.groupType = groupType;
