@@ -137,6 +137,16 @@ public class Group {
         }
     }
 
+    /**
+     * Checks if the unencrypted password matches the one that has previously been encrypted.
+     *
+     * @param password The unencrypted password candidate which should be verified.
+     * @return Returns true if password is correct, false otherwise.
+     */
+    public boolean verifyPassword(String password) {
+        return BCrypt.checkpw(password, this.password);
+    }
+
     public int getGroupAdmin() {
         return groupAdmin;
     }

@@ -205,6 +205,8 @@ public class UserController extends AccessController{
             userDB = updateUser(user, userDB);
             userDBM.updateUser(userDB);
 
+            //TODO notify all participants of groups in which the user is participant.
+
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure. Update of user account data " +
                     "failed.");

@@ -204,13 +204,16 @@ public class GroupController extends AccessController {
                 }
             }
 
-            //get the group from the database.
+            // Get the group from the database.
             group = groupDBM.getGroup(groupId, withParticipants);
             if(group == null){
                 logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, "The group with the id " + groupId + " could" +
                         " not be found.");
                 throw new ServerException(404, GROUP_NOT_FOUND);
             }
+
+            // The password should not be returned to the requestor, so set it to null.
+            group.setPassword(null);
 
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
@@ -409,7 +412,7 @@ public class GroupController extends AccessController {
 
                 // Check if user is group administrator of this group.
                 if(user.getId() != groupDB.getGroupAdmin()){
-                    logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "The user with id "+ user.getId() + "is " +
+                    logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "The user with id "+ user.getId() + " is " +
                             "not the group administrator of this group. The user is thus not allowed to change the " +
                             "group data.");
                     throw new ServerException(403, USER_FORBIDDEN);
@@ -441,6 +444,66 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+    }
+
+    /**
+     * Adds a user as a participant to a group. The user who is intended to join the group is identified via the
+     * access token. This implies that only the requestor can join a group, it is impossible to specify another user
+     * id than its own. The requestor also needs to provide the password for the group in order to join it.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group.
+     * @param password The password which is read from the request.
+     * @throws ServerException If the requestor doesn't have the required permissions, the group is not found or the
+     * execution fails due to a database failure.
+     */
+    public void addParticipant(String accessToken, int groupId, String password) throws ServerException {
+        // Verify access token and check whether the requestor is allowed to perform the operation.
+        TokenType tokenType = verifyAccessToken(accessToken);
+        if(tokenType == TokenType.INVALID){
+            String errMsg = "To perform this operation a valid access token needs to be provided.";
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+        else if(tokenType == TokenType.MODERATOR){
+            String errMsg = "Moderator is not allowed to perform the requested operation.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
+            throw new ServerException(403, MODERATOR_FORBIDDEN);
+        }
+
+        try {
+            User user = userDBM.getUserByToken(accessToken);
+
+            // Request the group from the database. The group object should already contain a list of its participants.
+            Group groupDB = groupDBM.getGroup(groupId, true);
+            if(groupDB == null){
+                String errMsg = "The group with the id " + groupId + " could not be found.";
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
+                throw new ServerException(404, GROUP_NOT_FOUND);
+            }
+
+            // Check if the user has provided the correct password in order to join the group.
+            boolean verified = groupDB.verifyPassword(password);
+            if(verified == false){
+                String errMessage = "The user didn't provide the correct password to be able to join the group.";
+                logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_INCORRECT_PASSWORD, errMessage);
+                throw new ServerException(403, GROUP_INCORRECT_PASSWORD);
+            }
+
+            // If the password is verified, the user can be added to the group.
+            groupDBM.addParticipantToGroup(groupId, user.getId());
+
+            // Get the participants of the group. Note that in this list the new participant is not contained.
+            List<User> participants = groupDB.getParticipants();
+
+            // TODO Send a notification to the participants to notify them about the new user.
+
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+
     }
 
 }

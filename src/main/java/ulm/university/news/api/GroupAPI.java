@@ -1,13 +1,17 @@
 package ulm.university.news.api;
 
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.ObjectMapper;
 import ulm.university.news.controller.GroupController;
 import ulm.university.news.data.Group;
 import ulm.university.news.data.enums.GroupType;
+import ulm.university.news.util.Constants;
 import ulm.university.news.util.PATCH;
 import ulm.university.news.util.exceptions.ServerException;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 
@@ -135,6 +139,25 @@ public class GroupAPI {
             ServerException {
         groupController.deleteGroup(accessToken, id);
         return Response.status(Response.Status.NO_CONTENT).build();
+    }
+
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/user")
+    public Response addParticipantToGroup(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, String jsonString) throws ServerException {
+        ObjectMapper mapper = new ObjectMapper();
+        String password = "";
+        try {
+            // Reads the password from the received JSON String with Jackson.
+            JsonNode jsonObj = mapper.readTree(jsonString);
+            password = jsonObj.get("password").getTextValue();
+            System.out.println(password);
+        } catch (IOException e) {
+            throw new ServerException(400, Constants.GROUP_MISSING_PASSWORD);
+        }
+        groupController.addParticipant(accessToken, groupId, password);
+        return Response.status(Response.Status.CREATED).build();
     }
 
 

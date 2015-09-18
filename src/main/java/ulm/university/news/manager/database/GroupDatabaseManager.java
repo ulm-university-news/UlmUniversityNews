@@ -223,11 +223,14 @@ public class GroupDatabaseManager extends DatabaseManager {
                 GroupType groupType = GroupType.values[getGroupRs.getInt("Type")];
                 Timestamp creationDate = getGroupRs.getTimestamp("CreationDate");
                 Timestamp modificationDate = getGroupRs.getTimestamp("ModificationDate");
+                String password = getGroupRs.getString("Password");
                 String term = getGroupRs.getString("Term");
                 int groupAdmin = getGroupRs.getInt("GroupAdmin_User_Id");
 
-                // The password is never returned in a GET request, it is set to null.
-                group = new Group(groupId, name, description, groupType, creationDate, modificationDate, term, null,
+                /* The password is returned here as it is required for the password verification in the
+                   addParticipant method. If it should not be returned to the requestor, make sure to set it to null
+                   in the Controller. */
+                group = new Group(groupId, name, description, groupType, creationDate, modificationDate, term, password,
                         groupAdmin);
             }
 
@@ -399,6 +402,42 @@ public class GroupDatabaseManager extends DatabaseManager {
         }
         logger.debug("End with valid:{}", valid);
         return valid;
+    }
+
+    /**
+     * Adds an user as a participant to a group. The user and the group are both identified by the given ids.
+     *
+     * @param groupId The id of the group that the user intends to join.
+     * @param userId The id of the user who joins the group.
+     * @throws DatabaseException If the execution of the query fails.
+     */
+    public void addParticipantToGroup(int groupId, int userId) throws DatabaseException {
+        logger.debug("Start with groupId:{} and userId:{}.", groupId, userId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "INSERT INTO UserGroup (User_Id, Group_Id, Active) " +
+                    "VALUES (?,?,?);";
+
+            PreparedStatement addParticipantStmt = con.prepareStatement(query);
+            addParticipantStmt.setInt(1, userId);
+            addParticipantStmt.setInt(2, groupId);
+            addParticipantStmt.setBoolean(3, true);
+
+            addParticipantStmt.execute();
+
+            addParticipantStmt.close();
+            logger.info("Added the user with id {} as a participant for the group with id {}.", userId, groupId);
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
     }
 
 
