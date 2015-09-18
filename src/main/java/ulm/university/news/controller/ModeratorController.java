@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.data.enums.Language;
+import ulm.university.news.data.enums.TokenType;
 import ulm.university.news.manager.email.EmailManager;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ModeratorNameAlreadyExistsException;
@@ -46,8 +47,8 @@ public class ModeratorController extends AccessController {
         logger.debug("Start with moderator:{}.", moderator);
         // Perform checks on the received data. If the data isn't accurate the moderator can't be created.
         // In case of inaccuracy, send 400 Bad Request and abort execution.
-        if (moderator.getName() == null || moderator.getPassword() == null || moderator.getEmail() == null ||
-                moderator.getFirstName() == null || moderator.getLastName() == null ||
+        if (moderator == null || moderator.getName() == null || moderator.getPassword() == null || moderator.getEmail()
+                == null || moderator.getFirstName() == null || moderator.getLastName() == null ||
                 moderator.getMotivation() == null) {
             logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_DATA_INCOMPLETE, "Moderator data is incomplete.");
             throw new ServerException(400, MODERATOR_DATA_INCOMPLETE);
@@ -97,8 +98,9 @@ public class ModeratorController extends AccessController {
             }
         }
 
-        // Do not return the encrypted password to the requestor.
+        /// Clear fields which should not be delivered to the requestor.
         moderator.setPassword(null);
+        moderator.setServerAccessToken(null);
 
         return moderator;
     }
@@ -114,26 +116,58 @@ public class ModeratorController extends AccessController {
      * ServerException.
      */
     public Moderator getModerator(String accessToken, int moderatorId) throws ServerException {
-        // TODO Check access.
+        TokenType tokenType= verifyAccessToken(accessToken);
 
-        // Get moderator from database.
+        // Check the given access token.
+        if(tokenType == TokenType.USER){
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is not allowed to perform the requested " +
+                    "operation.");
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+        else if(tokenType == TokenType.INVALID){
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
+                    "needs to be provided.");
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+
+        boolean isOwnAccountRequested;
         Moderator moderatorDB;
         try {
-            moderatorDB = moderatorDBM.getModeratorById(moderatorId);
+            // Get moderator (requestor) identified by access token from database.
+            moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
+            isOwnAccountRequested = moderatorId == moderatorDB.getId();
+            // Only an administrator can get another than their own moderator account.
+            if(!moderatorDB.isAdmin() && !isOwnAccountRequested){
+                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Only an administrator is allowed to " +
+                        "perform the requested operation.");
+                throw new ServerException(403, MODERATOR_FORBIDDEN);
+            }
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
-                    "account by name.");
+                    "account by access token.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // Verify moderator account exists.
-        if (moderatorDB == null) {
-            logger.error(LOG_SERVER_EXCEPTION, 404, MODERATOR_NOT_FOUND, "Moderator account not found.");
-            throw new ServerException(404, MODERATOR_NOT_FOUND);
+        if(!isOwnAccountRequested) {
+            try {
+                // Get requested moderator identified by id from database.
+                moderatorDB = moderatorDBM.getModeratorById(moderatorId);
+            } catch (DatabaseException e) {
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
+                        "account by name.");
+                throw new ServerException(500, DATABASE_FAILURE);
+            }
+
+            // Verify moderator account exists.
+            if (moderatorDB == null) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, MODERATOR_NOT_FOUND, "Moderator account not found.");
+                throw new ServerException(404, MODERATOR_NOT_FOUND);
+            }
         }
 
-        // Do not return the encrypted password to the requestor.
+        // Clear fields which should not be delivered to the requestor.
         moderatorDB.setPassword(null);
+        moderatorDB.setServerAccessToken(null);
 
         return moderatorDB;
     }

@@ -121,7 +121,7 @@ public class ModeratorAPI {
      */
     @DELETE
     @Path("/{id}")
-    public Response resetPassword(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id) throws
+    public Response deleteModerator(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id) throws
             ServerException {
         moderatorCtrl.deleteModerator(accessToken, id);
         // No resource is returned.
