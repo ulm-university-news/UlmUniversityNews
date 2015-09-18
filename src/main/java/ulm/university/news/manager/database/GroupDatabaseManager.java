@@ -9,6 +9,7 @@ import ulm.university.news.data.enums.Platform;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
 
+import javax.naming.ldap.PagedResultsControl;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -416,19 +417,61 @@ public class GroupDatabaseManager extends DatabaseManager {
         Connection con = null;
         try {
             con = getDatabaseConnection();
-            String query =
-                    "INSERT INTO UserGroup (User_Id, Group_Id, Active) " +
-                    "VALUES (?,?,?);";
+            String getParticipantQuery =
+                    "SELECT * " +
+                    "FROM UserGroup " +
+                    "WHERE User_Id=? AND Group_Id=?;";
 
-            PreparedStatement addParticipantStmt = con.prepareStatement(query);
-            addParticipantStmt.setInt(1, userId);
-            addParticipantStmt.setInt(2, groupId);
-            addParticipantStmt.setBoolean(3, true);
+            // Check if the user is already a participant of the group.
+            PreparedStatement getParticipantStmt = con.prepareStatement(getParticipantQuery);
+            getParticipantStmt.setInt(1, userId);
+            getParticipantStmt.setInt(2, groupId);
 
-            addParticipantStmt.execute();
+            ResultSet getParticipantRs = getParticipantStmt.executeQuery();
+            if(getParticipantRs.next()){
+                logger.warn("User with id: {} is already in the participant table of the group with id {}. If the " +
+                        "user is set to inactive, it will be set to active again. Otherwise, no action will " +
+                        "be taken.", userId, groupId);
+                boolean active = getParticipantRs.getBoolean("Active");
 
-            addParticipantStmt.close();
-            logger.info("Added the user with id {} as a participant for the group with id {}.", userId, groupId);
+                if(active == false){
+                    // Set the active field to true again.
+                    String updateParticipantQuery =
+                            "UPDATE UserGroup " +
+                            "SET Active=? " +
+                            "WHERE User_Id=? AND Group_Id=?;";
+
+                    PreparedStatement updateParticipantStmt = con.prepareStatement(updateParticipantQuery);
+                    updateParticipantStmt.setBoolean(1, true);
+                    updateParticipantStmt.setInt(2, userId);
+                    updateParticipantStmt.setInt(3, groupId);
+
+                    updateParticipantStmt.executeUpdate();
+                    logger.info("Set the active field for the user with id {} to true again. The user is an active " +
+                            "participant of the group with id {} again.", userId, groupId);
+                }
+                else{
+                    logger.info("User with id {} is already an active participant of the group with id {}. No action " +
+                                    "performed.", userId, groupId);
+                }
+            }
+            else {
+                // Add the user as a participant to the group.
+                String insertParticipantQuery =
+                        "INSERT INTO UserGroup (User_Id, Group_Id, Active) " +
+                                "VALUES (?,?,?);";
+
+
+                PreparedStatement addParticipantStmt = con.prepareStatement(insertParticipantQuery);
+                addParticipantStmt.setInt(1, userId);
+                addParticipantStmt.setInt(2, groupId);
+                addParticipantStmt.setBoolean(3, true);
+
+                addParticipantStmt.execute();
+
+                addParticipantStmt.close();
+                logger.info("Added the user with id {} as a participant for the group with id {}.", userId, groupId);
+            }
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
@@ -438,6 +481,60 @@ public class GroupDatabaseManager extends DatabaseManager {
             returnConnection(con);
         }
         logger.debug("End.");
+    }
+
+    /**
+     * Returns a list of users who are participants of the group with the specified id.
+     *
+     * @param groupId The id of the group.
+     * @return Returns a list of users. The list can also be empty.
+     * @throws DatabaseException If the execution fails due to database failure.
+     */
+    public List<User> getParticipants(int groupId) throws DatabaseException {
+        List<User> users = new ArrayList<User>();
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String getUserIdsQuery =
+                    "SELECT User_Id " +
+                    "FROM UserGroup " +
+                    "WHERE Group_Id=?;";
+            String getUserQuery =
+                    "SELECT * " +
+                    "FROM User " +
+                    "WHERE Id=?;";
+
+            PreparedStatement getUserIdsStmt = con.prepareStatement(getUserIdsQuery);
+            PreparedStatement getUserStmt = con.prepareStatement(getUserQuery);
+
+            // First request the ids of the users which are a participant of the group.
+            getUserIdsStmt.setInt(1, groupId);
+            ResultSet getUserIdsRs = getUserIdsStmt.executeQuery();
+            while(getUserIdsRs.next()){
+                int userId = getUserIdsRs.getInt("User_Id");
+
+                // Request the user data for the user with this id.
+                getUserStmt.setInt(1, userId);
+                ResultSet getUserRs = getUserStmt.executeQuery();
+                if(getUserRs.next()){
+                    String name = getUserRs.getString("Name");
+                    String pushAccessToken = getUserRs.getString("PushAccessToken");
+                    Platform platform = Platform.values[getUserRs.getInt("Platform")];
+
+                    // The server access token is not returned, it is set to null.
+                    User tmp = new User(userId, name, null, pushAccessToken, platform);
+                    users.add(tmp);
+                }
+            }
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        return users;
     }
 
 

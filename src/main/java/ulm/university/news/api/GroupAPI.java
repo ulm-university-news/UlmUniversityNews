@@ -4,6 +4,7 @@ import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import ulm.university.news.controller.GroupController;
 import ulm.university.news.data.Group;
+import ulm.university.news.data.User;
 import ulm.university.news.data.enums.GroupType;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.PATCH;
@@ -141,6 +142,19 @@ public class GroupAPI {
         return Response.status(Response.Status.NO_CONTENT).build();
     }
 
+    /**
+     * Adds a user as a participant to the group which is identified by the given id. The user who is intended to join
+     * the group is identified via the access token. This implies that only the requestor can join a group, it is
+     * impossible to specify another user id than its own. The requestor also needs to provide the password for the
+     * group in order to join it.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group.
+     * @param jsonString The JSON String which is contained in the body of the HTTP request.
+     * @return Response without content.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("/{groupId}/user")
@@ -159,6 +173,25 @@ public class GroupAPI {
         groupController.addParticipant(accessToken, groupId, password);
         return Response.status(Response.Status.CREATED).build();
     }
+
+    /**
+     * Returns a list of users who are participants of the group which is identified by the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group-
+     * @return A list of users.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/user")
+    public List<User> getParticipants(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId) throws ServerException {
+        List<User> users = groupController.getParticipants(accessToken, groupId);
+        return users;
+    }
+
 
 
 }

@@ -502,8 +502,54 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+    }
 
+    /**
+     * Returns all participants of the group which is identified by the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group.
+     * @return A list of users who are participants of the group. The list can also be empty.
+     * @throws ServerException If the requestor doesn't have the required permissions to perform the operation or the
+     * execution fails due to a database failure.
+     */
+    public List<User> getParticipants(String accessToken, int groupId) throws ServerException {
+        List<User> users = null;
+        // Verify access token and check whether the requestor is allowed to perform the operation.
+        TokenType tokenType = verifyAccessToken(accessToken);
+        if(tokenType == TokenType.INVALID){
+            String errMsg = "To perform this operation a valid access token needs to be provided.";
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+        else if(tokenType == TokenType.MODERATOR){
+            String errMsg = "Moderator is not allowed to perform the requested operation.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
+            throw new ServerException(403, MODERATOR_FORBIDDEN);
+        }
 
+        try {
+            User user = userDBM.getUserByToken(accessToken);
+
+            // TODO check if the group exists?
+
+            // Check if user is active participant of the group.
+            boolean activeParticipant = groupDBM.isActiveParticipant(groupId, user.getId());
+            if(activeParticipant == false){
+                String errMsg = "The user needs to be an active participant of the group to perform this operation.";
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+                throw new ServerException(403, USER_FORBIDDEN);
+            }
+
+            // Get the participants from the database.
+            users = groupDBM.getParticipants(groupId);
+
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        return users;
     }
 
 }
