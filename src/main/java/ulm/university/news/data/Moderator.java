@@ -37,13 +37,13 @@ public class Moderator {
     /** The preferred language of the Moderator. */
     Language language;
     /** Defines whether the Moderators account is locked or not. */
-    boolean locked;
+    Boolean locked;
     /** Defines whether the Moderator has admin rights or not. */
-    boolean admin;
+    Boolean admin;
     /** Defines whether the Moderator account is marked as deleted or not. */
-    boolean deleted;
+    Boolean deleted;
     /** Defines whether the Moderator actively manages a certain channel or not. */
-    boolean active;
+    Boolean active;
 
     /** The logger instance for Moderator. */
     private static final Logger logger = LoggerFactory.getLogger(Moderator.class);
@@ -72,8 +72,8 @@ public class Moderator {
      * @param active Defines whether the Moderator actively manages a certain channel or not.
      */
     public Moderator(int id, String name, String firstName, String lastName, String email, String serverAccessToken,
-                     String password, String motivation, Language language, boolean locked, boolean admin,
-                     boolean deleted, boolean active) {
+                     String password, String motivation, Language language, Boolean locked, Boolean admin,
+                     Boolean deleted, Boolean active) {
         this.id = id;
         this.name = name;
         this.firstName = firstName;
@@ -106,8 +106,8 @@ public class Moderator {
      * @param active Defines whether the Moderator actively manages a certain channel or not.
      */
     public Moderator(String name, String firstName, String lastName, String email, String serverAccessToken,
-                     String password, String motivation, Language language, boolean locked, boolean admin,
-                     boolean deleted, boolean active) {
+                     String password, String motivation, Language language, Boolean locked, Boolean admin,
+                     Boolean deleted, Boolean active) {
         this.name = name;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -120,32 +120,6 @@ public class Moderator {
         this.admin = admin;
         this.deleted = deleted;
         this.active = active;
-    }
-
-    /**
-     * Invalidates the old password and generates new random one. Sends the new password to the Moderator and encrypts
-     * it afterwards.
-     */
-    public void resetPassword() {
-        /*
-        // Generate a new password.
-        String newPassword = generatePassword();
-
-        // Send email with new plain text password to the Moderator.
-        // TODO Internationalization? German/English?
-        String subject = "Ulm University News - Password Reset";
-        String message;
-        message = "Hello " + firstName + " " + lastName + ",\n\n";
-        message += "your password has been reset.\nYour new password is: ";
-        message += newPassword + "\n\n";
-        message += "Regards, the team of Ulm University News";
-        EmailManager.getInstance().sendMail(email, subject, message);
-
-        // Hashes the plain text password.
-        // TODO hash password
-
-        // Encrypt password.
-        encryptPassword();*/
     }
 
     /**
@@ -282,35 +256,35 @@ public class Moderator {
         this.password = password;
     }
 
-    public boolean isLocked() {
+    public Boolean isLocked() {
         return locked;
     }
 
-    public void setLocked(boolean locked) {
+    public void setLocked(Boolean locked) {
         this.locked = locked;
     }
 
-    public boolean isAdmin() {
+    public Boolean isAdmin() {
         return admin;
     }
 
-    public void setAdmin(boolean admin) {
+    public void setAdmin(Boolean admin) {
         this.admin = admin;
     }
 
-    public boolean isDeleted() {
+    public Boolean isDeleted() {
         return deleted;
     }
 
-    public void setDeleted(boolean deleted) {
+    public void setDeleted(Boolean deleted) {
         this.deleted = deleted;
     }
 
-    public boolean isActive() {
+    public Boolean isActive() {
         return active;
     }
 
-    public void setActive(boolean active) {
+    public void setActive(Boolean active) {
         this.active = active;
     }
 

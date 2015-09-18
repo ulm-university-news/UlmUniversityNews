@@ -116,15 +116,14 @@ public class ModeratorController extends AccessController {
      * ServerException.
      */
     public Moderator getModerator(String accessToken, int moderatorId) throws ServerException {
-        TokenType tokenType= verifyAccessToken(accessToken);
+        TokenType tokenType = verifyAccessToken(accessToken);
 
         // Check the given access token.
-        if(tokenType == TokenType.USER){
+        if (tokenType == TokenType.USER) {
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is not allowed to perform the requested " +
                     "operation.");
             throw new ServerException(403, USER_FORBIDDEN);
-        }
-        else if(tokenType == TokenType.INVALID){
+        } else if (tokenType == TokenType.INVALID) {
             logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
                     "needs to be provided.");
             throw new ServerException(401, TOKEN_INVALID);
@@ -137,7 +136,7 @@ public class ModeratorController extends AccessController {
             moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
             isOwnAccountRequested = moderatorId == moderatorDB.getId();
             // Only an administrator can get another than their own moderator account.
-            if(!moderatorDB.isAdmin() && !isOwnAccountRequested){
+            if (!moderatorDB.isAdmin() && !isOwnAccountRequested) {
                 logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Only an administrator is allowed to " +
                         "perform the requested operation.");
                 throw new ServerException(403, MODERATOR_FORBIDDEN);
@@ -148,7 +147,7 @@ public class ModeratorController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        if(!isOwnAccountRequested) {
+        if (!isOwnAccountRequested) {
             try {
                 // Get requested moderator identified by id from database.
                 moderatorDB = moderatorDBM.getModeratorById(moderatorId);
@@ -183,17 +182,16 @@ public class ModeratorController extends AccessController {
      * @throws ServerException ServerException If the authorization of the requestor fails or the requestor isn't
      * allowed to perform the operation. Furthermore, a failure of the database also causes a ServerException.
      */
-    public List<Moderator> getModerators(String accessToken, boolean isLocked, boolean isAdmin) throws
+    public List<Moderator> getModerators(String accessToken, Boolean isLocked, Boolean isAdmin) throws
             ServerException {
-        TokenType tokenType= verifyAccessToken(accessToken);
+        TokenType tokenType = verifyAccessToken(accessToken);
 
         // Check the given access token.
-        if(tokenType == TokenType.USER){
+        if (tokenType == TokenType.USER) {
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is not allowed to perform the requested " +
                     "operation.");
             throw new ServerException(403, USER_FORBIDDEN);
-        }
-        else if(tokenType == TokenType.INVALID){
+        } else if (tokenType == TokenType.INVALID) {
             logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
                     "needs to be provided.");
             throw new ServerException(401, TOKEN_INVALID);
@@ -204,7 +202,7 @@ public class ModeratorController extends AccessController {
             // Get moderator (requestor) identified by access token from database.
             Moderator moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
             // Only an administrator can get all moderator accounts.
-            if(!moderatorDB.isAdmin()){
+            if (!moderatorDB.isAdmin()) {
                 logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Only an administrator is allowed to " +
                         "perform the requested operation.");
                 throw new ServerException(403, MODERATOR_FORBIDDEN);
@@ -221,6 +219,161 @@ public class ModeratorController extends AccessController {
     }
 
     /**
+     * Performs an update on the data of the moderator account which is identified by the given id. The moderator
+     * object contains the fields which should be updated and the new values. As far as no data and access conditions
+     * are harmed, the fields will be updated in the database.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param moderatorId The id of the moderator account which should be updated.
+     * @param moderator The moderator object with the new data values which have been transmitted with the request.
+     * @return The moderator object with the updated data values.
+     * @throws ServerException If the new data values have harmed certain conditions, the moderator is not authorized,
+     * doesn't have the required permissions or if a database failure has occurred.
+     */
+    public Moderator changeModerator(String accessToken, int moderatorId, Moderator moderator) throws ServerException {
+        if (moderator.getFirstName() == null && moderator.getLastName() == null && moderator.getLanguage() == null &&
+                moderator.getEmail() == null && moderator.getPassword() == null && moderator.isLocked() == null && moderator
+                .isAdmin() == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_DATA_INCOMPLETE, "Moderator PATCH data is incomplete.");
+            throw new ServerException(400, MODERATOR_DATA_INCOMPLETE);
+        }
+
+        // Check the given access token.
+        TokenType tokenType = verifyAccessToken(accessToken);
+        if (tokenType == TokenType.USER) {
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is not allowed to perform the requested " +
+                    "operation.");
+            throw new ServerException(403, USER_FORBIDDEN);
+        } else if (tokenType == TokenType.INVALID) {
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
+                    "needs to be provided.");
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+
+        boolean isOwnAccountChanged;
+        Moderator moderatorDB;
+        try {
+            // Get moderator (requestor) identified by access token from database.
+            moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
+            isOwnAccountChanged = moderatorId == moderatorDB.getId();
+            // Only an administrator can alter another than their own moderator account.
+            if (!moderatorDB.isAdmin() && !isOwnAccountChanged) {
+                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Only an administrator is allowed to " +
+                        "perform the requested operation.");
+                throw new ServerException(403, MODERATOR_FORBIDDEN);
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
+                    "account by access token.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        if (!isOwnAccountChanged) {
+            try {
+                // Get requested moderator identified by id from database.
+                moderatorDB = moderatorDBM.getModeratorById(moderatorId);
+            } catch (DatabaseException e) {
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
+                        "account by id.");
+                throw new ServerException(500, DATABASE_FAILURE);
+            }
+            // Verify moderator account exists.
+            if (moderatorDB == null) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, MODERATOR_NOT_FOUND, "Moderator account not found.");
+                throw new ServerException(404, MODERATOR_NOT_FOUND);
+            }
+            moderatorDB = updateModeratorAsAdmin(moderator, moderatorDB);
+        } else {
+            moderatorDB = updateModerator(moderator, moderatorDB);
+        }
+
+        // Update changed moderator in the database.
+        try {
+            moderatorDBM.updateModerator(moderatorDB);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't update moderator.");
+            logger.debug("SQL error:{}", e.getMessage());
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Clear fields which should not be delivered to the requestor.
+        moderatorDB.setPassword(null);
+        moderatorDB.setServerAccessToken(null);
+
+        return moderatorDB;
+    }
+
+    /**
+     * Updates several fields of the moderator object retrieved from the database. Only the following fields can be
+     * changed: locked and admin.
+     *
+     * @param moderator The moderator object with the updated data values.
+     * @param moderatorDB The moderator object from the database.
+     * @return The complete updated moderator object.
+     * @throws ServerException If the given data harms certain conditions.
+     */
+    private Moderator updateModeratorAsAdmin(Moderator moderator, Moderator moderatorDB) throws ServerException {
+        if (moderator.isLocked() == null && moderator.isAdmin() == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_DATA_INCOMPLETE, "Moderator PATCH data is incomplete.");
+            throw new ServerException(400, MODERATOR_DATA_INCOMPLETE);
+        }
+        // Only update fields which are set.
+        if (moderator.isLocked() != null) {
+            moderatorDB.setLocked(moderator.isLocked());
+        }
+        if (moderator.isAdmin() != null) {
+            moderatorDB.setAdmin(moderator.isAdmin());
+        }
+        return moderatorDB;
+    }
+
+    /**
+     * Updates several fields of the moderator object retrieved from the database. Only the following fields can be
+     * changed: firstName, lastName, language, email and password.
+     *
+     * @param moderator The moderator object with the updated data values.
+     * @param moderatorDB The moderator object from the database.
+     * @return The complete updated moderator object.
+     * @throws ServerException If the given data harms certain conditions.
+     */
+    private Moderator updateModerator(Moderator moderator, Moderator moderatorDB) throws ServerException {
+        if (moderator.getFirstName() == null && moderator.getLastName() == null && moderator.getLanguage() == null &&
+                moderator.getEmail() == null && moderator.getPassword() == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_DATA_INCOMPLETE, "Moderator PATCH data is incomplete.");
+            throw new ServerException(400, MODERATOR_DATA_INCOMPLETE);
+        }
+        // Only update fields which are set.
+        if (moderator.getFirstName() != null) {
+            moderatorDB.setFirstName(moderator.getFirstName());
+        }
+        if (moderator.getLastName() != null) {
+            moderatorDB.setLastName(moderator.getLastName());
+        }
+        if (moderator.getLanguage() != null) {
+            moderatorDB.setLanguage(moderator.getLanguage());
+        }
+        // Verify proper structure of the given data.
+        if (moderator.getEmail() != null) {
+            if (!EmailValidator.getInstance().isValid(moderator.getEmail())) {
+                logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_INVALID_EMAIL, "Email address is invalid.");
+                throw new ServerException(400, MODERATOR_INVALID_EMAIL);
+            } else {
+                moderatorDB.setEmail(moderator.getEmail());
+            }
+        }
+        if (moderator.getPassword() != null){
+            if (!Pattern.compile(PASSWORD_PATTERN).matcher(moderator.getPassword()).matches()) {
+                logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_INVALID_PASSWORD, "Password is invalid.");
+                throw new ServerException(400, MODERATOR_INVALID_PASSWORD);
+            } else {
+                moderatorDB.setPassword(moderator.getPassword());
+                moderatorDB.encryptPassword();
+            }
+        }
+        return moderatorDB;
+    }
+
+    /**
      * Attempts to delete the moderator account identified by the moderators id. If there are still links between
      * this moderator account and other data, the account will be marked as deleted. The actual deletion will be
      * performed when no more links are attached to the moderator account.
@@ -233,23 +386,6 @@ public class ModeratorController extends AccessController {
      */
     public void deleteModerator(String accessToken, int moderatorId) throws ServerException {
         // TODO
-    }
-
-    /**
-     * Performs an update on the data of the moderator account which is identified by the given id and the access token.
-     * The moderator object contains the fields which should be updated and the new values. As far as no data
-     * and access conditions are harmed, the fields will be updated in the database.
-     *
-     * @param accessToken The access token of the requestor.
-     * @param moderatorId The id of the moderator account which should be updated.
-     * @param moderator The moderator object with the new data values which have been transmitted with the request.
-     * @return The moderator object with the updated data values.
-     * @throws ServerException If the new data values have harmed certain conditions, the moderator is not authorized,
-     * doesn't have the required permissions or if a database failure has occurred.
-     */
-    public Moderator changeModerator(String accessToken, int moderatorId, Moderator moderator) throws ServerException {
-        // TODO
-        return null;
     }
 
     /**

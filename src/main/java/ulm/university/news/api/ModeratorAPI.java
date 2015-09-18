@@ -14,7 +14,10 @@ import java.net.URI;
 import java.util.List;
 
 /**
- * TODO
+ * The ModeratorAPI is responsible for accepting incoming moderator requests, reading the required data and handing
+ * it over to the appropriate controller methods. After the request has been executed successfully, the ModeratorAPI
+ * generates the response message. If the execution of the request has failed for whatever reasons, the
+ * ServerException is handed over to the ErrorHandler class.
  *
  * @author Matthias Mak
  * @author Philipp Speidel
@@ -24,10 +27,6 @@ public class ModeratorAPI {
 
     /** Instance of the ModeratorController class. */
     private ModeratorController moderatorCtrl = new ModeratorController();
-
-    /* The logger instance for ModeratorAPI.
-    private static final Logger logger = LoggerFactory.getLogger(ModeratorAPI.class);
-     */
 
     /**
      * Delivers the moderator data identified by a given moderator id.
@@ -49,7 +48,8 @@ public class ModeratorAPI {
     }
 
     /**
-     * Delivers the moderator data of all existing moderator accounts.
+     * Delivers the moderator data of all existing moderator accounts. The requested accounts can be
+     * restricted to a specific selection by the given query params.
      *
      * @param accessToken The access token of the requestor.
      * @param isLocked Defines weather just locked or unlocked accounts are requested.
@@ -60,11 +60,10 @@ public class ModeratorAPI {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public List<Moderator> getModerators(@HeaderParam("Authorization") String accessToken, @QueryParam("isLocked") boolean
-            isLocked, @QueryParam("isAdmin") boolean isAdmin) throws ServerException {
-        List<Moderator> moderators = moderatorCtrl.getModerators(accessToken, isLocked, isAdmin);
-        // Return all the moderator resources.
-        return moderators;
+    public List<Moderator> getModerators(@HeaderParam("Authorization") String accessToken, @QueryParam("isLocked")
+    Boolean isLocked, @QueryParam("isAdmin") Boolean isAdmin) throws ServerException {
+        // Return all the requested moderator resources.
+        return moderatorCtrl.getModerators(accessToken, isLocked, isAdmin);
     }
 
     /**

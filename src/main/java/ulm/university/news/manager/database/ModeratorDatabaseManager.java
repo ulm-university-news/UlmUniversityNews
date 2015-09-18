@@ -142,6 +142,40 @@ public class ModeratorDatabaseManager extends DatabaseManager {
         logger.debug("End.");
     }
 
+    public void updateModerator(Moderator moderator) throws DatabaseException {
+        logger.debug("Start with moderator:{}.", moderator);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            String query =
+                    "UPDATE Moderator " +
+                            "SET LastName=?, FirstName=?, Email=?, Password=?, Language=?, Locked=?, Admin=? " +
+                            "WHERE Id=?;";
+
+            PreparedStatement storeModeratorStmt = con.prepareStatement(query);
+            storeModeratorStmt.setString(1, moderator.getLastName());
+            storeModeratorStmt.setString(2, moderator.getFirstName());
+            storeModeratorStmt.setString(3, moderator.getEmail());
+            storeModeratorStmt.setString(4, moderator.getPassword());
+            storeModeratorStmt.setInt(5, moderator.getLanguage().ordinal());
+            storeModeratorStmt.setBoolean(6, moderator.isLocked());
+            storeModeratorStmt.setBoolean(7, moderator.isAdmin());
+            storeModeratorStmt.setInt(8, moderator.getId());
+
+            storeModeratorStmt.execute();
+            storeModeratorStmt.close();
+            logger.info("Updated moderator with id:{}.", moderator.getId());
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
     /**
      * Returns the moderator who is identified by the given access token.
      *
@@ -179,7 +213,7 @@ public class ModeratorDatabaseManager extends DatabaseManager {
                 boolean deleted = getModeratorRs.getBoolean("Deleted");
 
                 moderator = new Moderator(id, name, firstName, lastName, email, serverAccessToken, password,
-                        motivation, language, locked, admin, deleted, false);
+                        motivation, language, locked, admin, deleted, null);
             }
             getModeratorStmt.close();
         } catch (SQLException e) {
@@ -230,7 +264,7 @@ public class ModeratorDatabaseManager extends DatabaseManager {
                 boolean deleted = getModeratorRs.getBoolean("Deleted");
 
                 moderator = new Moderator(id, name, firstName, lastName, email, serverAccessToken, password,
-                        motivation, language, locked, admin, deleted, false);
+                        motivation, language, locked, admin, deleted, null);
             }
             getModeratorStmt.close();
         } catch (SQLException e) {
@@ -281,7 +315,7 @@ public class ModeratorDatabaseManager extends DatabaseManager {
                 boolean deleted = getModeratorRs.getBoolean("Deleted");
 
                 moderator = new Moderator(id, name, firstName, lastName, email, serverAccessToken, password,
-                        motivation, language, locked, admin, deleted, false);
+                        motivation, language, locked, admin, deleted, null);
             }
             getModeratorStmt.close();
         } catch (SQLException e) {
@@ -303,20 +337,33 @@ public class ModeratorDatabaseManager extends DatabaseManager {
      * @return A list with all found moderator objects.
      * @throws DatabaseException If connection to the database has failed.
      */
-    public List<Moderator> getModerators(boolean isLocked, boolean isAdmin) throws DatabaseException {
+    public List<Moderator> getModerators(Boolean isLocked, Boolean isAdmin) throws DatabaseException {
         logger.debug("Start with isLocked:{} and isAdmin:{}.", isLocked, isAdmin);
         Connection con = null;
         List<Moderator> moderators = new ArrayList<Moderator>();
         try {
             con = getDatabaseConnection();
-            String query =
-                    "SELECT * " +
-                            "FROM Moderator " +
-                            "WHERE Locked=? AND Admin=?;";
 
+            // Create proper SQL statement.
+            String query = "SELECT * FROM Moderator;";
             PreparedStatement getModeratorsStmt = con.prepareStatement(query);
-            getModeratorsStmt.setBoolean(1, isLocked);
-            getModeratorsStmt.setBoolean(2, isAdmin);
+            if (isLocked != null && isAdmin != null) {
+                query += " WHERE Locked=? AND Admin=?;";
+                getModeratorsStmt = con.prepareStatement(query);
+                getModeratorsStmt.setBoolean(1, isLocked);
+                getModeratorsStmt.setBoolean(2, isAdmin);
+            } else {
+                if (isLocked != null) {
+                    query += " WHERE Locked=?;";
+                    getModeratorsStmt = con.prepareStatement(query);
+                    getModeratorsStmt.setBoolean(1, isLocked);
+                } else if (isAdmin != null) {
+                    query += " WHERE Admin=?;";
+                    getModeratorsStmt = con.prepareStatement(query);
+                    getModeratorsStmt.setBoolean(1, isAdmin);
+                }
+            }
+            logger.debug("SQL query:{}", query);
 
             ResultSet getModeratorRs = getModeratorsStmt.executeQuery();
             while (getModeratorRs.next()) {
@@ -327,13 +374,13 @@ public class ModeratorDatabaseManager extends DatabaseManager {
                 String email = getModeratorRs.getString("Email");
                 String motivation = getModeratorRs.getString("Motivation");
                 Language language = Language.values[getModeratorRs.getInt("Language")];
-                boolean locked = getModeratorRs.getBoolean("Locked");
-                boolean admin = getModeratorRs.getBoolean("Admin");
-                boolean deleted = getModeratorRs.getBoolean("Deleted");
+                Boolean locked = getModeratorRs.getBoolean("Locked");
+                Boolean admin = getModeratorRs.getBoolean("Admin");
+                Boolean deleted = getModeratorRs.getBoolean("Deleted");
 
-                // Do not return the moderators passwords or access tokens.
+                // Do not set values which should not be returned to the requestor.
                 Moderator moderator = new Moderator(id, name, firstName, lastName, email, null, null,
-                        motivation, language, locked, admin, deleted, false);
+                        motivation, language, locked, admin, deleted, null);
                 moderators.add(moderator);
             }
             getModeratorsStmt.close();
@@ -362,10 +409,7 @@ public class ModeratorDatabaseManager extends DatabaseManager {
         boolean responsible = false;
         try {
             con = getDatabaseConnection();
-            String query =
-                    "SELECT * " +
-                            "FROM ModeratorChannel " +
-                            "WHERE Moderator_Id=? AND Channel_Id=?;";
+            String query = "SELECT * FROM ModeratorChannel WHERE Moderator_Id=? AND Channel_Id=?;";
 
             PreparedStatement getResponsibleStmt = con.prepareStatement(query);
             getResponsibleStmt.setInt(1, moderatorId);
@@ -399,10 +443,7 @@ public class ModeratorDatabaseManager extends DatabaseManager {
         Connection con = null;
         try {
             con = getDatabaseConnection();
-            String updateModeratorQuery =
-                    "UPDATE Moderator " +
-                            "SET Password=? " +
-                            "WHERE Id=?;";
+            String updateModeratorQuery = "UPDATE Moderator SET Password=? WHERE Id=?;";
 
             PreparedStatement updateModeratorStmt = con.prepareStatement(updateModeratorQuery);
             updateModeratorStmt.setString(1, password);
@@ -415,8 +456,7 @@ public class ModeratorDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
