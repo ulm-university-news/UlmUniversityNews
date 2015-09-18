@@ -7,10 +7,7 @@ import ulm.university.news.util.PATCH;
 import ulm.university.news.util.exceptions.ServerException;
 
 import javax.ws.rs.*;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
+import javax.ws.rs.core.*;
 import java.net.URI;
 import java.util.List;
 
@@ -92,8 +89,11 @@ public class GroupAPI {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{id}")
     public Response getGroup(@HeaderParam("Authorization") String accessToken, @PathParam("id") int groupId,
-                          @DefaultValue("false") @QueryParam("withParticipants") boolean withParticipants)
+                          @DefaultValue("false") @QueryParam("withParticipants") boolean withParticipants, @Context
+                             UriInfo ui)
             throws ServerException {
+//        MultivaluedMap<String, String> queryParams = ui.getQueryParameters();
+//        System.out.println(queryParams.get("withParticipants"));
         Group group = groupController.getGroup(accessToken, groupId, withParticipants);
         return Response.status(Response.Status.OK).entity(group).build();
     }
@@ -118,6 +118,23 @@ public class GroupAPI {
             group) throws ServerException {
         group = groupController.changeGroup(accessToken, id, group);
         return Response.status(Response.Status.OK).entity(group).build();
+    }
+
+    /**
+     * Deletes the group with the specified id which is extracted from the request URL.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param id The id of the group which should be deleted.
+     * @return Returns an HTTP message with no content.
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Path("/{id}")
+    public Response deleteGroup(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id) throws
+            ServerException {
+        groupController.deleteGroup(accessToken, id);
+        return Response.status(Response.Status.NO_CONTENT).build();
     }
 
 

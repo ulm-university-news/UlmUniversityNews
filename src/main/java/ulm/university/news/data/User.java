@@ -189,6 +189,24 @@ public class User {
     }
 
     /**
+     * Get whether the user is active in the current context.
+     *
+     * @return True if the user is active, false otherwise.
+     */
+    public boolean isActive() {
+        return active;
+    }
+
+    /**
+     * Sets the status of the user to active or inactive.
+     *
+     * @param active Set to true if the user is active in the current context, set to false otherwise.
+     */
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    /**
      * Creates an random access token for this user and stores it in the user instance. The access token is then an
      * unique identifier for the user in the system.
      */

@@ -274,7 +274,7 @@ public class GroupController extends AccessController {
             groupDBM.updateGroup(groupDB);
 
             List<User> participants = groupDB.getParticipants();
-            // TODO send notficiation to participants
+            // TODO send notification to participants
 
             // Don't return the list of participants in the resonse.
             groupDB.setParticipants(null);
@@ -372,6 +372,75 @@ public class GroupController extends AccessController {
         groupDB.updateModificationDate();
 
         return groupDB;
+    }
+
+    /**
+     * Deletes the group with the specified id. All corresponding subresources like conversations and ballots are
+     * deleted as well.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group which should be deleted.
+     * @throws ServerException If the requestor is not allowed to delete the group or the deletion has failed due to
+     * database failure. The exception is also thrown if the group with the specified id doesn't exist.
+     */
+    public void deleteGroup(String accessToken, int groupId) throws ServerException {
+        // Verify access token.
+        TokenType tokenType = verifyAccessToken(accessToken);
+        if(tokenType == TokenType.INVALID){
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
+                    "needs to be provided.");
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+
+        try {
+            // Request the affected group. The group should contain a list of all its participants.
+            Group groupDB = groupDBM.getGroup(groupId, true);
+            if(groupDB == null){
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, "The group with the id " + groupId + " could" +
+                        " not be found.");
+                throw new ServerException(404, GROUP_NOT_FOUND);
+            }
+
+            // Check whether the requestor has the permission to delete the group.
+            if(tokenType == TokenType.USER){
+                // Note that user cannot be null here as the access token has been verified.
+                User user = userDBM.getUserByToken(accessToken);
+                logger.info("User with id {} wants to delete the group with id {}.", user.getId(), groupId);
+
+                // Check if user is group administrator of this group.
+                if(user.getId() != groupDB.getGroupAdmin()){
+                    logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "The user with id "+ user.getId() + "is " +
+                            "not the group administrator of this group. The user is thus not allowed to change the " +
+                            "group data.");
+                    throw new ServerException(403, USER_FORBIDDEN);
+                }
+            }
+            else if (tokenType == TokenType.MODERATOR) {
+                // TODO Check moderator for null?
+                Moderator moderator = moderatorDBM.getModeratorByToken(accessToken);
+                // Besides group administrators, only administrators have the permission to perform this operation.
+                if (moderator.isAdmin() == false) {
+                    logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Moderator is not allowed to perform" +
+                            " the requested operation.");
+                    throw new ServerException(403, MODERATOR_FORBIDDEN);
+                } else {
+                    logger.info("Administrator with id {} wants to delete the group with id {}.", moderator.getId(),
+                            groupId);
+                }
+            }
+
+            // Get all participants of the group.
+            List<User> participants = groupDB.getParticipants();
+
+            // Delete the group and all corresponding resources.
+            groupDBM.deleteGroup(groupId);
+
+            // TODO notify participants about deleted group
+
+        }catch (DatabaseException e){
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
     }
 
 }

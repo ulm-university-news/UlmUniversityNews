@@ -42,6 +42,7 @@ public class GroupDatabaseManager extends DatabaseManager {
         Connection con = null;
         try {
             con = getDatabaseConnection();
+            con.setAutoCommit(false);
             String query =
                     "INSERT INTO `Group` (Name, Description, Type, CreationDate, ModificationDate, Term, " +
                     "Password, GroupAdmin_User_Id) " +
@@ -67,16 +68,47 @@ public class GroupDatabaseManager extends DatabaseManager {
             if(getIdRs.next()){
                 group.setId(getIdRs.getInt(1));
             }
+            logger.info("Stored group with id:{}.", group.getId());
+
+            // Add the creator of the group, i.e. the group admin in this case, to the participants of the group.
+            String addParticipantQuery =
+                    "INSERT INTO UserGroup (User_Id, Group_Id, Active) " +
+                    "VALUES (?,?,?);";
+
+            PreparedStatement addParticipantStmt = con.prepareStatement(addParticipantQuery);
+            addParticipantStmt.setInt(1, group.getGroupAdmin());
+            addParticipantStmt.setInt(2, group.getId());
+            addParticipantStmt.setBoolean(3, true);  // It is an active participant.
+
+            addParticipantStmt.executeUpdate();
+            logger.info("Added the user with the id {} as an participant for the group with the id {}.", group
+                    .getGroupAdmin(), group.getId());
+
+            // Commit changes.
+            con.commit();
 
             insertGroupStmt.close();
             getIdStmt.close();
-            logger.info("Stored group with id:{}.", group.getId());
+            addParticipantStmt.close();
         } catch (SQLException e) {
+            try {
+                logger.warn("Need to rollback the transaction.");
+                con.rollback();
+            } catch (SQLException e1) {
+                logger.warn("Rollback failed.");
+                logger.error(Constants.LOG_SQL_EXCEPTION, e1.getSQLState(), e1.getErrorCode(), e1.getMessage());
+            }
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
         }
         finally {
+            try {
+                con.setAutoCommit(true);
+            } catch (SQLException e) {
+                logger.warn("Failed to set auto commit back to true.");
+                logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            }
             returnConnection(con);
         }
         logger.debug("End.");
@@ -295,7 +327,8 @@ public class GroupDatabaseManager extends DatabaseManager {
     }
 
     /**
-     * Deletes the group with the specified id from the database.
+     * Deletes the group with the specified id from the database. All subresources of the group are deleted as well.
+     * This happens automatically as the subresources depend on the group and are thus removed if the group is deleted.
      *
      * @param groupId The id of the group which should be deleted.
      * @throws DatabaseException If the group could not be deleted due to a database failure.
