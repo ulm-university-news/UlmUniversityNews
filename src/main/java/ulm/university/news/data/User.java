@@ -37,7 +37,7 @@ public class User {
     /** The active field indicates whether the user plays an active role in the current context, i.e. the value of
      * this field always depends on the context. For instance, it indicates whether the user is still an active
      * participant of a group or whether he has been a participant once but not anymore. */
-    private boolean active;
+    private Boolean active;
 
     /**
      * Creates an instance of the User class.
@@ -88,7 +88,7 @@ public class User {
      * @param platform The platform of the user's device.
      * @param active Indicates whether the user is active in the current context.
      */
-    public User(int id, String name, String serverAccessToken, String pushAccessToken, Platform platform, boolean
+    public User(int id, String name, String serverAccessToken, String pushAccessToken, Platform platform, Boolean
             active){
         this.id = id;
         this.name = name;
@@ -193,7 +193,7 @@ public class User {
      *
      * @return True if the user is active, false otherwise.
      */
-    public boolean isActive() {
+    public Boolean isActive() {
         return active;
     }
 
@@ -202,7 +202,7 @@ public class User {
      *
      * @param active Set to true if the user is active in the current context, set to false otherwise.
      */
-    public void setActive(boolean active) {
+    public void setActive(Boolean active) {
         this.active = active;
     }
 
