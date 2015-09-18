@@ -60,11 +60,11 @@ public class ModeratorAPI {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getModerators(@HeaderParam("Authorization") String accessToken, @QueryParam("isLocked") boolean
+    public List<Moderator> getModerators(@HeaderParam("Authorization") String accessToken, @QueryParam("isLocked") boolean
             isLocked, @QueryParam("isAdmin") boolean isAdmin) throws ServerException {
         List<Moderator> moderators = moderatorCtrl.getModerators(accessToken, isLocked, isAdmin);
         // Return all the moderator resources.
-        return Response.status(Response.Status.OK).entity(moderators).build();
+        return moderators;
     }
 
     /**

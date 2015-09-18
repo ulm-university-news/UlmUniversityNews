@@ -10,6 +10,8 @@ import ulm.university.news.util.exceptions.ModeratorNameAlreadyExistsException;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import static ulm.university.news.util.Constants.LOG_SQL_EXCEPTION;
 
@@ -291,6 +293,59 @@ public class ModeratorDatabaseManager extends DatabaseManager {
         }
         logger.debug("End with moderator:{}.", moderator);
         return moderator;
+    }
+
+    /**
+     * Returns all moderators who are requested. The requested accounts can be restricted to a specific selection.
+     *
+     * @param isLocked Defines weather just locked or unlocked accounts are requested.
+     * @param isAdmin Defines weather just admin accounts are requested or not.
+     * @return A list with all found moderator objects.
+     * @throws DatabaseException If connection to the database has failed.
+     */
+    public List<Moderator> getModerators(boolean isLocked, boolean isAdmin) throws DatabaseException {
+        logger.debug("Start with isLocked:{} and isAdmin:{}.", isLocked, isAdmin);
+        Connection con = null;
+        List<Moderator> moderators = new ArrayList<Moderator>();
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * " +
+                            "FROM Moderator " +
+                            "WHERE Locked=? AND Admin=?;";
+
+            PreparedStatement getModeratorsStmt = con.prepareStatement(query);
+            getModeratorsStmt.setBoolean(1, isLocked);
+            getModeratorsStmt.setBoolean(2, isAdmin);
+
+            ResultSet getModeratorRs = getModeratorsStmt.executeQuery();
+            while (getModeratorRs.next()) {
+                int id = getModeratorRs.getInt("Id");
+                String name = getModeratorRs.getString("Name");
+                String firstName = getModeratorRs.getString("FirstName");
+                String lastName = getModeratorRs.getString("LastName");
+                String email = getModeratorRs.getString("Email");
+                String motivation = getModeratorRs.getString("Motivation");
+                Language language = Language.values[getModeratorRs.getInt("Language")];
+                boolean locked = getModeratorRs.getBoolean("Locked");
+                boolean admin = getModeratorRs.getBoolean("Admin");
+                boolean deleted = getModeratorRs.getBoolean("Deleted");
+
+                // Do not return the moderators passwords or access tokens.
+                Moderator moderator = new Moderator(id, name, firstName, lastName, email, null, null,
+                        motivation, language, locked, admin, deleted, false);
+                moderators.add(moderator);
+            }
+            getModeratorsStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with moderators:{}.", moderators);
+        return moderators;
     }
 
     /**

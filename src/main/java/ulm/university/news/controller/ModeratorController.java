@@ -173,7 +173,8 @@ public class ModeratorController extends AccessController {
     }
 
     /**
-     * Get the moderator data of all existing moderator accounts from the database.
+     * Get the moderator data of all existing moderator accounts from the database. The requested accounts can be
+     * restricted to a specific selection.
      *
      * @param accessToken The access token of the requestor.
      * @param isLocked Defines weather just locked or unlocked accounts are requested.
@@ -184,9 +185,39 @@ public class ModeratorController extends AccessController {
      */
     public List<Moderator> getModerators(String accessToken, boolean isLocked, boolean isAdmin) throws
             ServerException {
-        // TODO
+        TokenType tokenType= verifyAccessToken(accessToken);
 
-        return null;
+        // Check the given access token.
+        if(tokenType == TokenType.USER){
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is not allowed to perform the requested " +
+                    "operation.");
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+        else if(tokenType == TokenType.INVALID){
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
+                    "needs to be provided.");
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+
+        List<Moderator> moderators;
+        try {
+            // Get moderator (requestor) identified by access token from database.
+            Moderator moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
+            // Only an administrator can get all moderator accounts.
+            if(!moderatorDB.isAdmin()){
+                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Only an administrator is allowed to " +
+                        "perform the requested operation.");
+                throw new ServerException(403, MODERATOR_FORBIDDEN);
+            }
+            // Get all requested moderator accounts.
+            moderators = moderatorDBM.getModerators(isLocked, isAdmin);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
+                    "account by access token.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        return moderators;
     }
 
     /**
