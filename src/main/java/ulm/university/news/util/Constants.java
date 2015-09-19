@@ -40,7 +40,7 @@ public class Constants {
 
     /** A pattern which describes a valid resource description. A resource description can contain any ASCII characters,
      *  but is limited to 500 characters. */
-    public static final String DESCRIPTION_PATTERN = "^[.\\p{Print}\\p{Blank}]{1,500}$";
+    public static final String DESCRIPTION_PATTERN = "^[öÖäÄüÜßa.\\p{Print}\\p{Blank}]{1,500}$";
 
 
 
