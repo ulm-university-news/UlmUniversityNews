@@ -462,4 +462,33 @@ public class ModeratorDatabaseManager extends DatabaseManager {
         logger.debug("End.");
     }
 
+    /**
+     * Deletes a moderator with given id from the database.
+     *
+     * @param moderatorId The id of the moderator account which should be deleted.
+     * @throws DatabaseException If connection to the database has failed or the deletion caused an Exception.
+     */
+    public void deleteModerator(int moderatorId) throws DatabaseException {
+        logger.debug("Start with moderatorId:{}.", moderatorId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String deleteModeratorQuery = "DELETE FROM Moderator WHERE Id=?;";
+
+            PreparedStatement deleteModeratorStmt = con.prepareStatement(deleteModeratorQuery);
+            deleteModeratorStmt.setInt(1, moderatorId);
+
+            deleteModeratorStmt.executeUpdate();
+            deleteModeratorStmt.close();
+            logger.info("Deleted moderator with id {}.", moderatorId);
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
 }

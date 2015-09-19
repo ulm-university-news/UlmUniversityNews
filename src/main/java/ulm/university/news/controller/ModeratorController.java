@@ -98,6 +98,8 @@ public class ModeratorController extends AccessController {
             }
         }
 
+        // TODO Send account created email to moderator.
+
         /// Clear fields which should not be delivered to the requestor.
         moderator.setPassword(null);
         moderator.setServerAccessToken(null);
@@ -296,6 +298,8 @@ public class ModeratorController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
+        // TODO Send account (un)locked / (remove/add) admin rights email to moderator.
+
         // Clear fields which should not be delivered to the requestor.
         moderatorDB.setPassword(null);
         moderatorDB.setServerAccessToken(null);
@@ -324,6 +328,7 @@ public class ModeratorController extends AccessController {
         if (moderator.isAdmin() != null) {
             moderatorDB.setAdmin(moderator.isAdmin());
         }
+        // TODO Send account (un)locked / deleted email to moderator.
         return moderatorDB;
     }
 
@@ -385,7 +390,58 @@ public class ModeratorController extends AccessController {
      * ServerException.
      */
     public void deleteModerator(String accessToken, int moderatorId) throws ServerException {
-        // TODO
+        // Check the given access token.
+        TokenType tokenType = verifyAccessToken(accessToken);
+        if (tokenType == TokenType.USER) {
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is not allowed to perform the requested " +
+                    "operation.");
+            throw new ServerException(403, USER_FORBIDDEN);
+        } else if (tokenType == TokenType.INVALID) {
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
+                    "needs to be provided.");
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+
+        boolean isOwnAccountDeleted;
+        Moderator moderatorDB;
+        try {
+            // Get moderator (requestor) identified by access token from database.
+            moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
+            isOwnAccountDeleted = moderatorId == moderatorDB.getId();
+            // Only an administrator can delete another than their own moderator account.
+            if (!moderatorDB.isAdmin() && !isOwnAccountDeleted) {
+                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Only an administrator is allowed to " +
+                        "perform the requested operation.");
+                throw new ServerException(403, MODERATOR_FORBIDDEN);
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
+                    "account by access token.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        if (!isOwnAccountDeleted) {
+            try {
+                // Get requested moderator identified by id from database.
+                moderatorDB = moderatorDBM.getModeratorById(moderatorId);
+            } catch (DatabaseException e) {
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
+                        "account by id.");
+                throw new ServerException(500, DATABASE_FAILURE);
+            }
+            // Verify moderator account exists.
+            if (moderatorDB == null) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, MODERATOR_NOT_FOUND, "Moderator account not found.");
+                throw new ServerException(404, MODERATOR_NOT_FOUND);
+            }
+        }
+
+        if(moderatorDB.isAdmin()) {
+            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Administrator accounts can't be deleted.");
+            throw new ServerException(403, MODERATOR_FORBIDDEN);
+        }
+
+        // TODO Get channels ...
     }
 
     /**
