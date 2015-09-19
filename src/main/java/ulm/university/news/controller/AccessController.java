@@ -2,6 +2,7 @@ package ulm.university.news.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ulm.university.news.data.Moderator;
 import ulm.university.news.manager.database.ModeratorDatabaseManager;
 import ulm.university.news.manager.database.UserDatabaseManager;
 import ulm.university.news.util.Constants;
@@ -9,8 +10,8 @@ import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
 import ulm.university.news.data.enums.TokenType;
 
-import static ulm.university.news.util.Constants.DATABASE_FAILURE;
-import static ulm.university.news.util.Constants.LOG_SERVER_EXCEPTION;
+import static ulm.university.news.util.Constants.*;
+import static ulm.university.news.util.Constants.TOKEN_INVALID;
 
 
 /**
@@ -68,6 +69,38 @@ public class AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
         return tokenType;
+    }
+
+    /**
+     * Checks if the requestor identified by access token is a valid moderator.
+     *
+     * @param accessToken The access token of the requestor.
+     * @return The valid moderator object of the requestor from the database.
+     * @throws ServerException If the requestor doesn't provide a valid access token or if the requestor isn't a
+     * valid moderator (it's a user).
+     */
+    public Moderator verifyModeratorAccess(String accessToken) throws ServerException {
+        TokenType tokenType = verifyAccessToken(accessToken);
+
+        // Check the given access token. Only a moderator is allowed to perform the request.
+        if (tokenType == TokenType.USER) {
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is not allowed to perform the requested " +
+                    "operation.");
+            throw new ServerException(403, USER_FORBIDDEN);
+        } else if (tokenType == TokenType.INVALID) {
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, "To perform this operation a valid access token " +
+                    "needs to be provided.");
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+
+        try {
+            // Get moderator (requestor) identified by access token from database.
+            return moderatorDBM.getModeratorByToken(accessToken);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
+                    "account by access token.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
     }
 
 }

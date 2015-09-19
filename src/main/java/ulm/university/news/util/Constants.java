@@ -27,12 +27,15 @@ public class Constants {
     /** A pattern which describes the valid form of a group name. */
     public static final String GROUP_NAME_PATTERN = "^[a-zA-Z0-9\\p{Blank}]{3,45}$";
 
+    /** A pattern which describes the valid form of a channel name. */
+    public static final String CHANNEL_NAME_PATTERN = "^[a-zA-Z0-9\\p{Blank}]{3,45}$";
+
     // TODO Don't we except a hash here? That's a topic for the next meeting.
     /** A pattern which describes the valid form of a group password. */
     public static final String GROUP_PASSWORD_PATTERN = "^[a-zA-Z0-9\\p{Punct}]{3,64}$";
 
     /** A pattern which describes the valid form of a term string. The term is always noted in the form WS or SS plus
-     *  the year yyyy. In WS, the year can also be given as yyyyy/yy, e.g. 2015/16.*/
+     *  the year yyyy. In WS, the year can also be given as yyyy/yy, e.g. 2015/16.*/
     public static final String TERM_PATTERN = "^[W,S][S][0-9]{4}[/]?[0-9]{0,2}$";
 
     /** A pattern which describes a valid resource description. A resource description can contain any ASCII characters,
@@ -64,6 +67,12 @@ public class Constants {
     public static final int MODERATOR_DELETED = 2007;
     public static final int MODERATOR_LOCKED = 2008;
     public static final int MODERATOR_INCORRECT_PASSWORD = 2009;
+
+    // Channel:
+    public static final int CHANNEL_NOT_FOUND = 3000;
+    public static final int CHANNEL_DATA_INCOMPLETE = 3002;
+    public static final int CHANNEL_INVALID_NAME = 3003;
+    public static final int CHANNEL_INVALID_TERM = 3004;
 
     // Group:
     public static final int GROUP_NOT_FOUND = 4000;
