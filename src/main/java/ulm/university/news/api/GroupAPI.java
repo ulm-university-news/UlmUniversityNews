@@ -159,7 +159,7 @@ public class GroupAPI {
     @Consumes(MediaType.APPLICATION_JSON)
     @Path("/{groupId}/user")
     public Response addParticipantToGroup(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
-            groupId, String jsonString) throws ServerException {
+            groupId, String jsonString, @Context UriInfo uriInfo) throws ServerException {
         ObjectMapper mapper = new ObjectMapper();
         String password = "";
         try {
@@ -190,6 +190,26 @@ public class GroupAPI {
             groupId) throws ServerException {
         List<User> users = groupController.getParticipants(accessToken, groupId);
         return users;
+    }
+
+    /**
+     * Removes a participant from the group. The user which is identified by the specified id is removed as an active
+     * participant of the group. However, the user remains in the list of the participants as an inactive participant
+     * . The user needs to remain in the list to be able to resolve possible dependencies.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group.
+     * @param userId The id of the user who should be removed as a participant from the group.
+     * @return Response object with no content.
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Path("/{groupId}/user/{userId}")
+    public Response deleteParticipant(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("userId") int userId) throws ServerException {
+        groupController.deleteParticipant(accessToken, groupId, userId);
+        return Response.status(Response.Status.NO_CONTENT).build();
     }
 
 

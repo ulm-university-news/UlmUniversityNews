@@ -147,6 +147,19 @@ public class Group {
         return BCrypt.checkpw(password, this.password);
     }
 
+    /**
+     * Checks if an user with the specified id is the group administrator of this group.
+     *
+     * @param userId The id of the user.
+     * @return Returns true if the user is the group administrator, false otherwise.
+     */
+    public boolean isGroupAdmin(int userId){
+        if(userId == groupAdmin){
+            return true;
+        }
+        return false;
+    }
+
     public int getGroupAdmin() {
         return groupAdmin;
     }

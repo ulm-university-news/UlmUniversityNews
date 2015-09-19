@@ -484,19 +484,22 @@ public class GroupDatabaseManager extends DatabaseManager {
     }
 
     /**
-     * Returns a list of users who are participants of the group with the specified id.
+     * Returns a list of users who are participants of the group with the specified id. Returns all participants,
+     * also those who have left the group and are thus not active participants anymore. It is required to provide all
+     * users who have been a participant of the group at any time to resolve possible dependencies.
      *
      * @param groupId The id of the group.
      * @return Returns a list of users. The list can also be empty.
      * @throws DatabaseException If the execution fails due to database failure.
      */
     public List<User> getParticipants(int groupId) throws DatabaseException {
+        logger.debug("Start with groupId:{].", groupId);
         List<User> users = new ArrayList<User>();
         Connection con = null;
         try {
             con = getDatabaseConnection();
             String getUserIdsQuery =
-                    "SELECT User_Id " +
+                    "SELECT User_Id, Active " +
                     "FROM UserGroup " +
                     "WHERE Group_Id=?;";
             String getUserQuery =
@@ -512,6 +515,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             ResultSet getUserIdsRs = getUserIdsStmt.executeQuery();
             while(getUserIdsRs.next()){
                 int userId = getUserIdsRs.getInt("User_Id");
+                boolean active = getUserIdsRs.getBoolean("Active");
 
                 // Request the user data for the user with this id.
                 getUserStmt.setInt(1, userId);
@@ -522,7 +526,7 @@ public class GroupDatabaseManager extends DatabaseManager {
                     Platform platform = Platform.values[getUserRs.getInt("Platform")];
 
                     // The server access token is not returned, it is set to null.
-                    User tmp = new User(userId, name, null, pushAccessToken, platform);
+                    User tmp = new User(userId, name, null, pushAccessToken, platform, active);
                     users.add(tmp);
                 }
             }
@@ -534,8 +538,47 @@ public class GroupDatabaseManager extends DatabaseManager {
         finally {
             returnConnection(con);
         }
+        logger.debug("End with users:{}.", users);
         return users;
     }
 
+    /**
+     * Removes the user who is identified by the specified id from the group. This is done by setting the participant
+     * to an inactive status. The user remains a part of the participant list of the group, but is not considered an
+     * active participant anymore. The user needs to remain in the participant list to be able to resolve possible
+     * dependencies.
+     *
+     * @param groupId The id of the group.
+     * @param userId The id of the user.
+     * @throws DatabaseException If the execution fails due to a database failure.
+     */
+    public void removeParticipantFromGroup(int groupId, int userId) throws DatabaseException {
+        logger.debug("Start with groupId:{} and userId:{}.", groupId, userId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "UPDATE UserGroup " +
+                    "SET Active=? " +
+                    "WHERE User_Id=? AND Group_Id=?;";
+
+            PreparedStatement removeParticipantStmt = con.prepareStatement(query);
+            removeParticipantStmt.setBoolean(1, false);
+            removeParticipantStmt.setInt(2, userId);
+            removeParticipantStmt.setInt(3, groupId);
+
+            removeParticipantStmt.executeUpdate();
+            logger.info("Remove user with id {} from the group with id {}. The user is not an active participant of " +
+                    "the group anymore.", userId, groupId);
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
 
 }

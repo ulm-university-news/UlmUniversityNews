@@ -1,6 +1,5 @@
 package ulm.university.news.controller;
 
-import org.eclipse.persistence.sessions.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Group;
@@ -550,6 +549,102 @@ public class GroupController extends AccessController {
         }
 
         return users;
+    }
+
+    /**
+     * Removes a participant from the group. The user which is identified by the specified id is removed as an active
+     * participant of the group. However, the user remains in the list of the participants as an inactive participant
+     * . The user needs to remain in the list to be able to resolve possible dependencies.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group.
+     * @param participantId The id of the user who should be removed as a participant from the group.
+     * @throws ServerException If the requestor is not allowed to perform the operation, the group or the participant
+     * are not found or the execution fails due to a database failure.
+     */
+    public void deleteParticipant(String accessToken, int groupId, int participantId) throws ServerException {
+        // Verify access token and check whether the requestor is allowed to perform the operation.
+        TokenType tokenType = verifyAccessToken(accessToken);
+        if(tokenType == TokenType.INVALID){
+            String errMsg = "To perform this operation a valid access token needs to be provided.";
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+        else if(tokenType == TokenType.MODERATOR){
+            String errMsg = "Moderator is not allowed to perform the requested operation.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
+            throw new ServerException(403, MODERATOR_FORBIDDEN);
+        }
+
+        try {
+            User requestor = userDBM.getUserByToken(accessToken);
+
+            // Request the group object. The group object should already contain a list of the participants
+            Group groupDB = groupDBM.getGroup(groupId, true);
+            if(groupDB == null){
+                String errMsg = "The group with the id " + groupId + " could not be found.";
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
+                throw new ServerException(404, GROUP_NOT_FOUND);
+            }
+
+            // Check if the user which is identified by the participantId is an active participant of the group.
+            boolean activeParticipant = groupDBM.isActiveParticipant(groupId, participantId);
+            if(activeParticipant==false){
+                String errMsg = "The user with the id " + participantId + " is not found in the group with id " +
+                        groupId + ". The user is not an active participant of the group.";
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_PARTICIPANT_NOT_FOUND, errMsg);
+                throw new ServerException(404, GROUP_PARTICIPANT_NOT_FOUND);
+            }
+
+            /* Check if the requestor is the group administrator of this group. The group administrator is not
+               allowed to leave the group. */
+            boolean isAdmin = groupDB.isGroupAdmin(requestor.getId());
+            if(requestor.getId() == participantId && isAdmin){
+                String errMsg = "The group administrator requests to leave the group. The request is rejected as the " +
+                        "group administrator is not allowed to leave the group. The id of the requestor is " +
+                        requestor.getId() + ".";
+                logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_ADMIN_NOT_ALLOWED_TO_EXIT, errMsg);
+                throw new ServerException(403, GROUP_ADMIN_NOT_ALLOWED_TO_EXIT);
+            }
+
+            /* Check if the requestor has another id than the one specified in the request for the participant that
+               should be removed. A participant can only remove himself from the group, i.e. leave the group. The
+               group administrator exclusively is allowed to remove other participants from the group.  */
+            if(requestor.getId() != participantId && !isAdmin){
+                String errMsg = "The user with id " + requestor.getId() + " requested to remove the user with the id " +
+                        participantId + " from the group. The request is rejected as the requestor is not the group " +
+                        "administrator of the group.";
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+                throw new ServerException(403, USER_FORBIDDEN);
+            }
+
+            // Perform the removal. The user will be set to inactive for the group.
+            groupDBM.removeParticipantFromGroup(groupId, participantId);
+
+            // Notify participants depending on whether the user has left or the user was removed from the group.
+            List<User> participants = groupDB.getParticipants();
+            if(participantId == requestor.getId()){
+                logger.info("The user with id {} has left the group with id {}.", requestor.getId(), groupId);
+                // TODO send notification with type GROUP_PARTICIPANT_LEFT
+                // TODO remove the participant with participantId from the participants list first?
+            }
+            else{
+                logger.info("The user with id {} has been removed from the group with id {} by the group " +
+                        "administrator", participantId, groupId);
+                // TODO send notification with type GROUP_PARTICIPANT_REMOVED
+            }
+
+            // TODO updateConversationAndBallotAdmin(groupDB, participantId)
+
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
+
+    private void updateConversationAndBallotAdmin(Group groupDB, int participantId){
+        // TODO
     }
 
 }
