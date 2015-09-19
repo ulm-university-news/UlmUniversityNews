@@ -31,7 +31,8 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
-     * Stores the moderator data into the database.
+     * Stores the new channel (and its subclass) in the database. Then the creator is added as responsible moderator
+     * by storing the link between the channel id and the moderator id.
      *
      * @param channel The channel object which contains the channel data.
      * @param moderatorId The id of the moderator who wants to create the channel.
@@ -127,12 +128,27 @@ public class ChannelDatabaseManager extends DatabaseManager {
                     break;
             }
 
+            // TODO Can the addModeratorToChannel() method be used here regarding the transaction and rollback?
+            // Add moderator (creator of the channel) to responsible moderators.
+            String addModeratorQuery =
+                    "INSERT INTO ModeratorChannel (Moderator_Id, Channel_Id, Active) " +
+                            "VALUES (?,?,?);";
+
+            PreparedStatement addModeratorStmt = con.prepareStatement(addModeratorQuery);
+            addModeratorStmt.setInt(1, moderatorId);
+            addModeratorStmt.setInt(2, channel.getId());
+            addModeratorStmt.setBoolean(3, true);  // It is an active moderator.
+
+            addModeratorStmt.executeUpdate();
+            logger.info("Added the moderator with id {} as responsible for the channel with id {}.", moderatorId,
+                    channel.getId());
+
             // End transaction.
             con.commit();
 
             storeChannelStmt.close();
             getIdStmt.close();
-
+            addModeratorStmt.close();
         } catch (SQLException e) {
             try {
                 logger.warn("Need to rollback the transaction.");
@@ -145,6 +161,45 @@ public class ChannelDatabaseManager extends DatabaseManager {
             logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             throw new DatabaseException("Database failure.");
         } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Adds the moderator with the given id to the channel with the given id as responsible moderator.
+     *
+     * @param channelId The id of the channel to which the moderator should be added.
+     * @param moderatorId The id of the moderator who should be added to the channel.
+     * @throws DatabaseException If the data could not be stored in the database due to database failure.
+     */
+    public void addModeratorToChannel(int channelId, int moderatorId) throws DatabaseException {
+        logger.debug("Start with channelId:{} and moderatorId:{}.", channelId, moderatorId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            // Add a moderator as responsible to a channel.
+            String addModeratorQuery =
+                    "INSERT INTO ModeratorChannel (Moderator_Id, Channel_Id, Active) " +
+                            "VALUES (?,?,?);";
+
+            PreparedStatement addModeratorStmt = con.prepareStatement(addModeratorQuery);
+            addModeratorStmt.setInt(1, moderatorId);
+            addModeratorStmt.setInt(2, channelId);
+            addModeratorStmt.setBoolean(3, true);  // It is an active moderator.
+
+            addModeratorStmt.executeUpdate();
+            logger.info("Added the moderator with id {} as responsible for the channel with id {}.", moderatorId,
+                    channelId);
+
+            addModeratorStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
             returnConnection(con);
         }
         logger.debug("End.");

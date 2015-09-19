@@ -42,8 +42,9 @@ public class ChannelAPI {
     private static final Logger logger = LoggerFactory.getLogger(ChannelAPI.class);
 
     /**
-     * Create a new moderator account. The data of the new moderator is provided within the moderator object. The
-     * generated moderator resource will be returned including the URI which can be used to access the resource.
+     * Create a new channel and adds the creator to its responsible moderators. The data of the new channel is
+     * provided within the JSON String. The appropriate channel subclass will be created from the JSON representation.
+     * The created resource will be returned including the URI which can be used to access the resource.
      *
      * @param accessToken The access token of the requestor.
      * @param jsonString The JSON String of a channel which is contained in the body of the HTTP request.
