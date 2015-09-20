@@ -160,6 +160,33 @@ public class Group {
         return false;
     }
 
+    /**
+     * Checks if the user who is identified with the specified id is an active participant of the group. Note that
+     * this method uses the participants list to check if the user is a participant, i.e. the participants list needs
+     * to be set.
+     *
+     * @param userId The id of the user whose membership should be checked.
+     * @return Returns true if the user is an active participant of the group, false otherwise.
+     */
+    public boolean isValidParticipant(int userId){
+        boolean valid = false;
+        if(participants == null){
+            logger.warn("Could not determine if user is participant cause participant list is not set in group object" +
+                    " with id {}.", id);
+        }else{
+            for (User participant : participants) {
+                if(participant.getId() == userId){
+                    if(participant.isActive() == Boolean.TRUE){
+                        logger.info("User with id {} is an active participant of group with id {}", userId, id);
+                        valid = true;
+                        break;
+                    }
+                }
+            }
+        }
+        return valid;
+    }
+
     public int getGroupAdmin() {
         return groupAdmin;
     }

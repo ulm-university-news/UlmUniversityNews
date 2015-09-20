@@ -2,6 +2,7 @@ package ulm.university.news.manager.database;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ulm.university.news.data.Ballot;
 import ulm.university.news.data.Group;
 import ulm.university.news.data.User;
 import ulm.university.news.data.enums.GroupType;
@@ -393,6 +394,7 @@ public class GroupDatabaseManager extends DatabaseManager {
                     valid = true;
                 }
             }
+            stmt.close();
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
@@ -449,6 +451,7 @@ public class GroupDatabaseManager extends DatabaseManager {
                     updateParticipantStmt.executeUpdate();
                     logger.info("Set the active field for the user with id {} to true again. The user is an active " +
                             "participant of the group with id {} again.", userId, groupId);
+                    updateParticipantStmt.close();
                 }
                 else{
                     logger.info("User with id {} is already an active participant of the group with id {}. No action " +
@@ -469,8 +472,8 @@ public class GroupDatabaseManager extends DatabaseManager {
 
                 addParticipantStmt.execute();
 
-                addParticipantStmt.close();
                 logger.info("Added the user with id {} as a participant for the group with id {}.", userId, groupId);
+                addParticipantStmt.close();
             }
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
@@ -530,6 +533,8 @@ public class GroupDatabaseManager extends DatabaseManager {
                     users.add(tmp);
                 }
             }
+            getUserIdsStmt.close();
+            getUserStmt.close();
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
@@ -570,6 +575,63 @@ public class GroupDatabaseManager extends DatabaseManager {
             removeParticipantStmt.executeUpdate();
             logger.info("Remove user with id {} from the group with id {}. The user is not an active participant of " +
                     "the group anymore.", userId, groupId);
+            removeParticipantStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Stores the data of a new ballot into the database. The ballot belongs to a group which is identified by the
+     * specified id.
+     *
+     * @param ballot The ballot object containing the data for the new ballot.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @throws DatabaseException If the ballot could not be stored due to a database failure.
+     */
+    public void storeBallot(Ballot ballot, int groupId) throws DatabaseException {
+        logger.debug("Start with groupId:{} and ballot:{}.", groupId, ballot);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "INSERT INTO Ballot (Title, Description, MultipleChoice, Public, Closed, Group_Id, " +
+                    "BallotAdmin_User_Id) " +
+                    "VALUES (?,?,?,?,?,?,?);";
+
+            // When the ballot is stored into the database, it is never closed.
+            ballot.setClosed(false);
+
+            PreparedStatement insertBallotStmt = con.prepareStatement(query);
+            insertBallotStmt.setString(1, ballot.getTitle());
+            insertBallotStmt.setString(2, ballot.getDescription());
+            insertBallotStmt.setBoolean(3, ballot.getMultipleChoice());
+            insertBallotStmt.setBoolean(4, ballot.getPublicVotes());
+            insertBallotStmt.setBoolean(5, ballot.getClosed());
+            insertBallotStmt.setInt(6, groupId);
+            insertBallotStmt.setInt(7, ballot.getAdmin());
+
+            insertBallotStmt.execute();
+
+            // Retrieve auto incremented id of the database record.
+            String getIdQuery = "SELECT LAST_INSERT_ID();";
+
+            Statement getIdStmt = con.createStatement();
+            ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
+            if(getIdRs.next()){
+                ballot.setId(getIdRs.getInt(1));
+            }
+
+            logger.info("Stored the ballot with id {} for the group with id {} in the database.", ballot.getId(),
+                    groupId);
+            insertBallotStmt.close();
+            getIdStmt.close();
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.

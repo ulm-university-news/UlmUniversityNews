@@ -2,6 +2,7 @@ package ulm.university.news.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ulm.university.news.data.Ballot;
 import ulm.university.news.data.Group;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.data.User;
@@ -590,9 +591,92 @@ public class GroupController extends AccessController {
         }
     }
 
-
     private void updateConversationAndBallotAdmin(Group groupDB, int participantId){
         // TODO
+    }
+
+    /**
+     * Creates a new ballot in the group with the specified id. The data of the ballot is defined in the ballot object.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group for which the ballot should be created.
+     * @param ballot The ballot object containing the ballot data.
+     * @return The ballot object with the data of the created ballot resource.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group is not found or
+     * the execution fails due to a database failure.
+     */
+    public Ballot createBallot(String accessToken, int groupId, Ballot ballot) throws ServerException {
+        // Check if the requestor is a valid user. Only users are allowed to perform this operation.
+        User requestor = verifyUserAccess(accessToken);
+
+        // Validate the received data.
+        if(ballot == null || ballot.getTitle() == null || ballot.getMultipleChoice() == null ||
+                ballot.getPublicVotes() == null){
+            String errMsg = "Incomplete data record. The given ballot object is " + ballot + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_DATA_INCOMPLETE, errMsg);
+            throw new ServerException(400, BALLOT_DATA_INCOMPLETE);
+        }
+        else if(!ballot.getTitle().matches(BALLOT_TITLE_PATTERN)){
+            String errMsg = "Invalid ballot title. The given title is " + ballot.getTitle() + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_TITLE, errMsg);
+            throw new ServerException(400, BALLOT_INVALID_TITLE);
+        }
+        else if(ballot.getDescription() != null && !ballot.getDescription().matches(DESCRIPTION_PATTERN)){
+            String errMsg = "Invalid description for ballot. Probably the description exceeded the size or the " +
+                    "description contains any special chars which are not supported. The size of the description " +
+                    "is: " + ballot.getDescription().length() + ". The description is: " + ballot.getDescription()
+                    + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_DESCRIPTION, errMsg);
+            throw new ServerException(400, BALLOT_INVALID_DESCRIPTION);
+        }
+
+        try {
+            // Request the affected group from the database. The group should already contain the list of participants.
+            Group groupDB = groupDBM.getGroup(groupId, true);
+            if(groupDB == null){
+                String errMsg = "The group with the id " + groupId + " could not be found.";
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
+                throw new ServerException(404, GROUP_NOT_FOUND);
+            }
+
+            // Check if the requestor is an active participant of the group. If not, discard the request.
+            boolean valid = groupDB.isValidParticipant(requestor.getId());
+            if(!valid){
+                String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not an active " +
+                        "participant of the group. The user is thus not allowed to create a ballot for this group.";
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+                throw new ServerException(403, USER_FORBIDDEN);
+            }
+
+            // Perform further authorization checks depending on the group type.
+            GroupType groupType = groupDB.getGroupType();
+            if(groupType == GroupType.TUTORIAL){
+                // In a tutorial group, only the tutor (group administrator) is allowed to create a ballot.
+                if(groupDB.isGroupAdmin(requestor.getId()) == false){
+                    String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not the tutor" +
+                            " (group administrator) of the tutorial group with id " + groupId + ". The user is thus " +
+                            "not allowed to create a ballot for this group.";
+                    logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+                    throw new ServerException(403, USER_FORBIDDEN);
+                }
+            }
+
+            // Set the requestor id as the ballot administrator for this ballot.
+            ballot.setAdmin(requestor.getId());
+
+            // Store the ballot in the database.
+            groupDBM.storeBallot(ballot, groupId);
+
+            // Notify participants about a new ballot.
+            List<User> participants = groupDB.getParticipants();
+            // TODO send notification
+
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        return ballot;
     }
 
 }

@@ -3,6 +3,7 @@ package ulm.university.news.api;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import ulm.university.news.controller.GroupController;
+import ulm.university.news.data.Ballot;
 import ulm.university.news.data.Group;
 import ulm.university.news.data.User;
 import ulm.university.news.data.enums.GroupType;
@@ -212,6 +213,29 @@ public class GroupAPI {
         return Response.status(Response.Status.NO_CONTENT).build();
     }
 
-
+    /**
+     * Creates a new ballot in the group with the specified id. The data of the new ballot is provided within the
+     * ballot object. The created ballot resource will be returned including the URI which can be used to access the
+     * ballot resource.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group in which the ballot should be created.
+     * @param ballot The ballot object containing the ballot data.
+     * @param uriInfo The uriInfo contains information about the request URI.
+     * @return The created ballot resource with all corresponding data and the URI of the new resource.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/ballot")
+    public Response createBallot(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, Ballot ballot, @Context UriInfo uriInfo) throws ServerException {
+        ballot = groupController.createBallot(accessToken, groupId, ballot);
+        URI createdURI = URI.create(uriInfo.getBaseUri() + "group" + "/" + groupId + "/" + "ballot" + "/" + ballot
+                .getId());
+        return Response.status(Response.Status.CREATED).location(createdURI).entity(ballot).build();
+    }
 
 }

@@ -129,7 +129,7 @@ public class AccessController {
         }
 
         try {
-            // Get user (requestor) identfied by access token from database.
+            // Get user (requestor) identified by access token from database.
             return userDBM.getUserByToken(accessToken);
         } catch (DatabaseException e) {
             String errMsg = "Database failure. Couldn't get user account by access token.";

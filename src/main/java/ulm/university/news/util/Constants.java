@@ -30,6 +30,9 @@ public class Constants {
     /** A pattern which describes the valid form of a channel name. */
     public static final String CHANNEL_NAME_PATTERN = "^[a-zA-Z0-9\\p{Blank}]{3,45}$";
 
+    /** A pattern which describes the valid form of a ballot title. */
+    public static final String BALLOT_TITLE_PATTERN = "^[a-zA-Z0-9\\p{Blank}]{3,45}$";
+
     // TODO Don't we except a hash here? That's a topic for the next meeting.
     /** A pattern which describes the valid form of a group password. */
     public static final String GROUP_PASSWORD_PATTERN = "^[a-zA-Z0-9\\p{Punct}]{3,64}$";
@@ -77,17 +80,22 @@ public class Constants {
     // Group:
     public static final int GROUP_NOT_FOUND = 4000;
     public static final int GROUP_DATA_INCOMPLETE = 4002;
-    public static final int GROUP_INVALID_NAME = 4002;
-    public static final int GROUP_INVALID_PASSWORD = 4003;
-    public static final int GROUP_INVALID_DESCRIPTION = 4004;
-    public static final int GROUP_INVALID_TERM = 4005;
-    public static final int GROUP_INVALID_GROUP_ADMIN = 4006;
-    public static final int GROUP_INCORRECT_PASSWORD = 4007;
-    public static final int GROUP_MISSING_PASSWORD = 4008;
-    public static final int GROUP_PARTICIPANT_NOT_FOUND = 4009;
-    public static final int GROUP_ADMIN_NOT_ALLOWED_TO_EXIT = 4010;
+    public static final int GROUP_INVALID_NAME = 4003;
+    public static final int GROUP_INVALID_PASSWORD = 4004;
+    public static final int GROUP_INVALID_DESCRIPTION = 4005;
+    public static final int GROUP_INVALID_TERM = 4006;
+    public static final int GROUP_INVALID_GROUP_ADMIN = 4007;
+    public static final int GROUP_INCORRECT_PASSWORD = 4008;
+    public static final int GROUP_MISSING_PASSWORD = 4009;
+    public static final int GROUP_PARTICIPANT_NOT_FOUND = 4010;
+    public static final int GROUP_ADMIN_NOT_ALLOWED_TO_EXIT = 4011;
 
     public static final int CONVERSATION_NOT_FOUND = 4100;
+
+    public static final int BALLOT_NOT_FOUND = 4200;
+    public static final int BALLOT_DATA_INCOMPLETE = 4202;
+    public static final int BALLOT_INVALID_TITLE = 4203;
+    public static final int BALLOT_INVALID_DESCRIPTION = 4204;
 
     // General:
     public static final int DATABASE_FAILURE = 5000;
