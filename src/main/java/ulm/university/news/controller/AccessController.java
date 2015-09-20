@@ -3,6 +3,7 @@ package ulm.university.news.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Moderator;
+import ulm.university.news.data.User;
 import ulm.university.news.manager.database.ModeratorDatabaseManager;
 import ulm.university.news.manager.database.UserDatabaseManager;
 import ulm.university.news.util.Constants;
@@ -99,6 +100,40 @@ public class AccessController {
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
                     "account by access token.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
+    /**
+     * Checks if the requestor identified by the access token is a valid user. Validates the access token and rejects
+     * the request if the access token does not identify a valid user.
+     *
+     * @param accessToken The access token of the requestor.
+     * @return The valid user object of the requestor from the database.
+     * @throws ServerException Id the reqeustor doesn't provide a valid access token of if the requestor isn't a
+     * valid user, e.g. it is a moderator.
+     */
+    public User verifyUserAccess(String accessToken) throws ServerException {
+        TokenType tokenType = verifyAccessToken(accessToken);
+
+        // Check the given access token. Only an user is allowed to perform the request.
+        if(tokenType == TokenType.INVALID){
+            String errMsg = "To perform this operation a valid access token needs to be provided.";
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+        else if(tokenType == TokenType.MODERATOR){
+            String errMsg = "Moderator is not allowed to perform the requested operation.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
+            throw new ServerException(403, MODERATOR_FORBIDDEN);
+        }
+
+        try {
+            // Get user (requestor) identfied by access token from database.
+            return userDBM.getUserByToken(accessToken);
+        } catch (DatabaseException e) {
+            String errMsg = "Database failure. Couldn't get user account by access token.";
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, errMsg);
             throw new ServerException(500, DATABASE_FAILURE);
         }
     }

@@ -47,68 +47,52 @@ public class GroupController extends AccessController {
      * requestor is not allowed to perform the operation, a ServerException is thrown as well.
      */
     public Group createGroup(String accessToken, Group group) throws ServerException {
-        // Verify access token and check whether the requestor is allowed to perform the operation.
-        TokenType tokenType = verifyAccessToken(accessToken);
-        if(tokenType == TokenType.INVALID){
-            String errMsg = "To perform this operation a valid access token needs to be provided.";
-            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
-            throw new ServerException(401, TOKEN_INVALID);
+        // Check if the requestor is a valid user. Only users are allowed to perform this operation.
+        User user = verifyUserAccess(accessToken);
+
+        // Check if the received data is valid.
+        if (group == null || group.getName() == null || group.getGroupType() == null ||
+                group.getPassword() == null || group.getGroupAdmin() == 0) {
+            String errMsg = "Incomplete data record. The given group object is " + group + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_DATA_INCOMPLETE, errMsg);
+            throw new ServerException(400, GROUP_DATA_INCOMPLETE);
+        } else if (!group.getName().matches(GROUP_NAME_PATTERN)) {
+            String errMsg = "Invalid group name. The given name is " + group.getName() + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_NAME, errMsg);
+            throw new ServerException(400, GROUP_INVALID_NAME);
+        } else if (!group.getPassword().matches(GROUP_PASSWORD_PATTERN)) {
+            String errMsg = "Invalid group password.";
+            logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_PASSWORD, errMsg);
+            throw new ServerException(400, GROUP_INVALID_PASSWORD);
+        } else if (group.getDescription() != null && !group.getDescription().matches(DESCRIPTION_PATTERN)) {
+            String errMsg = "Invalid description for group. Probably the description exceeded the size or the " +
+                    "description contains any special chars which are not supported. The size of the description " +
+                    "is: " + group.getDescription().length() + ". The description is: " + group.getDescription()
+                    + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_DESCRIPTION, errMsg);
+            throw new ServerException(400, GROUP_INVALID_DESCRIPTION);
+        } else if (group.getTerm() != null && !group.getTerm().matches(TERM_PATTERN)) {
+            String errMsg = "Invalid term. The given term is " + group.getTerm() + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_TERM, errMsg);
+            throw new ServerException(400, GROUP_INVALID_TERM);
         }
-        else if(tokenType == TokenType.MODERATOR){
-            String errMsg = "Moderator is not allowed to perform the requested operation.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
-            throw new ServerException(403, MODERATOR_FORBIDDEN);
+
+        // Check if the group admin is set correctly.
+        if (group.getGroupAdmin() != user.getId()) {
+            logger.warn("The Id of the groupAdmin and the requestor don't match. The user who makes the creation " +
+                    "request for the group should be entered as the group admin. The group admin is set to the " +
+                    "id of the requestor.");
+            group.setGroupAdmin(user.getId());
         }
+
+        // Prepare the password for being stored in the database.
+        group.encryptPassword();
+
+        //Compute the creation date of the group and also set it as the modification date.
+        group.computeCreationDate();
+        group.setModificationDate(group.getCreationDate());
 
         try {
-            User user = userDBM.getUserByToken(accessToken);
-
-            // Check if the received data is valid.
-            if(group == null || group.getName() == null || group.getGroupType() == null ||
-                    group.getPassword() == null || group.getGroupAdmin() == 0){
-                String errMsg = "Incomplete data record. The given group object is " + group + ".";
-                logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_DATA_INCOMPLETE, errMsg);
-                throw new ServerException(400, GROUP_DATA_INCOMPLETE);
-            }
-            else if(!group.getName().matches(GROUP_NAME_PATTERN)){
-                String errMsg = "Invalid group name. The given name is " + group.getName() + ".";
-                logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_NAME, errMsg);
-                throw new ServerException(400, GROUP_INVALID_NAME);
-            }
-            else if(!group.getPassword().matches(GROUP_PASSWORD_PATTERN)){
-                String errMsg = "Invalid group password.";
-                logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_PASSWORD, errMsg);
-                throw new ServerException(400, GROUP_INVALID_PASSWORD);
-            }
-            else if(group.getDescription() != null && !group.getDescription().matches(DESCRIPTION_PATTERN)){
-                String errMsg = "Invalid description for group. Probably the description exceeded the size or the " +
-                        "description contains any special chars which are not supported. The size of the description " +
-                        "is: " + group.getDescription().length() + ". The description is: " + group.getDescription()
-                        + ".";
-                logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_DESCRIPTION, errMsg);
-                throw new ServerException(400, GROUP_INVALID_DESCRIPTION);
-            }
-            else if(group.getTerm() != null && !group.getTerm().matches(TERM_PATTERN)){
-                String errMsg = "Invalid term. The given term is " + group.getTerm() + ".";
-                logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_TERM, errMsg);
-                throw new ServerException(400, GROUP_INVALID_TERM);
-            }
-
-            // Check if the group admin is set correctly.
-            if(group.getGroupAdmin() != user.getId()){
-                logger.warn("The Id of the groupAdmin and the requestor don't match. The user who makes the creation " +
-                        "request for the group should be entered as the group admin. The group admin is set to the " +
-                        "id of the requestor.");
-                group.setGroupAdmin(user.getId());
-            }
-
-            // Prepare the password for being stored in the database.
-            group.encryptPassword();
-
-            //Compute the creation date of the group and also set it as the modification date.
-            group.computeCreationDate();
-            group.setModificationDate(group.getCreationDate());
-
             // Store group in database.
             groupDBM.storeGroup(group);
 
@@ -137,7 +121,8 @@ public class GroupController extends AccessController {
      */
     public List<Group> getGroups(String accessToken, String groupName, GroupType groupType) throws ServerException {
         List<Group> groups = null;
-        // Verify access token and check whether the requestor is allowed to perform the operation.
+        /* Verify access token and check whether the requestor is allowed to perform the operation.
+           Users and system administrators can perform this operation. */
         TokenType tokenType = verifyAccessToken(accessToken);
         if(tokenType == TokenType.INVALID){
             String errMsg = "To perform this operation a valid access token needs to be provided.";
@@ -184,7 +169,8 @@ public class GroupController extends AccessController {
      */
     public Group getGroup(String accessToken, int groupId, boolean withParticipants) throws ServerException {
         Group group = null;
-        // Verify access token and check whether the requestor is allowed to perform the operation.
+        /* Verify access token and check whether the requestor is allowed to perform the operation.
+           Users and system administrators can perform this operation. */
         TokenType tokenType = verifyAccessToken(accessToken);
         if(tokenType == TokenType.INVALID){
             String errMsg = "To perform this operation a valid access token needs to be provided.";
@@ -237,29 +223,18 @@ public class GroupController extends AccessController {
      * doesn't have the required permissions and if a database failure occurs.
      */
     public Group changeGroup(String accessToken, int groupId, Group group) throws ServerException {
-        Group groupDB = null;
         if(group == null){
             String errMsg = "No valid data sent with patch request.";
             logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_DATA_INCOMPLETE, errMsg);
             throw new ServerException(400, GROUP_DATA_INCOMPLETE);
         }
 
-        // Verify access token and check whether the requestor is allowed to perform the operation.
-        TokenType tokenType = verifyAccessToken(accessToken);
-        if(tokenType == TokenType.INVALID){
-            String errMsg = "To perform this operation a valid access token needs to be provided.";
-            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
-            throw new ServerException(401, TOKEN_INVALID);
-        }
-        else if(tokenType == TokenType.MODERATOR){
-            String errMsg = "Moderator is not allowed to perform the requested operation.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
-            throw new ServerException(403, MODERATOR_FORBIDDEN);
-        }
+        // Check if the requestor is a valid user. Only users (here the group administrator) are allowed to perform
+        // this operation.
+        User user = verifyUserAccess(accessToken);
 
+        Group groupDB = null;
         try {
-            User user = userDBM.getUserByToken(accessToken);
-
             // Get the data of the group from the database. The group should already contain the list of participants.
             groupDB = groupDBM.getGroup(groupId, true);
             if(groupDB == null){
@@ -268,6 +243,7 @@ public class GroupController extends AccessController {
                 throw new ServerException(404, GROUP_NOT_FOUND);
             }
 
+            // Check if the user is allowed to execute the update operation.
             if(user.getId() != groupDB.getGroupAdmin()){
                 String errMsg = "The user is not the group administrator of this group. The user is thus not allowed " +
                         "to change the group data.";
@@ -393,7 +369,8 @@ public class GroupController extends AccessController {
      * database failure. The exception is also thrown if the group with the specified id doesn't exist.
      */
     public void deleteGroup(String accessToken, int groupId) throws ServerException {
-        // Verify access token.
+        /* Verify access token. Only users (the group administrator) and system administrators are allowed to delete a
+           group. */
         TokenType tokenType = verifyAccessToken(accessToken);
         if(tokenType == TokenType.INVALID){
             String errMsg = "To perform this operation a valid access token needs to be provided.";
@@ -464,22 +441,10 @@ public class GroupController extends AccessController {
      * execution fails due to a database failure.
      */
     public void addParticipant(String accessToken, int groupId, String password) throws ServerException {
-        // Verify access token and check whether the requestor is allowed to perform the operation.
-        TokenType tokenType = verifyAccessToken(accessToken);
-        if(tokenType == TokenType.INVALID){
-            String errMsg = "To perform this operation a valid access token needs to be provided.";
-            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
-            throw new ServerException(401, TOKEN_INVALID);
-        }
-        else if(tokenType == TokenType.MODERATOR){
-            String errMsg = "Moderator is not allowed to perform the requested operation.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
-            throw new ServerException(403, MODERATOR_FORBIDDEN);
-        }
+        // Check if the requestor is a valid user. Only users are allowed to perform this operation.
+        User user = verifyUserAccess(accessToken);
 
         try {
-            User user = userDBM.getUserByToken(accessToken);
-
             // Request the group from the database. The group object should already contain a list of its participants.
             Group groupDB = groupDBM.getGroup(groupId, true);
             if(groupDB == null){
@@ -521,22 +486,10 @@ public class GroupController extends AccessController {
      */
     public List<User> getParticipants(String accessToken, int groupId) throws ServerException {
         List<User> users = null;
-        // Verify access token and check whether the requestor is allowed to perform the operation.
-        TokenType tokenType = verifyAccessToken(accessToken);
-        if(tokenType == TokenType.INVALID){
-            String errMsg = "To perform this operation a valid access token needs to be provided.";
-            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
-            throw new ServerException(401, TOKEN_INVALID);
-        }
-        else if(tokenType == TokenType.MODERATOR){
-            String errMsg = "Moderator is not allowed to perform the requested operation.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
-            throw new ServerException(403, MODERATOR_FORBIDDEN);
-        }
+        // Check if the requestor is a valid user. Only users are allowed to perform this operation.
+        User user = verifyUserAccess(accessToken);
 
         try {
-            User user = userDBM.getUserByToken(accessToken);
-
             // TODO check if the group exists?
 
             // Check if user is active participant of the group.
@@ -570,22 +523,10 @@ public class GroupController extends AccessController {
      * are not found or the execution fails due to a database failure.
      */
     public void deleteParticipant(String accessToken, int groupId, int participantId) throws ServerException {
-        // Verify access token and check whether the requestor is allowed to perform the operation.
-        TokenType tokenType = verifyAccessToken(accessToken);
-        if(tokenType == TokenType.INVALID){
-            String errMsg = "To perform this operation a valid access token needs to be provided.";
-            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
-            throw new ServerException(401, TOKEN_INVALID);
-        }
-        else if(tokenType == TokenType.MODERATOR){
-            String errMsg = "Moderator is not allowed to perform the requested operation.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
-            throw new ServerException(403, MODERATOR_FORBIDDEN);
-        }
+        // Check if the requestor is a valid user. Only users are allowed to perform this operation.
+        User requestor = verifyUserAccess(accessToken);
 
         try {
-            User requestor = userDBM.getUserByToken(accessToken);
-
             // Request the group object. The group object should already contain a list of the participants
             Group groupDB = groupDBM.getGroup(groupId, true);
             if(groupDB == null){
