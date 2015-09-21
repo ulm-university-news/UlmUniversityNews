@@ -491,7 +491,12 @@ public class GroupController extends AccessController {
         User user = verifyUserAccess(accessToken);
 
         try {
-            // TODO check if the group exists?
+            // Check if group exists.
+            if(!groupDBM.isValidGroup(groupId)){
+                String errMsg = "The group with the id " + groupId + " could not be found.";
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
+                throw new ServerException(404, GROUP_NOT_FOUND);
+            }
 
             // Check if user is active participant of the group.
             boolean activeParticipant = groupDBM.isActiveParticipant(groupId, user.getId());
@@ -706,7 +711,12 @@ public class GroupController extends AccessController {
                 throw new ServerException(403, USER_FORBIDDEN);
             }
 
-            // TODO check if group exists
+            // Check if group exists.
+            if(!groupDBM.isValidGroup(groupId)){
+                String errMsg = "The group with the id " + groupId + " could not be found.";
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
+                throw new ServerException(404, GROUP_NOT_FOUND);
+            }
 
             // Get the ballots from the database.
             ballots = groupDBM.getBallots(groupId, subresources);
@@ -743,7 +753,12 @@ public class GroupController extends AccessController {
                 throw new ServerException(403, USER_FORBIDDEN);
             }
 
-            // TODO check if group exists
+            // Check if group exists.
+            if(!groupDBM.isValidGroup(groupId)){
+                String errMsg = "The group with the id " + groupId + " could not be found.";
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
+                throw new ServerException(404, GROUP_NOT_FOUND);
+            }
 
             // Get the ballot from the database.
             ballot = groupDBM.getBallot(groupId, ballotId);

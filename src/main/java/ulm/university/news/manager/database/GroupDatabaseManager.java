@@ -366,6 +366,41 @@ public class GroupDatabaseManager extends DatabaseManager {
     }
 
     /**
+     * Checks if the group with the specified id exists in the database.
+     *
+     * @param groupId The id of a group which should be checked.
+     * @return Returns true if the group exists in the database, false otherwise.
+     * @throws DatabaseException If the execution of the database lookup fails.
+     */
+    public boolean isValidGroup(int groupId) throws DatabaseException {
+        logger.debug("Start with groupId:{}.", groupId);
+        boolean valid = false;
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT Id " +
+                    "FROM `Group` " +
+                    "WHERE Id=?;";
+
+            PreparedStatement stmt = con.prepareStatement(query);
+            stmt.setInt(1, groupId);
+
+            ResultSet rs = stmt.executeQuery();
+            if(rs.next()){
+                valid = true;
+            }
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+
+        logger.debug("End with valid:{}.", valid);
+        return valid;
+    }
+
+    /**
      * Checks whether the user with the specified id is an active participant of the group with the given id.
      *
      * @param groupId The id of the group.
