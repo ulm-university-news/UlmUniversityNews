@@ -301,4 +301,23 @@ public class GroupAPI {
         return Response.status(Response.Status.OK).entity(ballot).build();
     }
 
+    /**
+     * Deletes the ballot which is identified by the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot.
+     * @return An empty response.
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/ballot/{ballotId}")
+    public Response deleteBallot(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("ballotId") int ballotId) throws ServerException {
+        groupController.deleteBallot(accessToken, groupId, ballotId);
+        return Response.status(Response.Status.NO_CONTENT).build();
+    }
+
 }

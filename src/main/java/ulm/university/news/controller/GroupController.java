@@ -897,4 +897,66 @@ public class GroupController extends AccessController {
         return ballotDB;
     }
 
+    /**
+     * Deletes the ballot resource which is identified by the specified id and belongs to the given group.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot which should be deleted.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group or the ballot are
+     * not found or the deletion fails due to a database failure.
+     */
+    public void deleteBallot(String accessToken, int groupId, int ballotId) throws ServerException {
+        /* Check if requestor is a valid user. The user needs to be an active participant of the group and needs to
+           be the administrator of the affected ballot. */
+        User requestor = verifyUserAccess(accessToken);
+        try {
+            // First, get the group from the database. The group should already contain a list of all participants.
+            Group groupDB = groupDBM.getGroup(groupId, true);
+            if(groupDB == null){
+                String errMsg = "The group with the id " + groupId + " could not be found.";
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
+                throw new ServerException(404, GROUP_NOT_FOUND);
+            }
+
+            // Check if the requestor is an active participant of the group. Otherwise reject the request.
+            if(!groupDB.isValidParticipant(requestor.getId())){
+                String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
+                        " with id " + groupId + ". The request is rejected.";
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+                throw new ServerException(403, USER_FORBIDDEN);
+            }
+
+            // Second, get the ballot object from the database.
+            Ballot ballotDB = groupDBM.getBallot(groupId, ballotId);
+            if(ballotDB == null){
+                String errMsg = "The ballot with id " + ballotId + " could not be found in the group with id " +
+                        groupId + ".";
+                logger.error(LOG_SERVER_EXCEPTION, 404, BALLOT_NOT_FOUND);
+                throw new ServerException(404, BALLOT_NOT_FOUND);
+            }
+
+            // Check if the requestor is the administrator of the ballot. Otherwise reject the request.
+            if(!ballotDB.isBallotAdmin(requestor.getId())){
+                String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not the " +
+                        "administrator of the ballot with id " + ballotId + ". The request is rejected.";
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+                throw new ServerException(403, USER_FORBIDDEN);
+            }
+            logger.info("The administrator of the ballot with id {}, i.e. the user identfied by id {}, requests to " +
+                    "delete the ballot.", ballotId, requestor.getId());
+
+            // Delete the ballot.
+            groupDBM.deleteBallot(groupId, ballotId);
+
+            // Notify the participants of the group about the deleted ballot.
+            List<User> participants = groupDB.getParticipants();
+            // TODO send notification
+
+        } catch (DatabaseException e){
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
 }

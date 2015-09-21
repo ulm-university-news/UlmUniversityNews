@@ -926,4 +926,39 @@ public class GroupDatabaseManager extends DatabaseManager {
         logger.debug("End.");
     }
 
+    /**
+     * Deletes the ballot which is identified by the specified id.
+     *
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot.
+     * @throws DatabaseException If the deletion fails due to a database failure.
+     */
+    public void deleteBallot(int groupId, int ballotId) throws DatabaseException {
+        logger.debug("Start with groupId:{} and ballotId:{}." , groupId, ballotId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String deleteBallotQuery =
+                    "DELETE FROM Ballot " +
+                    "WHERE Id=? AND Group_Id=?;";
+
+            PreparedStatement deleteBallotStmt = con.prepareStatement(deleteBallotQuery);
+            deleteBallotStmt.setInt(1, ballotId);
+            deleteBallotStmt.setInt(2, groupId);
+
+            deleteBallotStmt.execute();
+
+            logger.info("Deleted the ballot with id {} from the group with id {}.", ballotId, groupId);
+            deleteBallotStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
 }
