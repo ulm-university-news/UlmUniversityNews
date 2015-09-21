@@ -238,4 +238,43 @@ public class GroupAPI {
         return Response.status(Response.Status.CREATED).location(createdURI).entity(ballot).build();
     }
 
+    /**
+     * Returns a list of ballots. It can be defined if the ballot resources should contain their corresponding
+     * sub-resources like the options and a list of voters for each option.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group.
+     * @param subresources Indicates whether the sub-resources should be contained in the response.
+     * @return A list of ballot resources.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/ballot")
+    public List<Ballot> getBallots(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @DefaultValue("false") @QueryParam("subresources") boolean subresources) throws ServerException {
+        List<Ballot> ballots = groupController.getBallots(accessToken, groupId, subresources);
+        return ballots;
+    }
+
+    /**
+     * Returns the ballot resource with the specified id which belongs to the defined group.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group.
+     * @param ballotId The id of the ballot.
+     * @return Returns the ballot resource.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/ballot/{ballotId}")
+    public Response getBallot(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("ballotId") int ballotId) throws ServerException {
+        Ballot ballot = groupController.getBallot(accessToken, groupId, ballotId);
+        return Response.status(Response.Status.OK).entity(ballot).build();
+    }
+
 }

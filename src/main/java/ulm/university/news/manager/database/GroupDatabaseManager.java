@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Ballot;
 import ulm.university.news.data.Group;
+import ulm.university.news.data.Option;
 import ulm.university.news.data.User;
 import ulm.university.news.data.enums.GroupType;
 import ulm.university.news.data.enums.Platform;
@@ -641,6 +642,215 @@ public class GroupDatabaseManager extends DatabaseManager {
             returnConnection(con);
         }
         logger.debug("End.");
+    }
+
+    /**
+     * Returns a list of ballots which belong to the group with the specified id. It can be defined whether the
+     * ballot objects should already contain corresponding sub-resources like their options and the list of voters for
+     * each option.
+     *
+     * @param groupId The id of the group for which the ballots should be returned.
+     * @param withSubresources Indicates whether the ballot objects, which are returned, should contain a list of
+     *                         their options and a list of voters per option.
+     * @return A list of ballot objects. The list might also be empty.
+     * @throws DatabaseException If the ballots could not be retrieved from the database.
+     */
+    public List<Ballot> getBallots(int groupId, boolean withSubresources) throws DatabaseException {
+        logger.debug("Start with groupId:{} and withSubresources:{}.", groupId, withSubresources);
+        List<Ballot> ballots = new ArrayList<Ballot>();
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String getBallotsQuery =
+                    "SELECT *" +
+                    "FROM Ballot " +
+                    "WHERE Group_Id=?;";
+            String getBallotOptionsQuery =
+                    "SELECT * " +
+                    "FROM Option " +
+                    "WHERE Ballot_Id=?;";
+            String getUserIdsQuery =
+                    "SELECT User_Id " +
+                    "FROM UserOption " +
+                    "WHERE Option_Id=?;";
+
+            PreparedStatement getBallotsStmt = con.prepareStatement(getBallotsQuery);
+            getBallotsStmt.setInt(1, groupId);
+
+            // If the subresources should be contained, prepare the statements here.
+            PreparedStatement getBallotOptionsStmt = null;
+            PreparedStatement getBallotOptionVotersStmt = null;
+            if(withSubresources){
+                logger.info("Including the subresources into the ballots of group with id {}.", groupId);
+                getBallotOptionsStmt = con.prepareStatement(getBallotOptionsQuery);
+                getBallotOptionVotersStmt = con.prepareStatement(getUserIdsQuery);
+            }
+
+            // Request the ballots for the given group.
+            ResultSet getBallotsRs = getBallotsStmt.executeQuery();
+            while(getBallotsRs.next()){
+                int id = getBallotsRs.getInt("Id");
+                String title = getBallotsRs.getString("Title");
+                String description = getBallotsRs.getString("Description");
+                Boolean multipleChoice = getBallotsRs.getBoolean("MultipleChoice");
+                Boolean publicVotes = getBallotsRs.getBoolean("Public");
+                Boolean closed = getBallotsRs.getBoolean("Closed");
+                int ballotAdmin = getBallotsRs.getInt("BallotAdmin_User_Id");
+
+                Ballot ballotTmp = new Ballot(id, title, description, ballotAdmin, closed, multipleChoice, publicVotes);
+
+                // Request the subresources options and voters if required.
+                if(withSubresources){
+                    List<Option> ballotOptions = new ArrayList<Option>();
+                    // Request all options for the ballot.
+                    getBallotOptionsStmt.setInt(1, ballotTmp.getId());
+                    ResultSet getBallotOptionsRs = getBallotOptionsStmt.executeQuery();
+                    while(getBallotOptionsRs.next()){
+                        int optionId = getBallotOptionsRs.getInt("Id");
+                        String text = getBallotOptionsRs.getString("Text");
+
+                        Option optionTmp = new Option(optionId, text);
+
+                        // Request the ids of the users who have voted for this particular option.
+                        List<Integer> voters = new ArrayList<Integer>();
+                        getBallotOptionVotersStmt.setInt(1, optionId);
+                        ResultSet getBallotOptionVotersRs = getBallotOptionVotersStmt.executeQuery();
+                        while(getBallotOptionVotersRs.next()){
+                            int userId = getBallotOptionVotersRs.getInt("User_Id");
+
+                            // Add the id of the user to the voters list.
+                            voters.add(userId);
+                        }
+
+                        // Add the list of voters to the Option object.
+                        optionTmp.setVoters(voters);
+
+                        // Add the option object to the list of ballot options.
+                        ballotOptions.add(optionTmp);
+                    }
+
+                    // Add the list of options to the ballot object.
+                    ballotTmp.setOptions(ballotOptions);
+                }
+
+                // Add the ballot object to the list of ballots.
+                ballots.add(ballotTmp);
+            }
+
+            getBallotsStmt.close();
+            if(getBallotOptionsStmt != null && getBallotOptionVotersStmt != null){
+                getBallotOptionsStmt.close();
+                getBallotOptionVotersStmt.close();
+            }
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End with ballots:{}.", ballots);
+        return ballots;
+    }
+
+    /**
+     * Returns the ballots which belong to the group with the specified id and have the user with the defined id as
+     * the ballot administrator.
+     *
+     * @param groupId The id of the group.
+     * @param adminId The id of the user who is the ballot administrator of the ballots.
+     * @return List of ballot objects. The list can also be empty.
+     * @throws DatabaseException If the could not be retrieved from the database.
+     */
+    public List<Ballot> getBallots(int groupId, int adminId) throws DatabaseException {
+        logger.debug("Start with groupId:{} and adminId:{}.", groupId, adminId);
+        List<Ballot> ballots = new ArrayList<Ballot>();
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String getBallotsQuery =
+                    "SELECT * " +
+                    "FROM Ballot " +
+                    "WHERE Group_Id=? AND BallotAdmin_User_Id=?;";
+
+            PreparedStatement getBallotsStmt = con.prepareStatement(getBallotsQuery);
+            getBallotsStmt.setInt(1, groupId);
+            getBallotsStmt.setInt(2, adminId);
+
+            ResultSet getBallotsRs = getBallotsStmt.executeQuery();
+            while(getBallotsRs.next()){
+                int id = getBallotsRs.getInt("Id");
+                String title = getBallotsRs.getString("Title");
+                String description = getBallotsRs.getString("Description");
+                Boolean multipleChoice = getBallotsRs.getBoolean("MultipleChoice");
+                Boolean publicVotes = getBallotsRs.getBoolean("Public");
+                Boolean closed = getBallotsRs.getBoolean("Closed");
+
+                Ballot ballotTmp = new Ballot(id, title, description, adminId, closed, multipleChoice, publicVotes);
+                ballots.add(ballotTmp);
+            }
+
+            getBallotsStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End with ballots:{}.", ballots);
+        return ballots;
+    }
+
+    /**
+     * Returns the ballot object of the ballot with the specified id. The ballot needs to belong to the group with
+     * the defined id.
+     *
+     * @param groupId The id of the group.
+     * @param ballotId The id of the ballot.
+     * @return The ballot object containing the data of the ballot. Returns null if no ballot with the given id.
+     * @throws DatabaseException If the ballot could not be retrieved from the database.
+     */
+    public Ballot getBallot(int groupId, int ballotId) throws DatabaseException {
+        logger.debug("Start with ballotId:{}.", ballotId);
+        Ballot ballot = null;
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String getBallotQuery =
+                    "SELECT * " +
+                    "FROM Ballot " +
+                    "WHERE Id=? AND Group_Id=?;";
+
+            PreparedStatement getBallotStmt = con.prepareStatement(getBallotQuery);
+            getBallotStmt.setInt(1, ballotId);
+            getBallotStmt.setInt(2, groupId);
+
+            ResultSet getBallotRs = getBallotStmt.executeQuery();
+            if(getBallotRs.next()){
+                String title = getBallotRs.getString("Title");
+                String description = getBallotRs.getString("Description");
+                Boolean multipleChoice = getBallotRs.getBoolean("MultipleChoice");
+                Boolean publicVotes = getBallotRs.getBoolean("Public");
+                Boolean closed = getBallotRs.getBoolean("Closed");
+                int ballotAdmin = getBallotRs.getInt("BallotAdmin_User_Id");
+
+                ballot = new Ballot(ballotId, title, description, ballotAdmin, closed, multipleChoice, publicVotes);
+            }
+
+            getBallotStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+        return ballot;
     }
 
 }

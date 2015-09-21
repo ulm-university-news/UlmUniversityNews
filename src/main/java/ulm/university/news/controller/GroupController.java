@@ -679,4 +679,86 @@ public class GroupController extends AccessController {
         return ballot;
     }
 
+    /**
+     * Returns a list of ballots which belong to the given group with the specified id. It can be defined whether the
+     * ballot objects should contain their corresponding sub-resources like the options and the voters for each option.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group.
+     * @param subresources Indicates whether the ballot objects should contain the corresponding options and a list
+     *                     of voters who voted for each option.
+     * @return A list of ballot objects. The list can also be empty.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group is not found or
+     * the ballots can not be retrieved due to a database failure.
+     */
+    public List<Ballot> getBallots(String accessToken, int groupId, boolean subresources) throws ServerException {
+        List<Ballot> ballots = null;
+
+        /* Check if requestor is a valid user. Only users (more precisely participants of the group) are allowed to
+           perform this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        try {
+            boolean isActiveParticipant = groupDBM.isActiveParticipant(groupId, requestor.getId());
+            if(!isActiveParticipant){
+                String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + " is not an active " +
+                        "participant of the group with id " + groupId + ". The request is rejected.";
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+                throw new ServerException(403, USER_FORBIDDEN);
+            }
+
+            // TODO check if group exists
+
+            // Get the ballots from the database.
+            ballots = groupDBM.getBallots(groupId, subresources);
+
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+        return ballots;
+    }
+
+    /**
+     * Returns the ballot which is identified by the specified id and belongs to the group with the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot.
+     * @return The ballot object containing the data of the ballot.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group or the ballot are
+     * not found or the ballot could not be retrieved due to a database failure.
+     */
+    public Ballot getBallot(String accessToken, int groupId, int ballotId) throws ServerException {
+        Ballot ballot = null;
+
+        /* Check if requestor is a valid user. Only users (more precisely participants of the group) are allowed to
+           perform this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        try {
+            boolean isActiveParticipant = groupDBM.isActiveParticipant(groupId, requestor.getId());
+            if(!isActiveParticipant){
+                String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + " is not an active " +
+                        "participant of the group with id " + groupId + ". The request is rejected.";
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+                throw new ServerException(403, USER_FORBIDDEN);
+            }
+
+            // TODO check if group exists
+
+            // Get the ballot from the database.
+            ballot = groupDBM.getBallot(groupId, ballotId);
+            if(ballot == null){
+                String errMsg = "The ballot with id " + ballotId + " could not be found in the group with id " +
+                        groupId + ".";
+                logger.error(LOG_SERVER_EXCEPTION, 404, BALLOT_NOT_FOUND);
+                throw new ServerException(404, BALLOT_NOT_FOUND);
+            }
+
+        } catch (DatabaseException e){
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+        return ballot;
+    }
+
 }

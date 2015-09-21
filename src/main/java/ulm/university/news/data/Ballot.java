@@ -3,8 +3,8 @@ package ulm.university.news.data;
 import java.util.List;
 
 /**
- * The Ballot class represents a ballot. A ballot belongs to a group and offer the participants several options for
- * which each participant can vote. Depending on the properties of the ballot participant can vote for either one
+ * The Ballot class represents a ballot. A ballot belongs to a group and offers the participants several options for
+ * which each participant can vote. Depending on the properties of the ballot participants can vote for either one
  * option per ballot or for multiple options. The participants can display the result of the voting. However,
  * depending on the properties the votes can be public or anonymous. If the votes are anonymous, the participants can
  * only determine how many votes an option has received. If the votes are public, it can also be determined which
