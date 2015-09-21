@@ -395,6 +395,9 @@ public class GroupDatabaseManager extends DatabaseManager {
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
         }
+        finally {
+            returnConnection(con);
+        }
 
         logger.debug("End with valid:{}.", valid);
         return valid;

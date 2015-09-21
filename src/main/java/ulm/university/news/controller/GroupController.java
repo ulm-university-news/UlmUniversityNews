@@ -884,16 +884,16 @@ public class GroupController extends AccessController {
         }
 
         // Update the closed status if necessary.
-        boolean closed = ballot.getClosed();
-        if(closed == true && !ballotDB.getClosed() ){
-            logger.info("The ballot with id {} is getting closed.", ballotDB.getId());
-            ballotDB.setClosed(closed);
+        if(ballot.getClosed() != null) {
+            boolean closed = ballot.getClosed();
+            if (closed == true && !ballotDB.getClosed()) {
+                logger.info("The ballot with id {} is getting closed.", ballotDB.getId());
+                ballotDB.setClosed(closed);
+            } else if (closed == false && ballotDB.getClosed()) {
+                logger.info("The ballot with id {} is getting opened again.", ballotDB.getId());
+                ballotDB.setClosed(closed);
+            }
         }
-        else if(closed == false && ballotDB.getClosed()){
-            logger.info("The ballot with id {} is getting opened again.", ballotDB.getId());
-            ballotDB.setClosed(closed);
-        }
-
         return ballotDB;
     }
 
