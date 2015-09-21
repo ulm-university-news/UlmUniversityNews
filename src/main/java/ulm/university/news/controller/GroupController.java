@@ -761,4 +761,125 @@ public class GroupController extends AccessController {
         return ballot;
     }
 
+    /**
+     * Performs an update on the data of the ballot which is identified by the specified id. The ballot object, which
+     * is generated from the request, contains the fields which should be updated and the new values. As far as no data
+     * conditions are harmed, the fields will be updated in the database.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the affected ballot.
+     * @param ballot The ballot object which contains the data values from the request.
+     * @return An updated version of the ballot object taken from the database.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group or the ballot are
+     * not found or the update could not be performed due to a database failure.
+     */
+    public Ballot changeBallot(String accessToken, int groupId, int ballotId, Ballot ballot) throws ServerException {
+        Ballot ballotDB = null;
+        /* Check if requestor is a valid user. The user needs to be an active participant of the group and needs to
+           be the administrator of the affected ballot. */
+        User requestor = verifyUserAccess(accessToken);
+        try {
+            // First, get the group from the database. The group should already contain a list of all participants.
+            Group groupDB = groupDBM.getGroup(groupId, true);
+            if(groupDB == null){
+                String errMsg = "The group with the id " + groupId + " could not be found.";
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
+                throw new ServerException(404, GROUP_NOT_FOUND);
+            }
+
+            // Check if the requestor is an active participant of the group. Otherwise reject the request.
+            if(!groupDB.isValidParticipant(requestor.getId())){
+                String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
+                        " with id " + groupId + ". The request is rejected.";
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+                throw new ServerException(403, USER_FORBIDDEN);
+            }
+
+            // Second, get the ballot object from the database.
+            ballotDB = groupDBM.getBallot(groupId, ballotId);
+            if(ballotDB == null){
+                String errMsg = "The ballot with id " + ballotId + " could not be found in the group with id " +
+                        groupId + ".";
+                logger.error(LOG_SERVER_EXCEPTION, 404, BALLOT_NOT_FOUND);
+                throw new ServerException(404, BALLOT_NOT_FOUND);
+            }
+
+            // Check if the requestor is the administrator of the ballot. Otherwise reject the request.
+            if(!ballotDB.isBallotAdmin(requestor.getId())){
+                String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not the " +
+                        "administrator of the ballot with id " + ballotId + ". The request is rejected.";
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+                throw new ServerException(403, USER_FORBIDDEN);
+            }
+
+            // Determine what needs to be updated and update the corresponding fields in the database.
+            ballotDB = updateBallot(ballot, ballotDB);
+            groupDBM.updateBallot(ballotDB);
+
+            // Notify the participants of the group about the changed ballot.
+            List<User> participants = groupDB.getParticipants();
+            // TODO notify participants.
+
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+        return ballotDB;
+    }
+
+    /**
+     * Compares the ballot object with the received data from the request with the ballot object taken from the
+     * database. Updates the database object with the new data which has been received through the request. Note that
+     * some fields cannot be changed, so if some changes to these fields are described, they will be ignored.
+     *
+     * @param ballot The ballot object which contains the data from the request.
+     * @param ballotDB The ballot object which contains the data from the database.
+     * @return Returns an updated version of the ballot object taken from the database.
+     * @throws ServerException If some data based conditions were harmed.
+     */
+    private Ballot updateBallot(Ballot ballot, Ballot ballotDB) throws ServerException {
+        String newTitle = ballot.getTitle();
+        if(newTitle != null){
+            // Update the title if conditions are met.
+            if(newTitle.matches(BALLOT_TITLE_PATTERN)){
+                ballotDB.setTitle(newTitle);
+            }
+            else{
+                String errMsg = "Invalid ballot title. The given title is " + ballot.getTitle() + ".";
+                logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_TITLE, errMsg);
+                throw new ServerException(400, BALLOT_INVALID_TITLE);
+            }
+        }
+
+        String newDescription = ballot.getDescription();
+        if(newDescription != null){
+            // Update the description if conditions are met.
+            if(newDescription.matches(DESCRIPTION_PATTERN)){
+                ballotDB.setDescription(newDescription);
+            }
+            else{
+                String errMsg = "Invalid description for ballot. Probably the description exceeded the size or the " +
+                        "description contains any special chars which are not supported. The size of the description " +
+                        "is: " +ballot.getDescription().length()+ ". The description is: " +ballot.getDescription()+
+                        ".";
+                logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_DESCRIPTION, errMsg);
+                throw new ServerException(400, BALLOT_INVALID_DESCRIPTION);
+            }
+        }
+
+        // Update the closed status if necessary.
+        boolean closed = ballot.getClosed();
+        if(closed == true && !ballotDB.getClosed() ){
+            logger.info("The ballot with id {} is getting closed.", ballotDB.getId());
+            ballotDB.setClosed(closed);
+        }
+        else if(closed == false && ballotDB.getClosed()){
+            logger.info("The ballot with id {} is getting opened again.", ballotDB.getId());
+            ballotDB.setClosed(closed);
+        }
+
+        return ballotDB;
+    }
+
 }

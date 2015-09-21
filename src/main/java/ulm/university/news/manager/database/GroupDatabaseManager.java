@@ -853,4 +853,42 @@ public class GroupDatabaseManager extends DatabaseManager {
         return ballot;
     }
 
+    /**
+     * Updates the data of the ballot in the database.
+     *
+     * @param ballot The ballot object which contains the new data for the ballot.
+     * @throws DatabaseException If the update of the ballot fails.
+     */
+    public void updateBallot(Ballot ballot) throws DatabaseException {
+        logger.debug("Start with ballot:{}.", ballot);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "UPDATE Ballot " +
+                    "SET Title=?, Description=?, Closed=?, BallotAdmin_User_Id=? " +
+                    "WHERE Id=?;";
+
+            PreparedStatement updateBallotStmt = con.prepareStatement(query);
+            updateBallotStmt.setString(1, ballot.getTitle());
+            updateBallotStmt.setString(2, ballot.getDescription());
+            updateBallotStmt.setBoolean(3, ballot.getClosed());
+            updateBallotStmt.setInt(4, ballot.getAdmin());
+            updateBallotStmt.setInt(5, ballot.getId());
+
+            updateBallotStmt.executeUpdate();
+
+            logger.info("Updated the ballot with id {}.", ballot.getId());
+            updateBallotStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
 }

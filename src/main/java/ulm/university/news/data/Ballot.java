@@ -85,6 +85,19 @@ public class Ballot {
         this.publicVotes = publicVotes;
     }
 
+    /**
+     * Checks if the user with the specified id is the administrator for the ballot.
+     *
+     * @param userId The id of the user.
+     * @return Returns true if the user who is identified by the given id is the ballot administrator, false otherwise.
+     */
+    public boolean isBallotAdmin(int userId){
+        if(this.getAdmin() == userId){
+            return true;
+        }
+        return false;
+    }
+
     public int getId() {
         return id;
     }

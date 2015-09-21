@@ -277,4 +277,28 @@ public class GroupAPI {
         return Response.status(Response.Status.OK).entity(ballot).build();
     }
 
+    /**
+     * Updates the ballot data of the ballot which is identified by the id specified in the URL. The data is updated
+     * based on a description of changes. The description of changes is provided in the JSON Merge Patch format
+     * which is automatically translated into a ballot object.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group extracted from the URL.
+     * @param ballotId The id of the ballot extracted from the URL.
+     * @param ballot The ballot object which has been generated from the JSON Merge Patch document. It contains the
+     *               new data for the ballot.
+     * @return Returns an updated version of the ballot resource.
+     * @throws ServerException If the execution of the PATCH request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @PATCH
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/ballot/{ballotId}")
+    public Response changeBallot(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("ballotId") int ballotId, Ballot ballot) throws ServerException {
+        ballot = groupController.changeBallot(accessToken, groupId, ballotId, ballot);
+        return Response.status(Response.Status.OK).entity(ballot).build();
+    }
+
 }
