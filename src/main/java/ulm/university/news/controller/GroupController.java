@@ -57,11 +57,11 @@ public class GroupController extends AccessController {
             String errMsg = "Incomplete data record. The given group object is " + group + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_DATA_INCOMPLETE, errMsg);
             throw new ServerException(400, GROUP_DATA_INCOMPLETE);
-        } else if (!group.getName().matches(GROUP_NAME_PATTERN)) {
+        } else if (!group.getName().matches(NAME_PATTERN)) {
             String errMsg = "Invalid group name. The given name is " + group.getName() + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_NAME, errMsg);
             throw new ServerException(400, GROUP_INVALID_NAME);
-        } else if (!group.getPassword().matches(GROUP_PASSWORD_PATTERN)) {
+        } else if (!group.getPassword().matches(PASSWORD_HASH_PATTERN)) {
             String errMsg = "Invalid group password.";
             logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_PASSWORD, errMsg);
             throw new ServerException(400, GROUP_INVALID_PASSWORD);
@@ -287,7 +287,7 @@ public class GroupController extends AccessController {
         String newName = group.getName();
         if(newName != null){
             // Update the name if conditions are met.
-            if(newName.matches(GROUP_NAME_PATTERN)){
+            if(newName.matches(NAME_PATTERN)){
                 groupDB.setName(newName);
             }
             else{
@@ -315,7 +315,7 @@ public class GroupController extends AccessController {
         String newPassword = group.getPassword();
         if(newPassword != null){
             // Update the password if conditions are met.
-            if(newPassword.matches(GROUP_PASSWORD_PATTERN)){
+            if(newPassword.matches(PASSWORD_HASH_PATTERN)){
                 groupDB.setPassword(newPassword);
                 // Prepare the password for the storing in the database.
                 groupDB.encryptPassword();
@@ -621,7 +621,7 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_DATA_INCOMPLETE, errMsg);
             throw new ServerException(400, BALLOT_DATA_INCOMPLETE);
         }
-        else if(!ballot.getTitle().matches(BALLOT_TITLE_PATTERN)){
+        else if(!ballot.getTitle().matches(NAME_PATTERN)){
             String errMsg = "Invalid ballot title. The given title is " + ballot.getTitle() + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_TITLE, errMsg);
             throw new ServerException(400, BALLOT_INVALID_TITLE);
@@ -857,7 +857,7 @@ public class GroupController extends AccessController {
         String newTitle = ballot.getTitle();
         if(newTitle != null){
             // Update the title if conditions are met.
-            if(newTitle.matches(BALLOT_TITLE_PATTERN)){
+            if(newTitle.matches(NAME_PATTERN)){
                 ballotDB.setTitle(newTitle);
             }
             else{

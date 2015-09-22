@@ -42,14 +42,14 @@ public class ChannelController extends AccessController {
         if (channel.getName() == null || channel.getType() == null || channel.getContacts() == null) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Channel data is incomplete.");
             throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
-        } else if (!Pattern.compile(CHANNEL_NAME_PATTERN).matcher(channel.getName()).matches()) {
+        } else if (!Pattern.compile(NAME_PATTERN).matcher(channel.getName()).matches()) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_NAME, "Channel name is invalid.");
             throw new ServerException(400, CHANNEL_INVALID_NAME);
         } else if(channel.getTerm() != null && !channel.getTerm().matches(TERM_PATTERN)){
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_TERM, "Invalid term.");
             throw new ServerException(400, CHANNEL_INVALID_TERM);
         }
-        // TODO Other (e.g. contacts) input validation?
+        // TODO Other (e.g. contacts) input validation? Verify length only!
 
         // Perform special checks for the received data of the lecture subclass.
         if (channel.getType() == ChannelType.LECTURE) {
@@ -59,7 +59,7 @@ public class ChannelController extends AccessController {
                     throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
                 }
         }
-        // TODO Input validation of subclass fields?
+        // TODO Input validation of subclass fields? Verify length only!
 
         // Check if requestor is a valid moderator.
         Moderator moderatorRequestorDB = verifyModeratorAccess(accessToken);

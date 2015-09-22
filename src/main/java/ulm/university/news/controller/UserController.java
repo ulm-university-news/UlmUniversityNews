@@ -49,7 +49,7 @@ public class UserController extends AccessController{
                     "object is: " + user + ".");
             throw new ServerException(400, USER_DATA_INCOMPLETE);
         }
-        else if(!user.getName().matches(NAME_PATTERN)){
+        else if(!user.getName().matches(ACCOUNT_NAME_PATTERN)){
             logger.error(LOG_SERVER_EXCEPTION, 400, USER_NAME_INVALID, "Invalid username. The given username is: " +
                     user.getName() + ".");
             throw new ServerException(400, USER_NAME_INVALID);
@@ -230,7 +230,7 @@ public class UserController extends AccessController{
         String newName = user.getName();
         if(newName != null){
             // Update name if conditions are met.
-            if(user.getName().matches(NAME_PATTERN)){
+            if(user.getName().matches(ACCOUNT_NAME_PATTERN)){
                 userDB.setName(newName);
             }
             else{

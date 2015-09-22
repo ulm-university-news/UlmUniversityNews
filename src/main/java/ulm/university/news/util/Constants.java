@@ -13,10 +13,10 @@ public class Constants {
     public static final ZoneId TIME_ZONE = ZoneId.of("Europe/Berlin");
 
     /** A pattern which describes the valid form of a user or moderator name. */
-    public static final String NAME_PATTERN = "^[a-zA-Z0-9]{3,35}$";
+    public static final String ACCOUNT_NAME_PATTERN = "^[a-zA-Z0-9]{3,35}$";
 
-    /** A pattern which describes the valid form of a moderator password. */
-    public static final String PASSWORD_PATTERN = "^[a-zA-Z0-9]{10,35}$";
+    /** A pattern which describes the valid form of a password hash. */
+    public static final String PASSWORD_HASH_PATTERN = "^[a-fA-F0-9]{64}$";
 
     /** A pattern which describes the valid form of an user access token. */
     public static final String USER_TOKEN_PATTERN = "^[a-fA-F0-9]{56}$";
@@ -24,18 +24,8 @@ public class Constants {
     /** A pattern which describes the valid form of a moderator access token. */
     public static final String MODERATOR_TOKEN_PATTERN = "^[a-fA-F0-9]{64}$";
 
-    /** A pattern which describes the valid form of a group name. */
-    public static final String GROUP_NAME_PATTERN = "^[a-zA-Z0-9\\p{Blank}]{3,45}$";
-
-    /** A pattern which describes the valid form of a channel name. */
-    public static final String CHANNEL_NAME_PATTERN = "^[a-zA-Z0-9\\p{Blank}]{3,45}$";
-
-    /** A pattern which describes the valid form of a ballot title. */
-    public static final String BALLOT_TITLE_PATTERN = "^[a-zA-Z0-9\\p{Blank}]{3,45}$";
-
-    // TODO Don't we except a hash here? That's a topic for the next meeting.
-    /** A pattern which describes the valid form of a group password. */
-    public static final String GROUP_PASSWORD_PATTERN = "^[a-zA-Z0-9\\p{Punct}]{3,64}$";
+    /** A pattern which describes the valid form of a resource name or title. */
+    public static final String NAME_PATTERN = "^[öÖäÄüÜßa-zA-Z0-9\\p{Blank}]{3,45}$";
 
     /** A pattern which describes the valid form of a term string. The term is always noted in the form WS or SS plus
      *  the year yyyy. In WS, the year can also be given as yyyy/yy, e.g. 2015/16.*/
@@ -69,7 +59,7 @@ public class Constants {
     public static final int MODERATOR_NAME_ALREADY_EXISTS = 2006;
     public static final int MODERATOR_DELETED = 2007;
     public static final int MODERATOR_LOCKED = 2008;
-    public static final int MODERATOR_INCORRECT_PASSWORD = 2009;
+    public static final int MODERATOR_UNAUTHORIZED = 2009;
 
     // Channel:
     public static final int CHANNEL_NOT_FOUND = 3000;

@@ -70,9 +70,9 @@ public class ModeratorAPI {
      * Create a new moderator account. The data of the new moderator is provided within the moderator object. The
      * generated moderator resource will be returned including the URI which can be used to access the resource.
      *
-     * @param moderator A moderator object including the data of the new moderator.
+     * @param moderator The moderator object which contains the data from the request.
      * @param uriInfo Information about the URI of this request.
-     * @return Response object including the generated moderator object and a set Location Header.
+     * @return Response object including the created moderator object and a set Location Header.
      * @throws ServerException If the execution of the POST request has failed. The ServerException contains
      * information about the error which has occurred.
      */
@@ -81,9 +81,9 @@ public class ModeratorAPI {
     @Produces(MediaType.APPLICATION_JSON)
     public Response createModerator(Moderator moderator, @Context UriInfo uriInfo) throws ServerException {
         moderator = moderatorCtrl.createModerator(moderator);
-        // Create the URI for the generated moderator resource.
+        // Create the URI for the created moderator resource.
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "moderator" + "/" + moderator.getId());
-        // Return the generated moderator resource and set the Location Header.
+        // Return the created moderator resource and set the Location Header.
         return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(moderator).build();
     }
 

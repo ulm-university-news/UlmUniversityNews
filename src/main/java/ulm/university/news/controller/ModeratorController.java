@@ -39,7 +39,7 @@ public class ModeratorController extends AccessController {
      * for this moderator. If the moderator account creation is successful, the moderator object with all corresponding
      * data is returned.
      *
-     * @param moderator The Moderator object which contains the data from the request.
+     * @param moderator A moderator object including the data of the new moderator.
      * @return The moderator object with the data of the created moderator account.
      * @throws ServerException If moderator account creation failed.
      */
@@ -47,21 +47,22 @@ public class ModeratorController extends AccessController {
         logger.debug("Start with moderator:{}.", moderator);
         // Perform checks on the received data. If the data isn't accurate the moderator can't be created.
         // In case of inaccuracy, send 400 Bad Request and abort execution.
-        if (moderator == null || moderator.getName() == null || moderator.getPassword() == null || moderator.getEmail()
+        if (moderator.getName() == null || moderator.getPassword() == null || moderator.getEmail()
                 == null || moderator.getFirstName() == null || moderator.getLastName() == null ||
                 moderator.getMotivation() == null) {
             logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_DATA_INCOMPLETE, "Moderator data is incomplete.");
             throw new ServerException(400, MODERATOR_DATA_INCOMPLETE);
-        } else if (!Pattern.compile(NAME_PATTERN).matcher(moderator.getName()).matches()) {
+        } else if (!Pattern.compile(ACCOUNT_NAME_PATTERN).matcher(moderator.getName()).matches()) {
             logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_INVALID_NAME, "Name is invalid.");
             throw new ServerException(400, MODERATOR_INVALID_NAME);
         } else if (!EmailValidator.getInstance().isValid(moderator.getEmail())) {
             logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_INVALID_EMAIL, "Email address is invalid.");
             throw new ServerException(400, MODERATOR_INVALID_EMAIL);
-        } else if (!Pattern.compile(PASSWORD_PATTERN).matcher(moderator.getPassword()).matches()) {
+        } else if (!Pattern.compile(PASSWORD_HASH_PATTERN).matcher(moderator.getPassword()).matches()) {
             logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_INVALID_PASSWORD, "Password is invalid.");
             throw new ServerException(400, MODERATOR_INVALID_PASSWORD);
         }
+        // TODO First and last name input validation? Verify length only!
 
         // Initialize remaining fields.
         moderator.setLocked(true);
@@ -88,9 +89,8 @@ public class ModeratorController extends AccessController {
                 moderator.createModeratorToken();
             } catch (ModeratorNameAlreadyExistsException e) {
                 logger.info(e.getMessage());
-                // TODO 500 Internal Server Error or rather 400 Bad Request or something?
-                logger.error(LOG_SERVER_EXCEPTION, 500, MODERATOR_NAME_ALREADY_EXISTS, "Moderator name already exits.");
-                throw new ServerException(500, MODERATOR_NAME_ALREADY_EXISTS);
+                logger.error(LOG_SERVER_EXCEPTION, 409, MODERATOR_NAME_ALREADY_EXISTS, "Moderator name already exits.");
+                throw new ServerException(409, MODERATOR_NAME_ALREADY_EXISTS);
             } catch (DatabaseException e) {
                 logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Creation of moderator " +
                         "account failed.");
@@ -100,7 +100,7 @@ public class ModeratorController extends AccessController {
 
         // TODO Send account created email to moderator.
 
-        /// Clear fields which should not be delivered to the requestor.
+        // Clear fields which should not be delivered to the requestor.
         moderator.setPassword(null);
         moderator.setServerAccessToken(null);
 
@@ -328,7 +328,7 @@ public class ModeratorController extends AccessController {
         if (moderator.isAdmin() != null) {
             moderatorDB.setAdmin(moderator.isAdmin());
         }
-        // TODO Send account (un)locked / deleted email to moderator.
+        // TODO Send account (un)locked / (remove/add) admin rights email to moderator.
         return moderatorDB;
     }
 
@@ -367,7 +367,7 @@ public class ModeratorController extends AccessController {
             }
         }
         if (moderator.getPassword() != null){
-            if (!Pattern.compile(PASSWORD_PATTERN).matcher(moderator.getPassword()).matches()) {
+            if (!Pattern.compile(PASSWORD_HASH_PATTERN).matcher(moderator.getPassword()).matches()) {
                 logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_INVALID_PASSWORD, "Password is invalid.");
                 throw new ServerException(400, MODERATOR_INVALID_PASSWORD);
             } else {
@@ -457,7 +457,7 @@ public class ModeratorController extends AccessController {
         if (moderatorName == null) {
             logger.error(LOG_SERVER_EXCEPTION, 400, DATA_INCOMPLETE, "Moderator name is not set.");
             throw new ServerException(400, DATA_INCOMPLETE);
-        } else if (!Pattern.compile(NAME_PATTERN).matcher(moderatorName).matches()) {
+        } else if (!Pattern.compile(ACCOUNT_NAME_PATTERN).matcher(moderatorName).matches()) {
             logger.error(LOG_SERVER_EXCEPTION, 400, MODERATOR_INVALID_NAME, "Name is invalid.");
             throw new ServerException(400, MODERATOR_INVALID_NAME);
         }
@@ -524,14 +524,12 @@ public class ModeratorController extends AccessController {
         if (moderatorName == null || password == null) {
             logger.error(LOG_SERVER_EXCEPTION, 400, DATA_INCOMPLETE, "Authentication data is incomplete.");
             throw new ServerException(400, DATA_INCOMPLETE);
-        } else if (!Pattern.compile(NAME_PATTERN).matcher(moderatorName).matches()) {
-            // TODO Send 401 Unauthorized instead of 400 Bad Request?
-            logger.error(LOG_SERVER_EXCEPTION, 401, MODERATOR_INVALID_NAME, "Name is invalid.");
-            throw new ServerException(401, MODERATOR_INVALID_NAME);
-        } else if (!Pattern.compile(PASSWORD_PATTERN).matcher(password).matches()) {
-            // TODO Send 401 Unauthorized instead of 400 Bad Request?
-            logger.error(LOG_SERVER_EXCEPTION, 401, MODERATOR_INVALID_PASSWORD, "Password is invalid.");
-            throw new ServerException(401, MODERATOR_INVALID_PASSWORD);
+        } else if (!Pattern.compile(ACCOUNT_NAME_PATTERN).matcher(moderatorName).matches()) {
+            logger.error(LOG_SERVER_EXCEPTION, 401, MODERATOR_UNAUTHORIZED, "Name is invalid.");
+            throw new ServerException(401, MODERATOR_UNAUTHORIZED);
+        } else if (!Pattern.compile(PASSWORD_HASH_PATTERN).matcher(password).matches()) {
+            logger.error(LOG_SERVER_EXCEPTION, 401, MODERATOR_UNAUTHORIZED, "Password is invalid.");
+            throw new ServerException(401, MODERATOR_UNAUTHORIZED);
         }
 
         // Get moderator from database.
@@ -546,9 +544,8 @@ public class ModeratorController extends AccessController {
 
         // Verify moderator account exists.
         if (moderatorDB == null) {
-            // TODO Send 401 Unauthorized instead of 404 Not Found?
-            logger.error(LOG_SERVER_EXCEPTION, 401, MODERATOR_NOT_FOUND, "Moderator account not found.");
-            throw new ServerException(401, MODERATOR_NOT_FOUND);
+            logger.error(LOG_SERVER_EXCEPTION, 401, MODERATOR_UNAUTHORIZED, "Moderator account not found.");
+            throw new ServerException(401, MODERATOR_UNAUTHORIZED);
         }
 
         // Check if moderator account is deleted.
@@ -565,16 +562,12 @@ public class ModeratorController extends AccessController {
 
         // Check if password is correct.
         if (!moderatorDB.verifyPassword(password)) {
-            logger.error(LOG_SERVER_EXCEPTION, 401, MODERATOR_INCORRECT_PASSWORD, "Moderator password incorrect.");
-            throw new ServerException(401, MODERATOR_INCORRECT_PASSWORD);
+            logger.error(LOG_SERVER_EXCEPTION, 401, MODERATOR_UNAUTHORIZED, "Moderator password incorrect.");
+            throw new ServerException(401, MODERATOR_UNAUTHORIZED);
         }
 
         // Do not return the encrypted password to the requestor.
         moderatorDB.setPassword(null);
-
-        // TODO Send back MODERATOR_INCORRECT_PASSWORD, MODERATOR_INVALID_NAME, MODERATOR_INVALID_PASSWORD,
-        // TODO MODERATOR_NOT_FOUND, MODERATOR_DELETED, MODERATOR_LOCKED or just the same for all?
-        // TODO For example: MODERATOR_UNAUTHORIZED
 
         return moderatorDB;
     }
