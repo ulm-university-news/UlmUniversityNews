@@ -40,7 +40,7 @@ public class UserController extends AccessController{
      *
      * @param user The user object which contains the data from the request.
      * @return The user object with the data of the created user account.
-     * @throws ServerException If user account creation failed.
+     * @throws ServerException If user account creation fails.
      */
     public User createUser(User user) throws ServerException {
         // Perform checks on the received data. If the data is incomplete the user can't be created.
@@ -88,7 +88,6 @@ public class UserController extends AccessController{
      */
     public List<User> getUsers(String accessToken) throws ServerException {
         List<User> users = null;
-        TokenType tokenType= verifyAccessToken(accessToken);
 
         // Get the moderator which is identified by the access token.
         Moderator moderator = verifyModeratorAccess(accessToken);
@@ -122,8 +121,8 @@ public class UserController extends AccessController{
      * @param accessToken The access token of the requestor
      * @param userId The id of the user account which should be retrieved.
      * @return The user object with the data of the user account.
-     * @throws ServerException If the requstor is unauthorized, the user resource has not been found or a database
-     * failure has occurred.
+     * @throws ServerException If the requstor is unauthorized, the user resource is not found or a database
+     * failure occurs.
      */
     public User getUser(String accessToken, int userId) throws ServerException {
         User user = null;
@@ -209,7 +208,7 @@ public class UserController extends AccessController{
      * @param user The user object which contains the data from the request.
      * @param userDB The user object which contains the data from the database.
      * @return Returns an updated version of the user object taken from the database.
-     * @throws ServerException If some data based conditions were harmed.
+     * @throws ServerException If some data based conditions are harmed.
      */
     private User updateUser(User user, User userDB) throws ServerException{
         String newName = user.getName();
