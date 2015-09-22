@@ -11,13 +11,13 @@ import ulm.university.news.data.enums.Platform;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
 
-import javax.naming.ldap.PagedResultsControl;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * TODO
+ * The GroupDatabaseManager provides methods to access, insert or update data in the database related to Group
+ * resources and its corresponding sub-resources. The sub-resources of a group are ballots, options and conversations.
  *
  * @author Matthias Mak
  * @author Philipp Speidel
@@ -126,7 +126,7 @@ public class GroupDatabaseManager extends DatabaseManager {
      *                  which contain this value in their name.
      * @param groupType The search parameter for the group type. If it is set, the method will only return groups
      *                  which are of the specified type.
-     * @return A list of groups. List can also be empty.
+     * @return A list of groups. The list can also be empty.
      * @throws DatabaseException If the search query could not be executed due to database failure.
      */
     public List<Group> getGroups(String groupName, GroupType groupType) throws DatabaseException {
@@ -178,7 +178,7 @@ public class GroupDatabaseManager extends DatabaseManager {
                 String term = getGroupsRs.getString("Term");
                 int groupAdmin = getGroupsRs.getInt("GroupAdmin_User_Id");
 
-                // The password is never returned in a GET request, it is set to null.
+                // The password is never returned in the GET all groups request, it is set to null.
                 Group tmp = new Group(id, name, description, groupType, creationDate, modificationDate, term, null,
                         groupAdmin);
                 groups.add(tmp);
@@ -333,8 +333,8 @@ public class GroupDatabaseManager extends DatabaseManager {
     }
 
     /**
-     * Deletes the group with the specified id from the database. All subresources of the group are deleted as well.
-     * This happens automatically as the subresources depend on the group and are thus removed if the group is deleted.
+     * Deletes the group with the specified id from the database. All sub-resources of the group are deleted as well.
+     * This happens automatically as the sub-resources depend on the group and are thus removed if the group is deleted.
      *
      * @param groupId The id of the group which should be deleted.
      * @throws DatabaseException If the group could not be deleted due to a database failure.
@@ -451,7 +451,7 @@ public class GroupDatabaseManager extends DatabaseManager {
      *
      * @param groupId The id of the group that the user intends to join.
      * @param userId The id of the user who joins the group.
-     * @throws DatabaseException If the execution of the query fails.
+     * @throws DatabaseException If the participant could not be added to the group due to a database failure.
      */
     public void addParticipantToGroup(int groupId, int userId) throws DatabaseException {
         logger.debug("Start with groupId:{} and userId:{}.", groupId, userId);
@@ -471,11 +471,11 @@ public class GroupDatabaseManager extends DatabaseManager {
             ResultSet getParticipantRs = getParticipantStmt.executeQuery();
             if(getParticipantRs.next()){
                 logger.warn("User with id: {} is already in the participant table of the group with id {}. If the " +
-                        "user is set to inactive, it will be set to active again. Otherwise, no action will " +
+                        "status of the user is inactive, it will be set to active again. Otherwise, no action will " +
                         "be taken.", userId, groupId);
                 boolean active = getParticipantRs.getBoolean("Active");
 
-                if(active == false){
+                if(!active){
                     // Set the active field to true again.
                     String updateParticipantQuery =
                             "UPDATE UserGroup " +
@@ -535,7 +535,7 @@ public class GroupDatabaseManager extends DatabaseManager {
      * @throws DatabaseException If the execution fails due to database failure.
      */
     public List<User> getParticipants(int groupId) throws DatabaseException {
-        logger.debug("Start with groupId:{].", groupId);
+        logger.debug("Start with groupId:{}.", groupId);
         List<User> users = new ArrayList<User>();
         Connection con = null;
         try {
@@ -644,7 +644,7 @@ public class GroupDatabaseManager extends DatabaseManager {
                     "BallotAdmin_User_Id) " +
                     "VALUES (?,?,?,?,?,?,?);";
 
-            // When the ballot is stored into the database, it is never closed.
+            // When the ballot is stored into the database, it is not closed.
             ballot.setClosed(false);
 
             PreparedStatement insertBallotStmt = con.prepareStatement(query);
@@ -705,7 +705,7 @@ public class GroupDatabaseManager extends DatabaseManager {
                     "WHERE Group_Id=?;";
             String getBallotOptionsQuery =
                     "SELECT * " +
-                    "FROM Option " +
+                    "FROM `Option` " +
                     "WHERE Ballot_Id=?;";
             String getUserIdsQuery =
                     "SELECT User_Id " +
@@ -715,11 +715,11 @@ public class GroupDatabaseManager extends DatabaseManager {
             PreparedStatement getBallotsStmt = con.prepareStatement(getBallotsQuery);
             getBallotsStmt.setInt(1, groupId);
 
-            // If the subresources should be contained, prepare the statements here.
+            // If the sub-resources should be contained, prepare the statements here.
             PreparedStatement getBallotOptionsStmt = null;
             PreparedStatement getBallotOptionVotersStmt = null;
             if(withSubresources){
-                logger.info("Including the subresources into the ballots of group with id {}.", groupId);
+                logger.info("Including the sub-resources into the ballots of group with id {}.", groupId);
                 getBallotOptionsStmt = con.prepareStatement(getBallotOptionsQuery);
                 getBallotOptionVotersStmt = con.prepareStatement(getUserIdsQuery);
             }
@@ -737,7 +737,7 @@ public class GroupDatabaseManager extends DatabaseManager {
 
                 Ballot ballotTmp = new Ballot(id, title, description, ballotAdmin, closed, multipleChoice, publicVotes);
 
-                // Request the subresources options and voters if required.
+                // Request the sub-resources options and voters if required.
                 if(withSubresources){
                     List<Option> ballotOptions = new ArrayList<Option>();
                     // Request all options for the ballot.
@@ -843,8 +843,8 @@ public class GroupDatabaseManager extends DatabaseManager {
     }
 
     /**
-     * Returns the ballot object of the ballot with the specified id. The ballot needs to belong to the group with
-     * the defined id.
+     * Returns the ballot object of the ballot with the specified id. The ballot needs to belong to the group which
+     * is identified by the defined id.
      *
      * @param groupId The id of the group.
      * @param ballotId The id of the ballot.
