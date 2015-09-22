@@ -17,7 +17,9 @@ import java.util.List;
 import static ulm.university.news.util.Constants.*;
 
 /**
- * TODO
+ * The GroupController handles requests concerning the group resources and the corresponding sub-resources. The
+ * sub-resources of the group resource are options and conversations. The GroupController provides methods to
+ * retrieve, create, update or delete group resources and their sub-resources.
  *
  * @author Matthias Mak
  * @author Philipp Speidel
@@ -26,6 +28,12 @@ public class GroupController extends AccessController {
 
     /** An instance of the Logger class which performs logging for the GroupController class. */
     private static final Logger logger = LoggerFactory.getLogger(GroupController.class);
+
+    // Error messages:
+    private static final String INVALID_TOKEN_ERROR_MSG =
+            "To perform this operation a valid access token needs to be provided.";
+    private static final String MODERATOR_FORBIDDEN_ERROR_MSG =
+            "Moderator is not allowed to perform the requested  operation.";
 
     /** Instance of the GroupDatabaseManager class. */
     private GroupDatabaseManager groupDBM = new GroupDatabaseManager();
@@ -48,12 +56,8 @@ public class GroupController extends AccessController {
      * requestor is not allowed to perform the operation, a ServerException is thrown as well.
      */
     public Group createGroup(String accessToken, Group group) throws ServerException {
-        // Check if the requestor is a valid user. Only users are allowed to perform this operation.
-        User user = verifyUserAccess(accessToken);
-
         // Check if the received data is valid.
-        if (group == null || group.getName() == null || group.getGroupType() == null ||
-                group.getPassword() == null || group.getGroupAdmin() == 0) {
+        if (group == null || group.getName() == null || group.getGroupType() == null || group.getPassword() == null) {
             String errMsg = "Incomplete data record. The given group object is " + group + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_DATA_INCOMPLETE, errMsg);
             throw new ServerException(400, GROUP_DATA_INCOMPLETE);
@@ -77,6 +81,9 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_TERM, errMsg);
             throw new ServerException(400, GROUP_INVALID_TERM);
         }
+
+        // Check if the requestor is a valid user. Only users are allowed to perform this operation.
+        User user = verifyUserAccess(accessToken);
 
         // Check if the group admin is set correctly.
         if (group.getGroupAdmin() != user.getId()) {
@@ -126,24 +133,15 @@ public class GroupController extends AccessController {
            Users and system administrators can perform this operation. */
         TokenType tokenType = verifyAccessToken(accessToken);
         if(tokenType == TokenType.INVALID){
-            String errMsg = "To perform this operation a valid access token needs to be provided.";
-            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, INVALID_TOKEN_ERROR_MSG);
             throw new ServerException(401, TOKEN_INVALID);
+        }
+        if(tokenType == TokenType.MODERATOR && !isAdministrator(accessToken)) {
+            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, MODERATOR_FORBIDDEN_ERROR_MSG);
+            throw new ServerException(403, MODERATOR_FORBIDDEN);
         }
 
         try {
-            if (tokenType == TokenType.MODERATOR) {
-                Moderator moderator = moderatorDBM.getModeratorByToken(accessToken);
-                // Besides users, only administrators have the permission to perform this operation.
-                if(moderator.isAdmin() == false){
-                    String errMsg = "Moderator is not allowed to perform the requested operation.";
-                    logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
-                    throw new ServerException(403, MODERATOR_FORBIDDEN);
-                }else{
-                    logger.info("Administrator with id {} requests groups.", moderator.getId());
-                }
-            }
-
             // Get the groups from the database.
             groups = groupDBM.getGroups(groupName, groupType);
             logger.info("Returns list of groups with size {}.", groups.size());
@@ -173,40 +171,19 @@ public class GroupController extends AccessController {
         /* Verify access token and check whether the requestor is allowed to perform the operation.
            Users and system administrators can perform this operation. */
         TokenType tokenType = verifyAccessToken(accessToken);
-        if(tokenType == TokenType.INVALID){
-            String errMsg = "To perform this operation a valid access token needs to be provided.";
-            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
+        if (tokenType == TokenType.INVALID) {
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, INVALID_TOKEN_ERROR_MSG);
             throw new ServerException(401, TOKEN_INVALID);
         }
-
-        try {
-            if (tokenType == TokenType.MODERATOR) {
-                Moderator moderator = moderatorDBM.getModeratorByToken(accessToken);
-                // Besides users, only administrators have the permission to perform this operation.
-                if(moderator.isAdmin() == false){
-                    String errMsg = "Moderator is not allowed to perform the requested operation.";
-                    logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
-                    throw new ServerException(403, MODERATOR_FORBIDDEN);
-                }else{
-                    logger.info("Administrator with id {} requests group with id {}.", moderator.getId(), groupId);
-                }
-            }
-
-            // Get the group from the database.
-            group = groupDBM.getGroup(groupId, withParticipants);
-            if(group == null){
-                String errMsg = "The group with the id " + groupId + " could not be found.";
-                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
-                throw new ServerException(404, GROUP_NOT_FOUND);
-            }
-
-            // The password should not be returned to the requestor, so set it to null.
-            group.setPassword(null);
-
-        } catch (DatabaseException e) {
-            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
-            throw new ServerException(500, DATABASE_FAILURE);
+        if (tokenType == TokenType.MODERATOR && !isAdministrator(accessToken)) {
+            logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, MODERATOR_FORBIDDEN_ERROR_MSG);
+            throw new ServerException(403, MODERATOR_FORBIDDEN);
         }
+
+        // Get the group from the database.
+        group = getGroup(groupId, withParticipants);
+        // The password should not be returned to the requestor, so set it to null.
+        group.setPassword(null);
 
         return group;
     }
@@ -232,42 +209,34 @@ public class GroupController extends AccessController {
 
         // Check if the requestor is a valid user. Only users (here the group administrator) are allowed to perform
         // this operation.
-        User user = verifyUserAccess(accessToken);
+        User requestor = verifyUserAccess(accessToken);
 
-        Group groupDB = null;
+        // Get the data of the group from the database. The group should already contain the list of participants.
+        Group groupDB = getGroup(groupId, true);
+        // Check if the user is allowed to execute the update operation.
+        if(requestor.getId() != groupDB.getGroupAdmin()){
+            String errMsg = "The user with id " + requestor.getId() + " is not the group administrator of this group." +
+                    "  The user is thus not allowed to change the group data.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+
         try {
-            // Get the data of the group from the database. The group should already contain the list of participants.
-            groupDB = groupDBM.getGroup(groupId, true);
-            if(groupDB == null){
-                String errMsg = "The group with the id " + groupId + " could not be found.";
-                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
-                throw new ServerException(404, GROUP_NOT_FOUND);
-            }
-
-            // Check if the user is allowed to execute the update operation.
-            if(user.getId() != groupDB.getGroupAdmin()){
-                String errMsg = "The user is not the group administrator of this group. The user is thus not allowed " +
-                        "to change the group data.";
-                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-                throw new ServerException(403, USER_FORBIDDEN);
-            }
-
             // Determine what needs to be updated and update the corresponding fields in the database.
             groupDB = updateGroup(group, groupDB);
             groupDBM.updateGroup(groupDB);
-
-            List<User> participants = groupDB.getParticipants();
-            // TODO send notification to participants
-
-            // Don't return the list of participants in the response.
-            groupDB.setParticipants(null);
-            // Don't return the password in the response.
-            groupDB.setPassword(null);
-
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+
+        List<User> participants = groupDB.getParticipants();
+        // TODO send notification to participants
+
+        // Don't return the list of participants in the response.
+        groupDB.setParticipants(null);
+        // Don't return the password in the response.
+        groupDB.setPassword(null);
 
         return groupDB;
     }
@@ -278,12 +247,12 @@ public class GroupController extends AccessController {
      * some fields cannot be changed, so if some changes to these fields are described, they will be ignored.
      *
      * @param group The group object which contains the data from the request.
-     * @param groupDB The group object which contains the data from the database.
+     * @param groupDB The group object which contains the data from the database and a list of its participants. The
+     *                list of participants needs to be set, otherwise not all conditions can be checked successfully.
      * @return Returns an updated version of the group object taken from the database.
-     * @throws ServerException If some data based conditions were harmed.
-     * @throws DatabaseException If the validation of some data against the database fails.
+     * @throws ServerException If some data based conditions are harmed.
      */
-    private Group updateGroup(Group group, Group groupDB) throws ServerException, DatabaseException {
+    private Group updateGroup(Group group, Group groupDB) throws ServerException {
         String newName = group.getName();
         if(newName != null){
             // Update the name if conditions are met.
@@ -342,7 +311,7 @@ public class GroupController extends AccessController {
         int newGroupAdmin = group.getGroupAdmin();
         if(newGroupAdmin != 0){
             // Update the group admin if conditions are met.
-            if(groupDBM.isActiveParticipant(groupDB.getId(), newGroupAdmin)){
+            if(groupDB.isValidParticipant(newGroupAdmin)){
                 groupDB.setGroupAdmin(newGroupAdmin);
             }
             else{
@@ -361,7 +330,7 @@ public class GroupController extends AccessController {
     }
 
     /**
-     * Deletes the group with the specified id. All corresponding subresources like conversations and ballots are
+     * Deletes the group with the specified id. All corresponding sub-resources like conversations and ballots are
      * deleted as well.
      *
      * @param accessToken The access token of the requestor.
@@ -374,20 +343,14 @@ public class GroupController extends AccessController {
            group. */
         TokenType tokenType = verifyAccessToken(accessToken);
         if(tokenType == TokenType.INVALID){
-            String errMsg = "To perform this operation a valid access token needs to be provided.";
-            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, INVALID_TOKEN_ERROR_MSG);
             throw new ServerException(401, TOKEN_INVALID);
         }
 
-        try {
-            // Request the affected group. The group should contain a list of all its participants.
-            Group groupDB = groupDBM.getGroup(groupId, true);
-            if(groupDB == null){
-                String errMsg = "The group with the id " + groupId + " could not be found.";
-                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
-                throw new ServerException(404, GROUP_NOT_FOUND);
-            }
+        // Request the affected group. The group should contain a list of all its participants.
+        Group groupDB = getGroup(groupId, true);
 
+        try {
             // Check whether the requestor has the permission to delete the group.
             if(tokenType == TokenType.USER){
                 // Note that user cannot be null here as the access token has been verified.
@@ -403,12 +366,10 @@ public class GroupController extends AccessController {
                 }
             }
             else if (tokenType == TokenType.MODERATOR) {
-                // TODO Check moderator for null?
                 Moderator moderator = moderatorDBM.getModeratorByToken(accessToken);
                 // Besides group administrators, only administrators have the permission to perform this operation.
                 if (moderator.isAdmin() == false) {
-                    String errMsg = "Moderator is not allowed to perform the requested operation.";
-                    logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
+                    logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, MODERATOR_FORBIDDEN_ERROR_MSG);
                     throw new ServerException(403, MODERATOR_FORBIDDEN);
                 } else {
                     logger.info("Administrator with id {} wants to delete the group with id {}.", moderator.getId(),
@@ -416,18 +377,18 @@ public class GroupController extends AccessController {
                 }
             }
 
-            // Get all participants of the group.
-            List<User> participants = groupDB.getParticipants();
-
             // Delete the group and all corresponding resources.
             groupDBM.deleteGroup(groupId);
-
-            // TODO notify participants about deleted group
 
         }catch (DatabaseException e){
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+
+        // Get all participants of the group.
+        List<User> participants = groupDB.getParticipants();
+
+        // TODO notify participants about deleted group
     }
 
     /**
@@ -514,6 +475,8 @@ public class GroupController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
+        // TODO set pushToken and platform to null
+
         return users;
     }
 
@@ -580,7 +543,7 @@ public class GroupController extends AccessController {
             if(participantId == requestor.getId()){
                 logger.info("The user with id {} has left the group with id {}.", requestor.getId(), groupId);
                 // TODO send notification with type GROUP_PARTICIPANT_LEFT
-                // TODO remove the participant with participantId from the participants list first?
+                // TODO remove the participant with participantId from the participants list first? -> remove him
             }
             else{
                 logger.info("The user with id {} has been removed from the group with id {} by the group " +
@@ -957,6 +920,31 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+    }
+
+    /**
+     * A helper method which requests the group with the specified id from the database manager. It can be defined
+     * whether the group object should already contain a list of the participants of the group.
+     *
+     * @param groupId The id of the group.
+     * @param withParticipants Indicates whether the group object should contain a list of participants.
+     * @return Returns the group object of the requested group.
+     * @throws ServerException If the group is not found or the retrieval from the database fails.
+     */
+    private Group getGroup(int groupId, boolean withParticipants) throws ServerException {
+        Group group = null;
+        try {
+            group = groupDBM.getGroup(groupId, withParticipants);
+            if (group == null) {
+                String errMsg = "The group with the id " + groupId + " could not be found.";
+                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
+                throw new ServerException(404, GROUP_NOT_FOUND);
+            }
+        } catch (DatabaseException e){
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+        return group;
     }
 
 }
