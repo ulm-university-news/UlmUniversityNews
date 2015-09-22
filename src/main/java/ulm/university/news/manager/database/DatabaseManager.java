@@ -20,7 +20,9 @@ import java.sql.SQLException;
  */
 public class DatabaseManager {
 
-    /** An instance of the Logger class which performs logging for the DatabaseManager. */
+    /**
+     * An instance of the Logger class which performs logging for the DatabaseManager.
+     */
     private static final Logger logger = LoggerFactory.getLogger(DatabaseManager.class);
 
     /**
@@ -28,7 +30,7 @@ public class DatabaseManager {
      *
      * @return A connection to the database.
      */
-    protected Connection getDatabaseConnection()throws SQLException{
+    protected Connection getDatabaseConnection() throws SQLException {
         Connection con = null;
         try {
             String resourceName = "jdbc/UniversityNewsDB";  //Name of the resource which should be accessed.
@@ -48,16 +50,21 @@ public class DatabaseManager {
             logger.error("SQLException occurred", e);
             throw e;
         }
+        if (con == null) {
+            logger.error("No database connection could be established. Connection is null.");
+            throw new SQLException("Failed to establish a connection to the database.");
+        }
         return con;
     }
 
     /**
      * Returns an open connection to the database back to the JDBC Connection Pool.
+     *
      * @param con The connection which should be returned.
      */
-    protected void returnConnection(Connection con){
+    protected void returnConnection(Connection con) {
         //Release connection back to the pool.
-        if(con != null){
+        if (con != null) {
             try {
                 con.close();
             } catch (SQLException e) {
