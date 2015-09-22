@@ -138,4 +138,36 @@ public class AccessController {
         }
     }
 
+    /**
+     * Checks whether the requestor which is identified by the given access token is a system administrator. This
+     * method only determines whether the requestor has administrator rights or not, it does not return the moderator
+     * object with the data of the account. This method can be used if the account data of the requestor is
+     * irrelevant in the further execution of the request.
+     *
+     * @param accessToken The access token of the requestor.
+     * @return Returns true if the requestor has system administrator rights, false otherwise.
+     * @throws ServerException If the administrator status of the requestor could not be determined due to a database
+     * failure.
+     */
+    public boolean isAdministrator(String accessToken) throws ServerException {
+        boolean isAdmin = false;
+        if(accessToken != null){
+            try {
+                /* Get moderator (requestor) identified by access token from database. If its not a moderator token
+                the method will return null.*/
+                Moderator moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
+                // Check if moderator is a system administrator.
+                if(moderatorDB != null && moderatorDB.isAdmin()) {
+                    isAdmin = true;
+                }
+            } catch (DatabaseException e) {
+                String errMsg = "Database failure. Couldn't determine administrator status of moderator account by " +
+                        "access token.";
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, errMsg);
+                throw new ServerException(500, DATABASE_FAILURE);
+            }
+        }
+        return isAdmin;
+    }
+
 }
