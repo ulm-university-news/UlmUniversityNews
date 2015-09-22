@@ -13,7 +13,7 @@ public class Constants {
     public static final ZoneId TIME_ZONE = ZoneId.of("Europe/Berlin");
 
     /** A pattern which describes the valid form of a user or moderator name. */
-    public static final String ACCOUNT_NAME_PATTERN = "^[a-zA-Z0-9]{3,35}$";
+    public static final String ACCOUNT_NAME_PATTERN = "^[-_a-zA-Z0-9]{3,35}$";
 
     /** A pattern which describes the valid form of a password hash. */
     public static final String PASSWORD_HASH_PATTERN = "^[a-fA-F0-9]{64}$";
@@ -35,6 +35,9 @@ public class Constants {
      *  but is limited to 500 characters. */
     public static final String DESCRIPTION_PATTERN = "^[öÖäÄüÜßa.\\p{Print}\\p{Blank}]{1,500}$";
 
+    /** The maximum length of a push access token which is used to send push notifications to the client. */
+    public static final int PUSH_TOKEN_MAX_LENGTH = 1024;
+
 
 
     // Logging:
@@ -48,6 +51,7 @@ public class Constants {
     public static final int USER_FORBIDDEN = 1001;
     public static final int USER_DATA_INCOMPLETE = 1002;
     public static final int USER_NAME_INVALID = 1003;
+    public static final int USER_PUSH_TOKEN_INVALID = 1004;
 
     // Moderator:
     public static final int MODERATOR_NOT_FOUND = 2000;
