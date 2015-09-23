@@ -964,4 +964,176 @@ public class GroupDatabaseManager extends DatabaseManager {
         logger.debug("End.");
     }
 
+    /**
+     * Checks whether the ballot with the specified id exists within the group which is identified by the given id.
+     *
+     * @param groupId The id of the group.
+     * @param ballotId The id of the ballot whose existence should be checked.
+     * @return Returns true if the ballot is a valid ballot of the specified group, false otherwise.
+     * @throws DatabaseException If the verification of the ballot existence fails due to a database failure.
+     */
+    public boolean isValidBallot(int groupId, int ballotId) throws DatabaseException {
+        boolean isValid = false;
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT Id " +
+                    "FROM Ballot " +
+                    "WHERE Id=? AND Group_Id=?;";
+
+            PreparedStatement stmt = con.prepareStatement(query);
+            stmt.setInt(1, ballotId);
+            stmt.setInt(2, groupId);
+
+            ResultSet rs = stmt.executeQuery();
+            if(rs.next()){
+                isValid = true;
+            }
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+
+        return isValid;
+    }
+
+    /**
+     * Stores an option in the database. The option belongs to the ballot which is identified by the specified id.
+     *
+     * @param ballotId The id of the ballot to which the option should belong.
+     * @param option The option object containing the data of the option.
+     * @throws DatabaseException If the option could not be stored in the database.
+     */
+    public void storeOption(int ballotId, Option option) throws DatabaseException {
+        logger.debug("Start with ballotId:{} and option:{}.", ballotId, option);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String insertOptionQuery =
+                    "INSERT INTO `Option` (Text, Ballot_Id) " +
+                    "VALUES (?,?);";
+
+            PreparedStatement insertOptionStmt = con.prepareStatement(insertOptionQuery);
+            insertOptionStmt.setString(1, option.getText());
+            insertOptionStmt.setInt(2, ballotId);
+
+            insertOptionStmt.execute();
+
+            // Retrieve auto incremented id of the database record.
+            String getIdQuery = "SELECT LAST_INSERT_ID();";
+
+            Statement getIdStmt = con.createStatement();
+            ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
+            if(getIdRs.next()){
+                option.setId(getIdRs.getInt(1));
+            }
+
+            logger.info("Stored the option with id {}. It belongs to the ballot with id {}.", option.getId(), ballotId);
+            getIdStmt.close();
+            insertOptionStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Returns a list of options which belong to the ballot which is identified by the specified id.
+     *
+     * @param ballotId The id of the ballot.
+     * @return A list of options which belong to the ballot. The list can also be empty.
+     * @throws DatabaseException If the retrieval of the options from the database fails.
+     */
+    public List<Option> getOptions(int ballotId) throws DatabaseException {
+        logger.debug("Start with ballotId:{}.", ballotId);
+        List<Option> options = new ArrayList<Option>();
+        Connection con = null;
+
+        try {
+            con = getDatabaseConnection();
+            String getOptionsQuery =
+                    "SELECT * " +
+                    "FROM `Option` " +
+                    "WHERE Ballot_Id=?;";
+
+            PreparedStatement getOptionsStmt = con.prepareStatement(getOptionsQuery);
+            getOptionsStmt.setInt(1, ballotId);
+
+            ResultSet getOptionsRs = getOptionsStmt.executeQuery();
+            while(getOptionsRs.next()){
+                int id = getOptionsRs.getInt("Id");
+                String text = getOptionsRs.getString("Text");
+
+                Option tmp = new Option(id, text);
+                options.add(tmp);
+            }
+
+            getOptionsStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+
+        logger.debug("End with options:{}.", options);
+        return options;
+    }
+
+    /**
+     * Returns the option which is identified by the specified id and belongs to the ballot with the given id.
+     *
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param optionId The id of the option.
+     * @return The option object containing the data of the option.
+     * @throws DatabaseException If the retrieval of the option fails.
+     */
+    public Option getOption(int ballotId, int optionId) throws DatabaseException {
+        logger.debug("Start with ballotId:{} and optionId:{}.", ballotId, optionId);
+        Option option = null;
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String getOptionQuery =
+                    "SELECT * " +
+                    "FROM `Option` " +
+                    "WHERE Id=? AND Ballot_Id=?;";
+
+            PreparedStatement getOptionStmt = con.prepareStatement(getOptionQuery);
+            getOptionStmt.setInt(1, optionId);
+            getOptionStmt.setInt(2, ballotId);
+
+            ResultSet getOptionRs = getOptionStmt.executeQuery();
+            if(getOptionRs.next()){
+                String text = getOptionRs.getString("Text");
+
+                option = new Option(optionId, text);
+            }
+
+            getOptionStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+
+        logger.debug("End with option:{}.", option);
+        return option;
+    }
+
 }

@@ -38,6 +38,9 @@ public class Constants {
     /** The maximum length of a push access token which is used to send push notifications to the client. */
     public static final int PUSH_TOKEN_MAX_LENGTH = 1024;
 
+    /** The maximum length of a text assigned to a option. */
+    public static final int OPTION_TEXT_MAX_LENGTH = 300;
+
 
 
     // Logging:
@@ -90,6 +93,11 @@ public class Constants {
     public static final int BALLOT_DATA_INCOMPLETE = 4202;
     public static final int BALLOT_INVALID_TITLE = 4203;
     public static final int BALLOT_INVALID_DESCRIPTION = 4204;
+
+    public static final int OPTION_NOT_FOUND = 4300;
+    public static final int OPTION_DATA_INCOMPLETE = 4302;
+    public static final int OPTION_INVALID_TEXT = 4303;
+
 
     // General:
     public static final int DATABASE_FAILURE = 5000;

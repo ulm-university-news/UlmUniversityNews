@@ -2,10 +2,7 @@ package ulm.university.news.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ulm.university.news.data.Ballot;
-import ulm.university.news.data.Group;
-import ulm.university.news.data.Moderator;
-import ulm.university.news.data.User;
+import ulm.university.news.data.*;
 import ulm.university.news.data.enums.GroupType;
 import ulm.university.news.data.enums.TokenType;
 import ulm.university.news.manager.database.GroupDatabaseManager;
@@ -866,6 +863,143 @@ public class GroupController extends AccessController {
     }
 
     /**
+     * Creates a new option for the ballot which is identified by the specified id. The data for the option is
+     * provided within the option object.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param option The option object containing the data for the new option.
+     * @return The option object containing all data of the new resource.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group or the ballot are
+     * not found, the data of the option is invalid or the option could not be stored in the database due to a
+     * database failure.
+     */
+    public Option createOption(String accessToken, int groupId, int ballotId, Option option) throws ServerException {
+        // Validate the received data.
+        if (option == null || option.getText() == null) {
+            String errMsg = "Incomplete data record. The given option is " + option + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 400, OPTION_DATA_INCOMPLETE, errMsg);
+            throw new ServerException(400, OPTION_DATA_INCOMPLETE);
+        }
+        else if (option.getText().length() > OPTION_TEXT_MAX_LENGTH) {
+            String errMsg = "Invalid option text. The option's text has exceeded the max length.";
+            logger.error(LOG_SERVER_EXCEPTION, 400, OPTION_INVALID_TEXT, errMsg);
+            throw new ServerException(400, OPTION_TEXT_MAX_LENGTH);
+        }
+
+        /* Check if requestor is a valid user. The user needs to be an active participant of the group  (implicitly
+           guaranteed as the ballotAdmin needs to be a participant) and needs to be the administrator of the affected
+           ballot. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests to create a new option for the ballot with id " +
+                "{} in group with id {}.", requestor.getId(), ballotId, groupId);
+
+        // Get the group from the database including the participant list. Reject the request if group not found.
+        Group groupDB = getGroup(groupId, true);
+
+        // Get the ballot from the database. Reject the request if the ballot is not found.
+        Ballot ballotDB = getBallot(groupId, ballotId);
+
+        if(!ballotDB.isBallotAdmin(requestor.getId())){
+            String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not the administrator" +
+                    " of the ballot with id " + ballotId + ". The user is thus not allowed to create an option for " +
+                    "this ballot. The request is rejected.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+
+        try {
+            // Store the option in the database.
+            groupDBM.storeOption(ballotId, option);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Notify the participants of the group about the new ballot option.
+        List<User> partcipants = groupDB.getParticipants();
+        // TODO send notficiation with OPTION_NEW status.
+
+        return option;
+    }
+
+    /**
+     * Returns a list of options which belong to the ballot with the given id. The ballot belongs to the group which
+     * is identified by the specified id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group.
+     * @param ballotId The id of the ballot for which the options should be returned.
+     * @return A list of option objects. The list can also be empty.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group or the ballot are
+     * not found or the retrieval of the option fails due to a database failure.
+     */
+    public List<Option> getOptions(String accessToken, int groupId, int ballotId) throws ServerException {
+        List<Option> options = null;
+
+        /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
+           execute this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests the options for the ballot with id {} which " +
+                "belongs to the group with id {}.", requestor.getId(), ballotId, groupId);
+
+        // Check if the group exists. If not, the request is rejected.
+        verifyGroupExistenceViaDB(groupId);
+
+        // Check if the requestor is a participant in the group. If not, the request is rejected.
+        verifyParticipationInGroupViaDB(groupId, requestor.getId());
+
+        // Check if the ballot exists within the group.
+        verifyBallotExistenceViaDB(groupId, ballotId);
+
+        try {
+            options = groupDBM.getOptions(ballotId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        return options;
+    }
+
+    /**
+     * Returns the option with the specified id. The option belongs to the ballot which is identified by the given id
+     * . The ballot belongs to the group with the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param optionId The id of the option.
+     * @return Returns the option object containing the option data.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group, ballot or option
+     * are not found or if the retrieval of the option fails due to a database failure.
+     */
+    public Option getOption(String accessToken, int groupId, int ballotId, int optionId) throws ServerException {
+        Option option;
+
+        /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
+           execute this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests the option with id {} for the ballot with id " +
+                "{} which belongs to the group with id {}.", requestor.getId(), optionId, ballotId, groupId);
+
+        // Check if the group exists. If not, the request is rejected.
+        verifyGroupExistenceViaDB(groupId);
+
+        // Check if the requestor is a participant in the group. If not, the request is rejected.
+        verifyParticipationInGroupViaDB(groupId, requestor.getId());
+
+        // Check if the ballot exists within the group. IF not, the request is rejected.
+        verifyBallotExistenceViaDB(groupId, ballotId);
+
+        // Request the option from the database. If the option is not found, the request is rejected.
+        option = getOption(ballotId, optionId);
+
+        return option;
+    }
+
+    /**
      * A helper method which requests the group with the specified id from the database manager. It can be defined
      * whether the group object should already contain a list of the participants of the group. If the group is not
      * found, the method throws a ServerException.
@@ -963,6 +1097,58 @@ public class GroupController extends AccessController {
             throw new ServerException(404, BALLOT_NOT_FOUND);
         }
         return ballot;
+    }
+
+    /**
+     * A helper method which checks whether the ballot with the specified id exists within the group which is
+     * identified by the given id. The method does not supply any return value, it just throws a ServerException if
+     * the ballot is not found in the defined group.
+     *
+     * @param groupId The id of the group.
+     * @param ballotId The id of the ballot whose existence should be verified.
+     * @throws ServerException If the ballot is not found within the group or the verification fails due to a
+     * database failure.
+     */
+    private void verifyBallotExistenceViaDB(int groupId, int ballotId) throws ServerException {
+        try {
+            if(!groupDBM.isValidBallot(groupId, ballotId)){
+                String errMsg = "The ballot with the id " + ballotId + " could not be found within the group with id " +
+                         groupId + ".";
+                logger.error(LOG_SERVER_EXCEPTION, 404, BALLOT_NOT_FOUND, errMsg);
+                throw new ServerException(404, BALLOT_NOT_FOUND);
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
+    /**
+     * A helper method which requests the option with the specified id from the database manager. If the option is
+     * not found, it throws a ServerException.
+     *
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param optionId The id of the option.
+     * @return Returns the option object from the database.
+     * @throws ServerException If the option is not found or the retrieval of the option object from the database
+     * fails due to a database failure.
+     */
+    private Option getOption(int ballotId, int optionId) throws ServerException {
+        Option option;
+        try {
+            // Get the option from the database.
+            option = groupDBM.getOption(ballotId, optionId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+        if(option == null){
+            String errMsg = "The option with id " + optionId + " could not be found within the ballot with id " +
+                    ballotId + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 404, OPTION_NOT_FOUND, errMsg);
+            throw new ServerException(404, OPTION_NOT_FOUND);
+        }
+        return option;
     }
 
 }

@@ -5,6 +5,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import ulm.university.news.controller.GroupController;
 import ulm.university.news.data.Ballot;
 import ulm.university.news.data.Group;
+import ulm.university.news.data.Option;
 import ulm.university.news.data.User;
 import ulm.university.news.data.enums.GroupType;
 import ulm.university.news.util.Constants;
@@ -318,6 +319,74 @@ public class GroupAPI {
             groupId, @PathParam("ballotId") int ballotId) throws ServerException {
         groupController.deleteBallot(accessToken, groupId, ballotId);
         return Response.status(Response.Status.NO_CONTENT).build();
+    }
+
+    /**
+     * Creates a new option for the ballot which is identified by the specified id. The data of the new option is
+     * provided within the option object. The created option resource will be returned including the URI which can be
+     * used to access the option resource.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param option The option object containing the data from the request.
+     * @param uriInfo Information about the URI of the request.
+     * @return The created resource including the URI which can be used to access the resource.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/ballot/{ballotId}/option")
+    public Response createOption(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("ballotId") int ballotId, Option option, @Context UriInfo uriInfo) throws
+            ServerException {
+        groupController.createOption(accessToken, groupId, ballotId, option);
+        URI createdURI = URI.create(uriInfo.getBaseUri() + "group" + "/" + groupId + "ballot" + "/" + ballotId + "/"
+                + "option" + "/" + option.getId());
+        return Response.status(Response.Status.CREATED).location(createdURI).entity(option).build();
+    }
+
+    /**
+     * Returns a list of options for the ballot which is identified by the defined id taken from the path.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot for which the options are requested.
+     * @return A list of options. The list can also be empty.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/ballot/{ballotId}/option")
+    public List<Option> getOptions(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+    groupId, @PathParam("ballotId") int ballotId) throws ServerException {
+        List<Option> options;
+        options = groupController.getOptions(accessToken, groupId, ballotId);
+        return options;
+    }
+
+    /**
+     * Returns the option which is identified by the given id taken from the path. The option belongs to the ballot
+     * with the specified id which in turn belongs to the group with the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param optionId The id of the option.
+     * @return Returns the option resource.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/ballot/{ballotId}/option/{optionId}")
+    public Response getOption(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("ballotId") int ballotId, @PathParam("optionId") int optionId) throws ServerException {
+        Option option = groupController.getOption(accessToken, groupId, ballotId, optionId);
+        return Response.status(Response.Status.OK).entity(option).build();
     }
 
 }
