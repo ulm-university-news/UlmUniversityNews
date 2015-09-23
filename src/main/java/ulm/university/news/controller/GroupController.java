@@ -30,8 +30,11 @@ public class GroupController extends AccessController {
     private static final Logger logger = LoggerFactory.getLogger(GroupController.class);
 
     // Error messages:
+    /** A standard error message which can be used if the reuqest is rejected due to an invalid token. */
     private static final String INVALID_TOKEN_ERROR_MSG =
             "To perform this operation a valid access token needs to be provided.";
+    /** A standard error message which can be used if the requestor is a moderator and not a user and the operation
+     * can only be performed by users. */
     private static final String MODERATOR_FORBIDDEN_ERROR_MSG =
             "Moderator is not allowed to perform the requested  operation.";
 
@@ -83,14 +86,15 @@ public class GroupController extends AccessController {
         }
 
         // Check if the requestor is a valid user. Only users are allowed to perform this operation.
-        User user = verifyUserAccess(accessToken);
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests to create a new group.", requestor.getId());
 
         // Check if the group admin is set correctly.
-        if (group.getGroupAdmin() != user.getId()) {
+        if (group.getGroupAdmin() != requestor.getId()) {
             logger.warn("The Id of the groupAdmin and the requestor don't match. The user who makes the creation " +
                     "request for the group should be entered as the group admin. The group admin is set to the " +
                     "id of the requestor.");
-            group.setGroupAdmin(user.getId());
+            group.setGroupAdmin(requestor.getId());
         }
 
         // Prepare the password for being stored in the database.
@@ -103,14 +107,13 @@ public class GroupController extends AccessController {
         try {
             // Store group in database.
             groupDBM.storeGroup(group);
-
-            // Password should not be returned in response.
-            group.setPassword(null);
-
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+
+        // Password should not be returned in response.
+        group.setPassword(null);
 
         return group;
     }
@@ -128,7 +131,7 @@ public class GroupController extends AccessController {
      * a database failure.
      */
     public List<Group> getGroups(String accessToken, String groupName, GroupType groupType) throws ServerException {
-        List<Group> groups = null;
+        List<Group> groups;
         /* Verify access token and check whether the requestor is allowed to perform the operation.
            Users and system administrators can perform this operation. */
         TokenType tokenType = verifyAccessToken(accessToken);
@@ -140,6 +143,7 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, MODERATOR_FORBIDDEN_ERROR_MSG);
             throw new ServerException(403, MODERATOR_FORBIDDEN);
         }
+        logger.info("Groups are requested by a valid user.");
 
         try {
             // Get the groups from the database.
@@ -167,7 +171,7 @@ public class GroupController extends AccessController {
      * a database failure.
      */
     public Group getGroup(String accessToken, int groupId, boolean withParticipants) throws ServerException {
-        Group group = null;
+        Group group;
         /* Verify access token and check whether the requestor is allowed to perform the operation.
            Users and system administrators can perform this operation. */
         TokenType tokenType = verifyAccessToken(accessToken);
@@ -179,6 +183,8 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, MODERATOR_FORBIDDEN_ERROR_MSG);
             throw new ServerException(403, MODERATOR_FORBIDDEN);
         }
+        logger.info("The group with id {} is requested by a valid user. WithParticipants parameter is {}.", groupId,
+                withParticipants);
 
         // Get the group from the database.
         group = getGroup(groupId, withParticipants);
@@ -216,7 +222,7 @@ public class GroupController extends AccessController {
         // Check if the user is allowed to execute the update operation.
         if(!groupDB.isGroupAdmin(requestor.getId())){
             String errMsg = "The user with id " + requestor.getId() + " is not the group administrator of this group." +
-                    "  The user is thus not allowed to change the group data.";
+                    " The user is thus not allowed to change the group data.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
             throw new ServerException(403, USER_FORBIDDEN);
         }
@@ -360,7 +366,7 @@ public class GroupController extends AccessController {
                 // Check if user is group administrator of this group.
                 if(!groupDB.isGroupAdmin(user.getId())){
                     String errMsg = "The user with id "+ user.getId() + " is not the group administrator of this " +
-                            "group. The user is thus not allowed to change the group data.";
+                            "group. The user is thus not allowed to delete the group.";
                     logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
                     throw new ServerException(403, USER_FORBIDDEN);
                 }
@@ -384,7 +390,7 @@ public class GroupController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // Get all participants of the group.
+        // Get all participants of the group. Notify also the requestor?
         List<User> participants = groupDB.getParticipants();
 
         // TODO notify participants about deleted group
@@ -403,7 +409,9 @@ public class GroupController extends AccessController {
      */
     public void addParticipant(String accessToken, int groupId, String password) throws ServerException {
         // Check if the requestor is a valid user. Only users are allowed to perform this operation.
-        User user = verifyUserAccess(accessToken);
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, wants to join the group with id {}.", requestor.getId()
+                , groupId);
 
         // Request the group from the database. The group object should already contain a list of its participants.
         Group groupDB = getGroup(groupId, true);
@@ -418,7 +426,7 @@ public class GroupController extends AccessController {
 
         try {
             // If the password is verified, the user can be added to the group.
-            groupDBM.addParticipantToGroup(groupId, user.getId());
+            groupDBM.addParticipantToGroup(groupId, requestor.getId());
 
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
@@ -444,21 +452,18 @@ public class GroupController extends AccessController {
         List<User> users = null;
         // Check if the requestor is a valid user. Only users are allowed to perform this operation.
         User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests the participants of group with id {}.",
+                requestor.getId(), groupId);
+
+        // Check if group exists. If not, the request is rejected.
+        verifyGroupExistenceViaDB(groupId);
+
+        // Check if user is active participant of the group. If he isn't, the request is rejected.
+        verifyParticipationInGroupViaDB(groupId, requestor.getId());
 
         try {
-            // Check if group exists.
-            if(!groupDBM.isValidGroup(groupId)){
-                String errMsg = "The group with the id " + groupId + " could not be found.";
-                logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
-                throw new ServerException(404, GROUP_NOT_FOUND);
-            }
-
-            // Check if user is active participant of the group. If he isn't, the request is rejected.
-            verifyParticipationInGroupViaDB(groupId, requestor.getId());
-
             // Get the participants from the database.
             users = groupDBM.getParticipants(groupId);
-
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
@@ -487,14 +492,17 @@ public class GroupController extends AccessController {
     public void deleteParticipant(String accessToken, int groupId, int participantId) throws ServerException {
         // Check if the requestor is a valid user. Only users are allowed to perform this operation.
         User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, tries to remove the user with id {} from the group with" +
+                " id {}.", requestor.getId(), participantId, groupId);
 
-        // Request the group object. The group object should already contain a list of the participants
+        // Request the group object. The group object should already contain a list of the participants.
         Group groupDB = getGroup(groupId, true);
         // Check if the user which is identified by the participantId is an active participant of the group.
         boolean activeParticipant = groupDB.isValidParticipant(participantId);
         if(!activeParticipant){
             String errMsg = "The user with the id " + participantId + " is not found in the group with id " +
-                    groupId + ". The user is not an active participant of the group.";
+                    groupId + ". The user is not an active participant of the group and thus can't be removed " +
+                    "from the participant list.";
             logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_PARTICIPANT_NOT_FOUND, errMsg);
             throw new ServerException(404, GROUP_PARTICIPANT_NOT_FOUND);
         }
@@ -560,9 +568,6 @@ public class GroupController extends AccessController {
      * the execution fails due to a database failure.
      */
     public Ballot createBallot(String accessToken, int groupId, Ballot ballot) throws ServerException {
-        // Check if the requestor is a valid user. Only users are allowed to perform this operation.
-        User requestor = verifyUserAccess(accessToken);
-
         // Validate the received data.
         if(ballot == null || ballot.getTitle() == null || ballot.getMultipleChoice() == null ||
                 ballot.getPublicVotes() == null){
@@ -578,11 +583,16 @@ public class GroupController extends AccessController {
         else if(ballot.getDescription() != null && !ballot.getDescription().matches(DESCRIPTION_PATTERN)){
             String errMsg = "Invalid description for ballot. Probably the description exceeded the size or the " +
                     "description contains any special chars which are not supported. The size of the description " +
-                    "is: " + ballot.getDescription().length() + ". The description is: " + ballot.getDescription()
-                    + ".";
+                    "is: " + ballot.getDescription().length() + ". The description is: '" + ballot.getDescription()
+                    + "'.";
             logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_DESCRIPTION, errMsg);
             throw new ServerException(400, BALLOT_INVALID_DESCRIPTION);
         }
+
+        // Check if the requestor is a valid user. Only users are allowed to perform this operation.
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, tries to create a new ballot for the group with id {}.",
+                requestor.getId(), groupId);
 
         // Request the affected group from the database. The group should already contain the list of participants.
         Group groupDB = getGroup(groupId, true);
@@ -633,17 +643,18 @@ public class GroupController extends AccessController {
      * @param accessToken The access token of the requestor.
      * @param groupId The id of the group.
      * @param subresources Indicates whether the ballot objects should contain the corresponding options and a list
-     *                     of voters who voted for each option.
+     *                     of voters per option who voted for each option.
      * @return A list of ballot objects. The list can also be empty.
      * @throws ServerException If the requestor is not allowed to execute the operation, the group is not found or
      * the ballots can not be retrieved due to a database failure.
      */
     public List<Ballot> getBallots(String accessToken, int groupId, boolean subresources) throws ServerException {
         List<Ballot> ballots = null;
-
         /* Check if requestor is a valid user. Only users (more precisely participants of the group) are allowed to
            perform this operation. */
         User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests all ballots for the group with id {}.",
+                requestor.getId(), groupId);
 
         // Check if the requestor is a valid participant of the group. If not, the request is rejected.
         verifyParticipationInGroupViaDB(groupId, requestor.getId());
@@ -654,7 +665,6 @@ public class GroupController extends AccessController {
         try {
             // Get the ballots from the database.
             ballots = groupDBM.getBallots(groupId, subresources);
-
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
@@ -675,10 +685,11 @@ public class GroupController extends AccessController {
      */
     public Ballot getBallot(String accessToken, int groupId, int ballotId) throws ServerException {
         Ballot ballot = null;
-
         /* Check if requestor is a valid user. Only users (more precisely participants of the group) are allowed to
            perform this operation. */
         User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests the ballot with the id {} from the group with " +
+                "the id {}.", requestor.getId(), ballotId, groupId);
 
         // Check if the requestor is a valid participant of the group. If not, the request is rejected.
         verifyParticipationInGroupViaDB(groupId, requestor.getId());
@@ -710,13 +721,15 @@ public class GroupController extends AccessController {
         /* Check if requestor is a valid user. The user needs to be an active participant of the group and needs to
            be the administrator of the affected ballot. */
         User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests to update the ballot with id {} in the group " +
+                "with id {}.", requestor.getId(), ballotId, groupId);
 
         // First, get the group from the database. The group should already contain a list of all participants.
         Group groupDB = getGroup(groupId, true);
         // Check if the requestor is an active participant of the group. Otherwise reject the request.
         if(!groupDB.isValidParticipant(requestor.getId())){
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
-                    " with id " + groupId + ". The request is rejected.";
+                    " with id " + groupId + ". The user is not allowed to change the ballot, the request is rejected.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
             throw new ServerException(403, USER_FORBIDDEN);
         }
@@ -740,7 +753,7 @@ public class GroupController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // Notify the participants of the group about the changed ballot.
+        // Notify the participants of the group about the changed ballot. Also the requestor?
         List<User> participants = groupDB.getParticipants();
         // TODO notify participants.
 
@@ -780,8 +793,8 @@ public class GroupController extends AccessController {
             else{
                 String errMsg = "Invalid description for ballot. Probably the description exceeded the size or the " +
                         "description contains any special chars which are not supported. The size of the description " +
-                        "is: " +ballot.getDescription().length()+ ". The description is: " +ballot.getDescription()+
-                        ".";
+                        "is: " +ballot.getDescription().length()+ ". The description is: '" +ballot.getDescription()+
+                        "'.";
                 logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_DESCRIPTION, errMsg);
                 throw new ServerException(400, BALLOT_INVALID_DESCRIPTION);
             }
@@ -790,12 +803,12 @@ public class GroupController extends AccessController {
         // Update the closed status if necessary.
         if(ballot.getClosed() != null) {
             boolean closed = ballot.getClosed();
-            if (closed == true && !ballotDB.getClosed()) {
+            if (closed && !ballotDB.getClosed()) {
                 logger.info("The ballot with id {} is getting closed.", ballotDB.getId());
-                ballotDB.setClosed(closed);
-            } else if (closed == false && ballotDB.getClosed()) {
+                ballotDB.setClosed(true);
+            } else if (!closed && ballotDB.getClosed()) {
                 logger.info("The ballot with id {} is getting opened again.", ballotDB.getId());
-                ballotDB.setClosed(closed);
+                ballotDB.setClosed(false);
             }
         }
         return ballotDB;
@@ -814,13 +827,15 @@ public class GroupController extends AccessController {
         /* Check if requestor is a valid user. The user needs to be an active participant of the group and needs to
            be the administrator of the affected ballot. */
         User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, tries to delete the ballot with id {} from the group " +
+                "with id {}.", requestor.getId(), ballotId, groupId);
 
         // First, get the group from the database. The group should already contain a list of all participants.
         Group groupDB = getGroup(groupId, true);
         // Check if the requestor is an active participant of the group. Otherwise reject the request.
         if(!groupDB.isValidParticipant(requestor.getId())){
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
-                    " with id " + groupId + ". The request is rejected.";
+                    " with id " + groupId + ". The user is not allowed to delete the ballot, the request is rejected.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
             throw new ServerException(403, USER_FORBIDDEN);
         }
@@ -834,8 +849,8 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
             throw new ServerException(403, USER_FORBIDDEN);
         }
-        logger.info("The administrator of the ballot with id {}, i.e. the user identfied by id {}, requests to " +
-                "delete the ballot.", ballotId, requestor.getId());
+        logger.info("The administrator of the ballot with id {}, i.e. the user identified by id {}, requests to " +
+                "delete the ballot. The ballot will be deleted.", ballotId, requestor.getId());
 
         try {
             // Delete the ballot.
@@ -845,14 +860,15 @@ public class GroupController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // Notify the participants of the group about the deleted ballot.
+        // Notify the participants of the group about the deleted ballot. Also the requestor?
         List<User> participants = groupDB.getParticipants();
         // TODO send notification
     }
 
     /**
      * A helper method which requests the group with the specified id from the database manager. It can be defined
-     * whether the group object should already contain a list of the participants of the group.
+     * whether the group object should already contain a list of the participants of the group. If the group is not
+     * found, the method throws a ServerException.
      *
      * @param groupId The id of the group.
      * @param withParticipants Indicates whether the group object should contain a list of participants.
@@ -860,7 +876,7 @@ public class GroupController extends AccessController {
      * @throws ServerException If the group is not found or the retrieval from the database fails.
      */
     private Group getGroup(int groupId, boolean withParticipants) throws ServerException {
-        Group group = null;
+        Group group;
         try {
             group = groupDBM.getGroup(groupId, withParticipants);
             if (group == null) {
@@ -886,7 +902,7 @@ public class GroupController extends AccessController {
      * a database exception.
      */
     private void verifyParticipationInGroupViaDB(int groupId, int userId) throws ServerException {
-        boolean activeParticipant = false;
+        boolean activeParticipant;
         try {
             activeParticipant = groupDBM.isActiveParticipant(groupId, userId);
         } catch (DatabaseException e) {
@@ -922,7 +938,8 @@ public class GroupController extends AccessController {
     }
 
     /**
-     * A helper method which requests the ballot with the specified id from the database manager.
+     * A helper method which requests the ballot with the specified id from the database manager. If the ballot is
+     * not found, the method throws a ServerException.
      *
      * @param groupId The if of the group to which the ballot belongs.
      * @param ballotId The id of the ballot.
@@ -931,7 +948,7 @@ public class GroupController extends AccessController {
      * failure.
      */
     private Ballot getBallot(int groupId, int ballotId) throws ServerException{
-        Ballot ballot = null;
+        Ballot ballot;
         try {
             // Get the ballot from the database.
             ballot = groupDBM.getBallot(groupId, ballotId);
