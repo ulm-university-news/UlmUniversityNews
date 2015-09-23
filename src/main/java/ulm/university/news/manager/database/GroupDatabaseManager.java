@@ -238,7 +238,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             }
 
             // Check if list of participants should be set for this group.
-            if(withParticipants){
+            if(group != null && withParticipants){
                 List<User> participants = new ArrayList<User>();
                 String getUserIdsQuery =
                         "SELECT * " +
@@ -1134,6 +1134,83 @@ public class GroupDatabaseManager extends DatabaseManager {
 
         logger.debug("End with option:{}.", option);
         return option;
+    }
+
+    /**
+     * Deletes the option with the specified id.
+     *
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param optionId The id of the option which should be deleted.
+     * @throws DatabaseException If the deletion fails due to a database failure.
+     */
+    public void deleteOption(int ballotId, int optionId) throws DatabaseException {
+        logger.debug("Start with ballotId:{} and optionId:{}.", ballotId, optionId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "DELETE FROM `Option` " +
+                    "WHERE Id=? AND Ballot_Id=?;";
+
+            PreparedStatement deleteOptionStmt = con.prepareStatement(query);
+            deleteOptionStmt.setInt(1, optionId);
+            deleteOptionStmt.setInt(2, ballotId);
+
+            deleteOptionStmt.execute();
+
+            logger.info("Deleted the option with id {} from ballot with id {}.", optionId, ballotId);
+            deleteOptionStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Checks if the option with the specified id is a valid option of the ballot with the given id.
+     *
+     * @param ballotId The id of the ballot.
+     * @param optionId The id of the option.
+     * @return Returns true if the option is a valid option of the ballot, false otherwise.
+     * @throws DatabaseException If the validation fails due to a database failure.
+     */
+    public boolean isValidOption(int ballotId, int optionId) throws DatabaseException {
+        logger.debug("Start with ballotId:{} and optionId:{}.", ballotId, optionId);
+        boolean isValid = false;
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT Id " +
+                    "FROM `Option` " +
+                    "WHERE Id=? AND Ballot_Id=?;";
+
+            PreparedStatement stmt = con.prepareStatement(query);
+            stmt.setInt(1, optionId);
+            stmt.setInt(2, ballotId);
+
+            ResultSet rs = stmt.executeQuery();
+            if(rs.next()){
+                isValid = true;
+            }
+
+            stmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+
+        logger.debug("End with isValid:{}.", isValid);
+        return isValid;
     }
 
 }

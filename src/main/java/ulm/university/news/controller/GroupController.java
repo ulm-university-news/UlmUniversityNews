@@ -2,6 +2,7 @@ package ulm.university.news.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.rmi.runtime.Log;
 import ulm.university.news.data.*;
 import ulm.university.news.data.enums.GroupType;
 import ulm.university.news.data.enums.TokenType;
@@ -976,8 +977,6 @@ public class GroupController extends AccessController {
      * are not found or if the retrieval of the option fails due to a database failure.
      */
     public Option getOption(String accessToken, int groupId, int ballotId, int optionId) throws ServerException {
-        Option option;
-
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
@@ -990,13 +989,67 @@ public class GroupController extends AccessController {
         // Check if the requestor is a participant in the group. If not, the request is rejected.
         verifyParticipationInGroupViaDB(groupId, requestor.getId());
 
-        // Check if the ballot exists within the group. IF not, the request is rejected.
+        // Check if the ballot exists within the group. If not, the request is rejected.
         verifyBallotExistenceViaDB(groupId, ballotId);
 
         // Request the option from the database. If the option is not found, the request is rejected.
-        option = getOption(ballotId, optionId);
+        Option option = getOption(ballotId, optionId);
 
         return option;
+    }
+
+    /**
+     * Deletes the option with the specified id. The option belongs to the ballot with the given id which in turn
+     * belongs to the defined group.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param optionId The if of the option which should be deleted.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group, ballot or option
+     * is not found or the deletion fails due to a database failure.
+     */
+    public void deleteOption(String accessToken, int groupId, int ballotId, int optionId) throws ServerException {
+        /* Check if the requestor is a valid user. Only a user, i.e. the administrator of the ballot, is allowed to
+           execute this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests to delete the option with id {} from the " +
+                "ballot with id {} which belongs to the group with id:{}.", requestor.getId(), optionId, ballotId,
+                groupId);
+
+        // Get the group object from the database including a list of its participants. Reject if group not found.
+        Group groupDB = getGroup(groupId, true);
+
+        // Request the ballot object. Reject if ballot is not found.
+        Ballot ballotDB = getBallot(groupId, ballotId);
+
+        try {
+            // Checks if the option is a valid option of the ballot.
+            if(!groupDBM.isValidOption(ballotId, optionId)){
+                String errMsg = "The given option with id " + optionId + " could not be found for the ballot with id " +
+                        ballotId + ".";
+                logger.error(LOG_SERVER_EXCEPTION, 404, OPTION_NOT_FOUND, errMsg);
+                throw new ServerException(404, OPTION_NOT_FOUND);
+            }
+
+            // The requestor needs to be the administrator of the ballot in order to delete it.
+            if(!ballotDB.isBallotAdmin(requestor.getId())){
+                String errMsg = "The user with the id " + requestor.getId() + " is not the administrator of the " +
+                        "ballot with id " + ballotId + ". The user is thus not allowed to delete the option.";
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+                throw new ServerException(403, USER_FORBIDDEN);
+            }
+
+            // Delete the option from the ballot.
+            groupDBM.deleteOption(ballotId, optionId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Notify participants of the group about the deleted option.
+        List<User> participants = groupDB.getParticipants();
+        // TODO send notification. Type BALLOT_OPTION_REMOVED ? -> muss noch definiert werden
     }
 
     /**

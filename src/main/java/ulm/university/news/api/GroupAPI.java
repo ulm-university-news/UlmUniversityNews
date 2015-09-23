@@ -343,8 +343,8 @@ public class GroupAPI {
             groupId, @PathParam("ballotId") int ballotId, Option option, @Context UriInfo uriInfo) throws
             ServerException {
         groupController.createOption(accessToken, groupId, ballotId, option);
-        URI createdURI = URI.create(uriInfo.getBaseUri() + "group" + "/" + groupId + "ballot" + "/" + ballotId + "/"
-                + "option" + "/" + option.getId());
+        URI createdURI = URI.create(uriInfo.getBaseUri() + "group" + "/" + groupId + "/" + "ballot" + "/" + ballotId
+                + "/" + "option" + "/" + option.getId());
         return Response.status(Response.Status.CREATED).location(createdURI).entity(option).build();
     }
 
@@ -387,6 +387,26 @@ public class GroupAPI {
             groupId, @PathParam("ballotId") int ballotId, @PathParam("optionId") int optionId) throws ServerException {
         Option option = groupController.getOption(accessToken, groupId, ballotId, optionId);
         return Response.status(Response.Status.OK).entity(option).build();
+    }
+
+    /**
+     * Deletes the option with the specified id. The option belongs to the ballot with the given id taken from the
+     * path. The ballot belongs to the specified group.
+     *
+     * @param accessToken The access token of the reqeustor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param optionId The option which should be deleted.
+     * @return An response with no content.
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Path("/{groupId}/ballot/{ballotId}/option/{optionId}")
+    public Response deleteOption(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("ballotId") int ballotId, @PathParam("optionId") int optionId) throws ServerException {
+        groupController.deleteOption(accessToken, groupId, ballotId, optionId);
+        return Response.status(Response.Status.NO_CONTENT).build();
     }
 
 }
