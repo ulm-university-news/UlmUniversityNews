@@ -167,8 +167,9 @@ public class GroupAPI {
         try {
             // Reads the password from the received JSON String with Jackson.
             JsonNode jsonObj = mapper.readTree(jsonString);
-            password = jsonObj.get("password").getTextValue();
-            System.out.println(password);
+            if(jsonObj.get("password") != null){
+                password = jsonObj.get("password").getTextValue();
+            }
         } catch (IOException e) {
             throw new ServerException(400, Constants.GROUP_MISSING_PASSWORD);
         }
@@ -422,7 +423,7 @@ public class GroupAPI {
      * information about the error which has occurred.
      */
     @POST
-    @Path("/{groupId}/ballot/{ballotId}/option/{optionId}")
+    @Path("/{groupId}/ballot/{ballotId}/option/{optionId}/user")
     public Response createVote(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
             groupId, @PathParam("ballotId") int ballotId, @PathParam("optionId") int optionId) throws ServerException {
         groupController.createVote(accessToken, groupId, ballotId, optionId);
@@ -443,11 +444,33 @@ public class GroupAPI {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("/{groupId}/ballot/{ballotId}/option/{optionId}")
+    @Path("/{groupId}/ballot/{ballotId}/option/{optionId}/user")
     public List<User> getVoters(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
             groupId, @PathParam("ballotId") int ballotId, @PathParam("optionId") int optionId) throws ServerException {
         List<User> users = groupController.getVoters(accessToken, groupId, ballotId, optionId);
         return users;
+    }
+
+    /**
+     * Deletes the vote from the user with the specified id for the defined option. The option
+     * belongs to the given ballot which in turn belongs to the defined group.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param optionId The id of the option for which the users have voted.
+     * @param userId The id of the user for whom the vote should be deleted.
+     * @return A response with no content.
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Path("/{groupId}/ballot/{ballotId}/option/{optionId}/user/{userId}")
+    public Response deleteVote(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("ballotId") int ballotId, @PathParam("optionId") int optionId, @PathParam("userId")
+                               int userId) throws ServerException {
+        groupController.deleteVote(accessToken, groupId, ballotId, optionId, userId);
+        return Response.status(Response.Status.NO_CONTENT).build();
     }
 
 }

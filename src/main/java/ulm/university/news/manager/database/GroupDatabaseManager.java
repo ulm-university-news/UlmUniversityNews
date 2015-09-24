@@ -1379,4 +1379,39 @@ public class GroupDatabaseManager extends DatabaseManager {
         return users;
     }
 
+    /**
+     * Deletes the vote from the user with the specified id for the defined option.
+     *
+     * @param optionId The id of the option.
+     * @param userId The id of the user.
+     * @throws DatabaseException If the deletion fails due to a database failure.
+     */
+    public void deleteVote(int optionId, int userId) throws DatabaseException {
+        logger.debug("Start with optionId:{} and userId:{}.", optionId, userId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String deleteVoteQuery =
+                    "DELETE FROM UserOption " +
+                    "WHERE Option_Id=? AND User_Id=?;";
+
+            PreparedStatement deleteVoteStmt = con.prepareStatement(deleteVoteQuery);
+            deleteVoteStmt.setInt(1, optionId);
+            deleteVoteStmt.setInt(2, userId);
+
+            deleteVoteStmt.execute();
+
+            logger.info("Deleted the vote from user with id {} for option with id {}.", userId, optionId);
+            deleteVoteStmt.close();;
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
 }
