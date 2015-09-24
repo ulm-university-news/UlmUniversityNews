@@ -1213,4 +1213,122 @@ public class GroupDatabaseManager extends DatabaseManager {
         return isValid;
     }
 
+    /**
+     * Stores the vote from the user with the specified id for the defined option into the database.
+     *
+     * @param optionId The id for the option which is affected by the vote.
+     * @param userId The id of the user who performs the vote.
+     * @throws DatabaseException If the vote could not be stored due to a database failure.
+     */
+    public void storeVote(int optionId, int userId) throws DatabaseException {
+        logger.debug("Start with optionId:{} and userId:{}.", optionId, userId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String storeVoteQuery =
+                    "INSERT INTO UserOption (User_Id, Option_Id) " +
+                    "VALUES (?,?);";
+
+            PreparedStatement storeVoteStmt = con.prepareStatement(storeVoteQuery);
+            storeVoteStmt.setInt(1, userId);
+            storeVoteStmt.setInt(2, optionId);
+
+            storeVoteStmt.execute();
+
+            logger.info("Vote from user with id {} for the option with id {} is stored.", userId, optionId);
+            storeVoteStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Checks if the vote from the user with the specified id for the defined option is valid. The vote is valid if
+     * the user has not voted for the defined option before.
+     *
+     * @param optionId The id of the option.
+     * @param userId The id of the user.
+     * @return Returns true if the vote for the given option is valid, false otherwise.
+     * @throws DatabaseException If the validation fails due to a database failure.
+     */
+    public boolean isValidVote(int optionId, int userId) throws DatabaseException {
+        logger.debug("Start with optionId:{} and userId:{}.", optionId, userId);
+        boolean isValid = true;
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * " +
+                    "FROM UserOption " +
+                    "WHERE Option_Id=? AND User_Id=?;";
+
+            PreparedStatement stmt = con.prepareStatement(query);
+            stmt.setInt(1, optionId);
+            stmt.setInt(2, userId);
+
+            ResultSet rs = stmt.executeQuery();
+            if(rs.next()){
+                isValid = false;
+            }
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+
+        logger.info("End with isValid:{}.", isValid);
+        return isValid;
+    }
+
+    /**
+     * Checks if the user with the specified id has already voted for any option in the ballot with the given id.
+     *
+     * @param ballotId The id of the ballot which is checked.
+     * @param userId The if of the user.
+     * @return Returns true if the user has already placed at least one vote for the given ballot, false otherwise.
+     * @throws DatabaseException If the validation fails due to a database failure.
+     */
+    public boolean hasAlreadyVoted(int ballotId, int userId) throws DatabaseException {
+        logger.debug("Start with ballotId:{} and userId:{}.", ballotId, userId);
+        boolean hasVoted = false;
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT COUNT(*) " +
+                    "FROM `Option` AS o JOIN UserOption AS uo ON o.Id=uo.Option_Id " +
+                    "WHERE o.Ballot_Id=? AND uo.User_Id=?;";
+
+            PreparedStatement stmt = con.prepareStatement(query);
+            stmt.setInt(1, ballotId);
+            stmt.setInt(2, userId);
+
+            ResultSet rs = stmt.executeQuery();
+            if(rs.next()){
+                // The number of returned rows.
+                int numberOfRows = rs.getInt(1);
+                if (numberOfRows >= 1) {
+                    hasVoted = true;
+                }
+            }
+            stmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+
+        logger.debug("End with hasVoted:{}.", hasVoted);
+        return hasVoted;
+    }
+
 }

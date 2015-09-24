@@ -902,6 +902,13 @@ public class GroupController extends AccessController {
         // Get the ballot from the database. Reject the request if the ballot is not found.
         Ballot ballotDB = getBallot(groupId, ballotId);
 
+        // Check if the ballot is closed. If its closed, reject the request.
+        if(ballotDB.getClosed()){
+            String errMsg = "The ballot with id " + ballotId + " is closed. There are thus no changes allowed.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, BALLOT_CLOSED, errMsg);
+            throw new ServerException(403, BALLOT_CLOSED);
+        }
+
         if(!ballotDB.isBallotAdmin(requestor.getId())){
             String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not the administrator" +
                     " of the ballot with id " + ballotId + ". The user is thus not allowed to create an option for " +
@@ -1023,23 +1030,25 @@ public class GroupController extends AccessController {
         // Request the ballot object. Reject if ballot is not found.
         Ballot ballotDB = getBallot(groupId, ballotId);
 
+        // Checks if the option is a valid option of the ballot. Reject if option not found.
+        verifyOptionExistenceViaDB(ballotId, optionId);
+
+        // Check if the ballot is closed. If its closed, reject the request.
+        if(ballotDB.getClosed()){
+            String errMsg = "The ballot with id " + ballotId + " is closed. There are thus no changes allowed.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, BALLOT_CLOSED, errMsg);
+            throw new ServerException(403, BALLOT_CLOSED);
+        }
+
+        // The requestor needs to be the administrator of the ballot in order to delete it.
+        if(!ballotDB.isBallotAdmin(requestor.getId())){
+            String errMsg = "The user with the id " + requestor.getId() + " is not the administrator of the " +
+                    "ballot with id " + ballotId + ". The user is thus not allowed to delete the option.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+
         try {
-            // Checks if the option is a valid option of the ballot.
-            if(!groupDBM.isValidOption(ballotId, optionId)){
-                String errMsg = "The given option with id " + optionId + " could not be found for the ballot with id " +
-                        ballotId + ".";
-                logger.error(LOG_SERVER_EXCEPTION, 404, OPTION_NOT_FOUND, errMsg);
-                throw new ServerException(404, OPTION_NOT_FOUND);
-            }
-
-            // The requestor needs to be the administrator of the ballot in order to delete it.
-            if(!ballotDB.isBallotAdmin(requestor.getId())){
-                String errMsg = "The user with the id " + requestor.getId() + " is not the administrator of the " +
-                        "ballot with id " + ballotId + ". The user is thus not allowed to delete the option.";
-                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-                throw new ServerException(403, USER_FORBIDDEN);
-            }
-
             // Delete the option from the ballot.
             groupDBM.deleteOption(ballotId, optionId);
         } catch (DatabaseException e) {
@@ -1050,6 +1059,82 @@ public class GroupController extends AccessController {
         // Notify participants of the group about the deleted option.
         List<User> participants = groupDB.getParticipants();
         // TODO send notification. Type BALLOT_OPTION_REMOVED ? -> muss noch definiert werden
+    }
+
+    /**
+     * Creates a new vote. The requestor votes for the option with the specified id which belongs to the given ballot
+     * . The ballot in turn belongs to the given group.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param optionId The id of the option for which the requestor votes.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group, ballot or option
+     * are not found or the vote could not be placed due to a database failure.
+     */
+    public void createVote(String accessToken, int groupId, int ballotId, int optionId) throws ServerException {
+        /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
+           execute this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests to vote for the option with id {} in ballot " +
+                "with id {}. The ballot belongs to the group with id {}.", requestor.getId(), optionId, ballotId,
+                groupId);
+
+        // Get the group including the list of participants from the database. Reject the request if group is not found.
+        Group groupDB = getGroup(groupId, true);
+        // Check if the requestor is an active participant of the group. Otherwise reject the request.
+        if(!groupDB.isValidParticipant(requestor.getId())){
+            String errMsg = "The user with id " + requestor.getId() + " isn't an active participant of the group " +
+                    "with id " + groupId + ". The user is not allowed to vote for an option of a ballot of this group.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+
+        // Get the ballot from the database. Reject the request if ballot is not found.
+        Ballot ballotDB = getBallot(groupId, ballotId);
+        // Check if the ballot is closed. If its closed, reject the request.
+        if(ballotDB.getClosed()){
+            String errMsg = "The ballot with id " + ballotId + " is closed. There are thus no changes allowed.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, BALLOT_CLOSED, errMsg);
+            throw new ServerException(403, BALLOT_CLOSED);
+        }
+
+        // Verify that the option exists.
+        verifyOptionExistenceViaDB(ballotId, optionId);
+
+        try {
+            // Check whether the requestor has already voted for this option.
+            if(groupDBM.isValidVote(optionId, requestor.getId())){
+                boolean multipleChoice = ballotDB.getMultipleChoice();
+                if(!multipleChoice){
+                    /* If there is no multiple choice enabled, each participant can only take exactly one vote for
+                       the ballot. */
+                    if(groupDBM.hasAlreadyVoted(ballotId, requestor.getId())){
+                        String errMsg = "The user with id " + requestor.getId() + " has already placed a vote for an " +
+                                "option within the ballot with id " + ballotId + ". No further vote can be placed.";
+                        logger.error(LOG_SERVER_EXCEPTION, 403, BALLOT_USER_HAS_ALREADY_VOTED, errMsg);
+                        throw new ServerException(403, BALLOT_USER_HAS_ALREADY_VOTED);
+                    }
+                }
+
+                // Store the vote in the database.
+                groupDBM.storeVote(optionId, requestor.getId());
+            }
+            else{
+                // TODO are we sending this error message?
+                String errMsg = "The user with id " + requestor.getId() + " has already voted for option with id " +
+                        optionId;
+                logger.error(LOG_SERVER_EXCEPTION, 409, OPTION_USER_HAS_ALREADY_VOTED);
+                throw new ServerException(409, OPTION_USER_HAS_ALREADY_VOTED);
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Notify the participants of the group about the new vote. Also the requestor?
+        List<User> participants = groupDB.getParticipants();
+        // TODO notify participants with type BALLOT_OPTION_VOTE
     }
 
     /**
@@ -1202,6 +1287,30 @@ public class GroupController extends AccessController {
             throw new ServerException(404, OPTION_NOT_FOUND);
         }
         return option;
+    }
+
+    /**
+     * A helper method which checks whether the option with the specified id exists within the ballot which is
+     * identified by the given id. The method does not supply any return value, it just throws a ServerException if
+     * the option is not found in the defined ballot.
+     *
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param optionId The id of the option whose existence should be verified.
+     * @throws ServerException If the option is not found within the ballot or the verification fails due to a
+     * database failure.
+     */
+    private void verifyOptionExistenceViaDB(int ballotId, int optionId) throws ServerException {
+        try {
+            if(!groupDBM.isValidOption(ballotId,optionId)){
+                String errMsg = "The given option with id " + optionId + " could not be found for the ballot with id " +
+                        ballotId + ".";
+                logger.error(LOG_SERVER_EXCEPTION, 404, OPTION_NOT_FOUND, errMsg);
+                throw new ServerException(404, OPTION_NOT_FOUND);
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
     }
 
 }

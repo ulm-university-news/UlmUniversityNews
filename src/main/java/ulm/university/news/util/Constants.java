@@ -93,10 +93,13 @@ public class Constants {
     public static final int BALLOT_DATA_INCOMPLETE = 4202;
     public static final int BALLOT_INVALID_TITLE = 4203;
     public static final int BALLOT_INVALID_DESCRIPTION = 4204;
+    public static final int BALLOT_CLOSED = 4205;
+    public static final int BALLOT_USER_HAS_ALREADY_VOTED = 4206;
 
     public static final int OPTION_NOT_FOUND = 4300;
     public static final int OPTION_DATA_INCOMPLETE = 4302;
     public static final int OPTION_INVALID_TEXT = 4303;
+    public static final int OPTION_USER_HAS_ALREADY_VOTED = 4306;
 
 
     // General:

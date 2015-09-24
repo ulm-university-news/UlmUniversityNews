@@ -409,4 +409,24 @@ public class GroupAPI {
         return Response.status(Response.Status.NO_CONTENT).build();
     }
 
+    /**
+     * Creates a vote. The requestor votes for the specified option with the id taken from the path. The option
+     * belongs to the given ballot which in turn belongs to the defined group.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot to which the group belongs.
+     * @param optionId The id of the option for which the requestor votes.
+     * @return Returns a reponse with status created, but no content.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @POST
+    @Path("/{groupId}/ballot/{ballotId}/option/{optionId}")
+    public Response createVote(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("ballotId") int ballotId, @PathParam("optionId") int optionId) throws ServerException {
+        groupController.createVote(accessToken, groupId, ballotId, optionId);
+        return Response.status(Response.Status.CREATED).build();
+    }
+
 }
