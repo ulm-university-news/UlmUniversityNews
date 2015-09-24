@@ -1138,6 +1138,54 @@ public class GroupController extends AccessController {
     }
 
     /**
+     * Returns a list of user objects which have voted for the option with the specified id. The option belongs to
+     * the given ballot which in turn belongs to the defined group.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param optionId The id of the option for which the voters are requested.
+     * @return A list of user objects. The list can also be empty.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group, ballot or option
+     * are not found or the retrieval of the voters fails due to a database failure.
+     */
+    public List<User> getVoters(String accessToken, int groupId, int ballotId, int optionId) throws ServerException {
+        List<User> users = null;
+        /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
+           execute this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests the voters for the option with id {} in the " +
+                "ballot with id {}. The ballot belongs to the group with id {}.", requestor.getId(), optionId,
+                ballotId, groupId);
+
+        // Check if the group exists and the user is an active participant. If not, reject the request.
+        verifyGroupExistenceViaDB(groupId);
+        verifyParticipationInGroupViaDB(groupId, requestor.getId());
+
+        // Check if the ballot exists. If not, reject the request.
+        verifyBallotExistenceViaDB(groupId, ballotId);
+
+        // Check if the option exists. If not reject the request.
+        verifyOptionExistenceViaDB(ballotId, optionId);
+
+        try {
+            // Request the voters for the option.
+            users = groupDBM.getVoters(optionId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Set the push access token and the platform to null so that they are not returned to the requestor.
+        for (User user : users) {
+            user.setPushAccessToken(null);
+            user.setPlatform(null);
+        }
+
+        return users;
+    }
+
+    /**
      * A helper method which requests the group with the specified id from the database manager. It can be defined
      * whether the group object should already contain a list of the participants of the group. If the group is not
      * found, the method throws a ServerException.

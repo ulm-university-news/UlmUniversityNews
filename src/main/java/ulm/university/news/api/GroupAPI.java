@@ -429,4 +429,25 @@ public class GroupAPI {
         return Response.status(Response.Status.CREATED).build();
     }
 
+    /**
+     * Returns a list of user resources. The list contains the users who have voted for the specified option. The
+     * option belongs to the given ballot which in turn belongs to the defined group.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot to which the option belongs.
+     * @param optionId The id of the option for which the users have voted.
+     * @return A list of users. The list can also be empty.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/ballot/{ballotId}/option/{optionId}")
+    public List<User> getVoters(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("ballotId") int ballotId, @PathParam("optionId") int optionId) throws ServerException {
+        List<User> users = groupController.getVoters(accessToken, groupId, ballotId, optionId);
+        return users;
+    }
+
 }

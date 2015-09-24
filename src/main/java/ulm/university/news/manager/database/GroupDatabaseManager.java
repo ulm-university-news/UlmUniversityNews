@@ -1326,9 +1326,57 @@ public class GroupDatabaseManager extends DatabaseManager {
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
         }
+        finally {
+            returnConnection(con);
+        }
 
         logger.debug("End with hasVoted:{}.", hasVoted);
         return hasVoted;
+    }
+
+    /**
+     * Returns a list of users who have voted for the option with the specified id.
+     *
+     * @param optionId The id of the option.
+     * @return A list of users who have voted for the given option. The list can also be empty.
+     * @throws DatabaseException If the retrieval fails due to a database failure.
+     */
+    public List<User> getVoters(int optionId) throws DatabaseException {
+        logger.debug("Start with optionId:{}.", optionId);
+        List<User> users = new ArrayList<User>();
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String getVotersQuery =
+                    "SELECT * " +
+                    "FROM User AS u JOIN UserOption AS uo ON u.Id=uo.User_Id " +
+                    "WHERE uo.Option_Id=?;";
+
+            PreparedStatement getVotersStmt = con.prepareStatement(getVotersQuery);
+            getVotersStmt.setInt(1, optionId);
+
+            ResultSet getVotersRs = getVotersStmt.executeQuery();
+            while (getVotersRs.next()){
+                int userId = getVotersRs.getInt("Id");
+                String name = getVotersRs.getString("Name");
+                String pushAccessToken = getVotersRs.getString("PushAccessToken");
+                Platform platform = Platform.values[getVotersRs.getInt("Platform")];
+
+                // The server access token is never returned, it is set to null.
+                User tmp = new User(userId, name, null, pushAccessToken, platform);
+                users.add(tmp);
+            }
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+
+        logger.debug("End with users:{}.", users);
+        return users;
     }
 
 }
