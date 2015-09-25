@@ -554,4 +554,31 @@ public class ModeratorController extends AccessController {
         }
         return passwordHash;
     }
+
+    /**
+     * Checks if a moderator with the given name exists and possibly returns the moderators id.
+     *
+     * @param moderatorName The name of the moderator account.
+     * @return The id of the moderator with the given name.
+     * @throws ServerException If the moderator account wasn't found in the database or a database failure has occurred.
+     */
+    public int getModeratorIdByName(String moderatorName) throws ServerException {
+        // Get moderator from database.
+        Moderator moderatorDB;
+        try {
+            moderatorDB = moderatorDBM.getModeratorByName(moderatorName);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator by " +
+                    "name from the database.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Verify moderator account exists.
+        if (moderatorDB == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 404, MODERATOR_NOT_FOUND, "Moderator account not found.");
+            throw new ServerException(404, MODERATOR_NOT_FOUND);
+        }
+
+        return moderatorDB.getId();
+    }
 }

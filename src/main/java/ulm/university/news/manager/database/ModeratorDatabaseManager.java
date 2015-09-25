@@ -396,42 +396,6 @@ public class ModeratorDatabaseManager extends DatabaseManager {
     }
 
     /**
-     * Checks whether the Moderator identified by the given moderator id is responsible for the Channel identified by
-     * the given channel id or not.
-     *
-     * @param moderatorId The id of the Moderator.
-     * @param channelId The id of the Channel.
-     * @return true if the Moderator is responsible for the Channel.
-     */
-    public boolean isResponsibleForChannel(int moderatorId, int channelId) throws DatabaseException {
-        logger.debug("Start with moderatorId:{} and channelId:{}.", moderatorId, channelId);
-        Connection con = null;
-        boolean responsible = false;
-        try {
-            con = getDatabaseConnection();
-            String query = "SELECT * FROM ModeratorChannel WHERE Moderator_Id=? AND Channel_Id=?;";
-
-            PreparedStatement getResponsibleStmt = con.prepareStatement(query);
-            getResponsibleStmt.setInt(1, moderatorId);
-            getResponsibleStmt.setInt(2, channelId);
-
-            ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
-            if (getResponsibleRs.next()) {
-                responsible = true;
-            }
-            getResponsibleStmt.close();
-        } catch (SQLException e) {
-            // Throw back DatabaseException to the Controller.
-            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
-            throw new DatabaseException("Database failure.");
-        } finally {
-            returnConnection(con);
-        }
-        logger.debug("End with responsible:{}.", responsible);
-        return responsible;
-    }
-
-    /**
      * Updates the moderator password in the database.
      *
      * @param moderatorId The unique id of the moderator.

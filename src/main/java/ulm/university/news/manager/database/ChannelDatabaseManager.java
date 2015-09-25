@@ -183,8 +183,6 @@ public class ChannelDatabaseManager extends DatabaseManager {
         try {
             con = getDatabaseConnection();
 
-            // TODO Check active, existing in link table.
-
             // Add a moderator as responsible to a channel.
             String addModeratorQuery =
                     "INSERT INTO ModeratorChannel (Moderator_Id, Channel_Id, Active) " +
@@ -202,16 +200,73 @@ public class ChannelDatabaseManager extends DatabaseManager {
             addModeratorStmt.close();
         } catch (SQLException e) {
             logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
-            // Check if the uniqueness of the channel name was harmed.
-            if (e.getErrorCode() == 1062 && e.getMessage().contains("Name_UNIQUE")) {
+            // Check if primary key (moderatorId + channelId) already exists.
+            if (e.getErrorCode() == 1062 && e.getMessage().contains("PRIMARY")) {
                 logger.info("Double primary key. Moderator already in link table. Set moderator to active.");
+                // If there is already an entry, just set active to true no matter what value it had previously.
+                try {
+                    String updateActiveQuery =
+                            "UPDATE ModeratorChannel " +
+                                    "SET Active=? " +
+                                    "WHERE Moderator_Id=? AND Channel_Id=?;";
+
+                    PreparedStatement updateActiveStmt = con.prepareStatement(updateActiveQuery);
+                    updateActiveStmt.setBoolean(1, true);
+                    updateActiveStmt.setInt(2, moderatorId);
+                    updateActiveStmt.setInt(3, channelId);
+
+                    updateActiveStmt.executeUpdate();
+                    logger.info("Set the active field for the moderator with id {} to true. The moderator is an " +
+                            "active responsible moderator of the channel with id {}.", moderatorId, channelId);
+                    updateActiveStmt.close();
+                } catch (SQLException e1) {
+                    // Throw back DatabaseException to the Controller.
+                    throw new DatabaseException("Database failure. Couldn't set active field to true.");
+                }
+            } else {
+                // Throw back DatabaseException to the Controller.
+                throw new DatabaseException("Database failure.");
             }
-            // Throw back DatabaseException to the Controller.
-            throw new DatabaseException("Database failure.");
         } finally {
             returnConnection(con);
         }
         logger.debug("End.");
+    }
+
+    /**
+     * Checks whether the Moderator identified by the given moderator id is responsible for the Channel identified by
+     * the given channel id or not.
+     *
+     * @param channelId The id of the Channel.
+     * @param moderatorId The id of the Moderator.
+     * @return true if the Moderator is responsible for the Channel.
+     */
+    public boolean isResponsibleForChannel(int channelId, int moderatorId) throws DatabaseException {
+        logger.debug("Start with moderatorId:{} and channelId:{}.", moderatorId, channelId);
+        Connection con = null;
+        boolean responsible = false;
+        try {
+            con = getDatabaseConnection();
+            String query = "SELECT * FROM ModeratorChannel WHERE Moderator_Id=? AND Channel_Id=?;";
+
+            PreparedStatement getResponsibleStmt = con.prepareStatement(query);
+            getResponsibleStmt.setInt(1, moderatorId);
+            getResponsibleStmt.setInt(2, channelId);
+
+            ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
+            if (getResponsibleRs.next()) {
+                responsible = true;
+            }
+            getResponsibleStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with responsible:{}.", responsible);
+        return responsible;
     }
 
 }

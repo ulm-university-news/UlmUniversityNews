@@ -28,6 +28,9 @@ public class ChannelController extends AccessController {
     /** Instance of the ChannelDatabaseManager class. */
     protected ChannelDatabaseManager channelDBM = new ChannelDatabaseManager();
 
+    /** Instance of the ModeratorController class. */
+    private ModeratorController moderatorCtrl = new ModeratorController();
+
     /**
      * Creates a new channel and adds the creator to its responsible moderators.
      *
@@ -62,19 +65,61 @@ public class ChannelController extends AccessController {
         // TODO Input validation of subclass fields? Verify length only!
 
         // Check if requestor is a valid moderator.
-        Moderator moderatorRequestorDB = verifyModeratorAccess(accessToken);
+        Moderator moderatorDB = verifyModeratorAccess(accessToken);
 
         // Initialize remaining channel fields.
         channel.computeCreationDate();
         channel.setModificationDate(channel.getCreationDate());
 
         try {
-            channelDBM.storeChannel(channel, moderatorRequestorDB.getId());
+            channelDBM.storeChannel(channel, moderatorDB.getId());
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Creation of channel failed.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
         return channel;
+    }
+
+    /**
+     * Adds a moderator identified by name to a channel identified by id. Afterwards the moderator is registered as
+     * responsible moderator for the channel.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the moderator should be added.
+     * @param moderatorName The name of the moderator who should be added to the channel.
+     * @throws ServerException If the authorization of the requestor fails or the requestor isn't allowed to perform
+     * the operation. Furthermore, a failure of the database also causes a ServerException.
+     */
+    public void addModeratorToChannel(String accessToken, int channelId, String moderatorName) throws ServerException {
+        // Check weather the moderator name is set or not.
+        if(moderatorName == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Moderator name isn't set.");
+            throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
+        }
+
+        // Check if requestor is a valid moderator.
+        Moderator moderatorRequestorDB = verifyModeratorAccess(accessToken);
+
+        try {
+            // Only a responsible moderator is allowed to add other moderators.
+            if(!channelDBM.isResponsibleForChannel(channelId, moderatorRequestorDB.getId())){
+                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "This moderator is not allowed to " +
+                        "perform the requested operation.");
+                throw new ServerException(403, MODERATOR_FORBIDDEN);
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Could not check if moderator" +
+                    " is responsible for channel.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        try {
+            channelDBM.addModeratorToChannel(channelId, moderatorCtrl.getModeratorIdByName(moderatorName));
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Could not add moderator to " +
+                    "channel.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
     }
 }

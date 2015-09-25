@@ -5,10 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.controller.ChannelController;
-import ulm.university.news.data.Channel;
-import ulm.university.news.data.Event;
-import ulm.university.news.data.Lecture;
-import ulm.university.news.data.Sports;
+import ulm.university.news.data.*;
 import ulm.university.news.data.enums.ChannelType;
 import ulm.university.news.util.exceptions.ServerException;
 
@@ -107,6 +104,27 @@ public class ChannelAPI {
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel" + "/" + channel.getId());
         // Return the created channel resource and set the Location Header.
         return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(channel).build();
+    }
+
+    /**
+     * Adds a moderator to a channel. Afterwards the moderator is registered as responsible moderator for the channel.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the moderator should be added.
+     * @param moderator The moderator (including the name) who should be added to the channel.
+     * @return Response object.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @POST
+    @Path("/{id}/moderator")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response addModeratorToChannel(@HeaderParam("Authorization") String accessToken, @PathParam("id") int
+            channelId, Moderator moderator) throws ServerException {
+        channelCtrl.addModeratorToChannel(accessToken, channelId, moderator.getName());
+        // Return 201 Created
+        return Response.status(Response.Status.CREATED).build();
     }
 
 }
