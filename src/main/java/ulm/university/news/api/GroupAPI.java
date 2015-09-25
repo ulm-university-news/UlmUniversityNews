@@ -9,6 +9,7 @@ import ulm.university.news.util.Constants;
 import ulm.university.news.util.PATCH;
 import ulm.university.news.util.exceptions.ServerException;
 
+import javax.print.attribute.standard.Media;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import java.io.IOException;
@@ -487,13 +488,55 @@ public class GroupAPI {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("{groupId}/conversation")
+    @Path("/{groupId}/conversation")
     public Response createConversation(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
             groupId, Conversation conversation, @Context UriInfo uriInfo) throws ServerException {
         conversation = groupController.createConversation(accessToken, groupId, conversation);
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "group" + "/" + "conversation" + "/" +
                 conversation.getId());
         return Response.status(Response.Status.CREATED).location(createdURI).entity(conversation).build();
+    }
+
+    /**
+     * Returns a list of conversation resources which belong to the group with the specified id. The sub-resources
+     * parameter taken from the request URL determines whether the single conversations should contain a list of
+     * their sub-resources, i.e. a list of the corresponding conversation messages.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group for which the conversations are requested.
+     * @param subresources Indicates whether the conversations should contain a list of their sub-resources.
+     * @return A list of conversation resources. The list can also be empty.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/conversation")
+    public List<Conversation> getConversations(@HeaderParam("Authorization") String accessToken, @PathParam
+            ("groupId") int groupId, @DefaultValue("false") @QueryParam("subresources") boolean subresources) throws
+            ServerException {
+        List<Conversation> conversations = groupController.getConversations(accessToken, groupId, subresources);
+        return conversations;
+    }
+
+    /**
+     * Returns the conversation which is identified by the specified id. The conversation belongs to the group with
+     * the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation which should be retrieved.
+     * @return The conversation object.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/conversation/{conversationId}")
+    public Response getConversation(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("conversationId") int conversationId) throws ServerException {
+        Conversation conversation = groupController.getConversation(accessToken, groupId, conversationId);
+        return Response.status(Response.Status.OK).entity(conversation).build();
     }
 
 }

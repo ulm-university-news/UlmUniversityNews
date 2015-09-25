@@ -5,10 +5,12 @@ import org.slf4j.LoggerFactory;
 import ulm.university.news.data.*;
 import ulm.university.news.data.enums.GroupType;
 import ulm.university.news.data.enums.Platform;
+import ulm.university.news.data.enums.Priority;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
 
 import java.sql.*;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -1459,10 +1461,190 @@ public class GroupDatabaseManager extends DatabaseManager {
         logger.debug("End.");
     }
 
-    public List<Conversation> getConversations(int groupId, boolean withSubresources){
+    /**
+     * Returns a list of conversation objects which belong to the group with the specified id. It can be defined
+     * whether the single conversation objects should contain a list of their sub-resources, i.e. the conversation
+     * messages which have been sent into the conversation.
+     *
+     * @param groupId The if of the group for which the conversations are requested.
+     * @param withSubresources Indicates whether the conversations should contain a list of their sub-resources.
+     * @return Returns a list of conversation objects. The list can also be empty.
+     * @throws DatabaseException If the retrieval of the conversation fails due to a database failure.
+     */
+    public List<Conversation> getConversations(int groupId, boolean withSubresources) throws DatabaseException {
+        logger.debug("Start with groupId:{} and withSubresources:{}.", groupId, withSubresources);
         List<Conversation> conversations = new ArrayList<Conversation>();
-        // TODO
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String getConversationsQuery =
+                    "SELECT * " +
+                    "FROM Conversation " +
+                    "WHERE Group_Id=?;";
+            String getMessagesQuery =
+                    "SELECT * " +
+                    "FROM ConversationMessage AS cm JOIN Message AS m ON cm.Message_Id=m.Id " +
+                    "WHERE cm.Conversation_Id=?;";
+
+            PreparedStatement getConversationsStmt = con.prepareStatement(getConversationsQuery);
+            getConversationsStmt.setInt(1, groupId);
+
+            // Prepare statement only when sub-resources are requested.
+            PreparedStatement getMessagesStmt = null;
+            if(withSubresources){
+                logger.info("Conversations for group with id {} are requested including sub-resources.", groupId);
+                getMessagesStmt = con.prepareStatement(getMessagesQuery);
+            }
+
+            // Get all the conversations from the database.
+            ResultSet getConversationsRs = getConversationsStmt.executeQuery();
+            while(getConversationsRs.next()){
+                int conversationId = getConversationsRs.getInt("Id");
+                String title = getConversationsRs.getString("Title");
+                boolean closed = getConversationsRs.getBoolean("Closed");
+                int admin = getConversationsRs.getInt("ConversationAdmin_User_Id");
+
+                Conversation conversationTmp = new Conversation(conversationId, title, closed, admin);
+
+                // Get messages for this conversation if sub-resources are requested.
+                if(withSubresources){
+                    List<ConversationMessage> conversationMessages = new ArrayList<ConversationMessage>();
+
+                    // Execute the query to get the messages for the conversation with the given id.
+                    getMessagesStmt.setInt(1, conversationTmp.getId());
+                    ResultSet getMessagesRs = getMessagesStmt.executeQuery();
+                    while(getMessagesRs.next()){
+                        int messageId = getMessagesRs.getInt("Id");
+                        String text = getMessagesRs.getString("Text");
+                        ZonedDateTime creationDate = getMessagesRs.getTimestamp("CreationDate").toLocalDateTime()
+                                .atZone(Constants.TIME_ZONE);
+                        Priority priority = Priority.values[getMessagesRs.getInt("Priority")];
+                        int messageNumber = getMessagesRs.getInt("MessageNumber");
+                        int authorUser = getMessagesRs.getInt("Author_User_Id");
+
+                        // Add the message to the list.
+                        ConversationMessage conversationMsgTmp = new ConversationMessage(messageId, text, messageNumber,
+                                priority, creationDate, authorUser, conversationTmp.getId());
+                        conversationMessages.add(conversationMsgTmp);
+                    }
+
+                    // Add the list of conversation messages to the conversation object.
+                    conversationTmp.setConversationMessages(conversationMessages);
+                }
+
+                // Add the conversation object to the list of conversation objects.
+                conversations.add(conversationTmp);
+            }
+
+            getConversationsStmt.close();
+            if(withSubresources){
+                getMessagesStmt.close();
+            }
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+
+        logger.debug("End with conversations:{}.", conversations);
         return conversations;
+    }
+
+    /**
+     * Returns a list of conversation objects for a group which have the user with the specified id as the
+     * administrator.
+     *
+     * @param groupId The id of the group to which the conversations belong.
+     * @param adminId The id of the user who is the administrator of the conversations.
+     * @return A list of conversation objects. The list can also be empty.
+     * @throws DatabaseException If the retrieval of the conversation fails due to a database failure.
+     */
+    public List<Conversation> getConversations(int groupId, int adminId) throws DatabaseException {
+        logger.debug("Start with groupId:{} and adminId:{}.", groupId, adminId);
+        List<Conversation> conversations = new ArrayList<Conversation>();
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String getConversationsQuery =
+                    "SELECT * " +
+                    "FROM Conversation " +
+                    "WHERE Group_Id=? AND ConversationAdmin_User_Id=?;";
+
+            PreparedStatement getConversationsStmt = con.prepareStatement(getConversationsQuery);
+            getConversationsStmt.setInt(1, groupId);
+            getConversationsStmt.setInt(2, adminId);
+
+            ResultSet getConversationsRs = getConversationsStmt.executeQuery();
+            while(getConversationsRs.next()){
+                int conversationId = getConversationsRs.getInt("Id");
+                String title = getConversationsRs.getString("Title");
+                Boolean closed = getConversationsRs.getBoolean("Closed");
+
+                Conversation conversationTmp = new Conversation(conversationId, title, closed, adminId);
+                conversations.add(conversationTmp);
+            }
+
+            getConversationsStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+
+        logger.debug("End with conversations:{}.", conversations);
+        return conversations;
+    }
+
+    /**
+     * Returns the conversation with the specified id. The conversation belongs to the group with the given id.
+     *
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation which should be retrieved.
+     * @return The conversation object, null if the conversation is not found.
+     * @throws DatabaseException If the retrieval fails due to a database failure.
+     */
+    public Conversation getConversation(int groupId, int conversationId) throws DatabaseException {
+        logger.debug("Start with groupId:{} and conversationId:{}.", groupId, conversationId);
+        Conversation conversation = null;
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String getConversationQuery =
+                    "SELECT * " +
+                    "FROM Conversation " +
+                    "WHERE Group_Id=? AND Id=?;";
+
+            PreparedStatement getConversationStmt = con.prepareStatement(getConversationQuery);
+            getConversationStmt.setInt(1, groupId);
+            getConversationStmt.setInt(2, conversationId);
+
+            ResultSet getConversationRs = getConversationStmt.executeQuery();
+            if(getConversationRs.next()){
+                String title = getConversationRs.getString("Title");
+                Boolean closed = getConversationRs.getBoolean("Closed");
+                int admin = getConversationRs.getInt("ConversationAdmin_User_Id");
+
+                conversation = new Conversation(conversationId, title, closed, admin);
+            }
+
+            getConversationStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+
+        logger.debug("End with conversation:{].", conversation);
+        return conversation;
     }
 
 }

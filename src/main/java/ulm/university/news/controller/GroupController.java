@@ -1309,6 +1309,71 @@ public class GroupController extends AccessController {
     }
 
     /**
+     * Returns a list of conversation objects which belong to the group with the specified id. It can be defined
+     * whether the single conversation objects should contain a list of their sub-resources, i.e. a list of the
+     * conversation messages which belong to the conversation.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group for which the conversations are requested.
+     * @param subresources Indicates whether the conversation objects should contain a list of their sub-resources.
+     * @return A list of conversation objects. The list can also be empty.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group is not found or
+     * the retrieval of the conversations fails due to a database failure.
+     */
+    public List<Conversation> getConversations(String accessToken, int groupId, boolean subresources) throws
+            ServerException {
+        List<Conversation> conversations = null;
+        /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
+           execute this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests the conversations of the group with id {}.",
+                requestor.getId(), groupId);
+
+        // Check if the group exists and the user is an active participant of it. If not, reject the request.
+        verifyGroupExistenceViaDB(groupId);
+        verifyParticipationInGroupViaDB(groupId, requestor.getId());
+
+        try {
+            // Get the conversations from the database.
+            conversations = groupDBM.getConversations(groupId, subresources);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        return conversations;
+    }
+
+    /**
+     * Returns the conversation object of the conversation which is identified by the specified id. The conversation
+     * belongs to the group with the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation which should be retrieved.
+     * @return The conversation object.
+     * @throws ServerException If the requestor is not allowed to exectue the operation, the group or the
+     * conversation are not found or the retrieval fails due to a database failure.
+     */
+    public Conversation getConversation(String accessToken, int groupId, int conversationId) throws ServerException {
+        Conversation conversation = null;
+        /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
+           execute this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, request the conversation with id {} of the group with " +
+                        "id {}.", requestor.getId(), conversationId, groupId);
+
+        // Check if the group exists and the user is an active participant of it. If not, reject the request.
+        verifyGroupExistenceViaDB(groupId);
+        verifyParticipationInGroupViaDB(groupId, requestor.getId());
+
+        // Get the conversation from the database. Reject the request if the conversation is not found.
+        conversation = getConversation(groupId, conversationId);
+
+        return conversation;
+    }
+
+    /**
      * A helper method which requests the group with the specified id from the database manager. It can be defined
      * whether the group object should already contain a list of the participants of the group. If the group is not
      * found, the method throws a ServerException.
@@ -1482,6 +1547,33 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+    }
+
+    /**
+     * A helper method which requests the converstion with the specified id from the database manager. If the
+     * conversation is not found, it throws a ServerException.
+     *
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation which should be retrieved.
+     * @return The conversation object.
+     * @throws ServerException If the conversation is not found within the group or the retrieval fails due to a
+     * database exception.
+     */
+    private Conversation getConversation(int groupId, int conversationId) throws ServerException {
+        Conversation conversation;
+        try {
+            conversation = groupDBM.getConversation(groupId, conversationId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+        if(conversation == null){
+            String errMsg = "The conversation with id " + conversationId + " could not be found within the group with" +
+                    " id " + groupId + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 404, CONVERSATION_NOT_FOUND, errMsg);
+            throw new ServerException(404, CONVERSATION_NOT_FOUND);
+        }
+        return conversation;
     }
 
 }
