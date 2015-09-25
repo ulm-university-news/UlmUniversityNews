@@ -1250,6 +1250,65 @@ public class GroupController extends AccessController {
     }
 
     /**
+     * Creates a new conversation in the group with the specified id. The data of the new conversation is taken from
+     * the request and provided in form of a conversation object.
+     *
+     * @param accessToken The access token of the conversation.
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversation The conversation object containing the data for the conversation.
+     * @return The conversation object containing the data of the created conversation resource.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group is not found or
+     * the creation of the conversation fails due to a database failure.
+     */
+    public Conversation createConversation(String accessToken, int groupId, Conversation conversation) throws
+            ServerException {
+        // Validate the received data.
+        if(conversation == null || conversation.getTitle() == null){
+            String errMsg = "Incomplete data record. The given conversation object is " + conversation + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 400, CONVERSATION_DATA_INCOMPLETE, errMsg);
+            throw new ServerException(400, CONVERSATION_DATA_INCOMPLETE);
+        }
+        else if(!conversation.getTitle().matches(NAME_PATTERN)){
+            String errMsg = "Invalid conversation title. The given title is " + conversation.getTitle() + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 400, CONVERSATION_INVALID_TITLE, errMsg);
+            throw new ServerException(400, CONVERSATION_INVALID_TITLE);
+        }
+
+        /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
+           execute this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests to create a new conversation in the group with" +
+                " id {}.", requestor.getId(), groupId);
+
+        // Get the group from the database. The group should already include a list of its participants.
+        Group groupDB = getGroup(groupId, true);
+        // Check if the requestor is an active participant of the group. Otherwise reject the request.
+        if(!groupDB.isValidParticipant(requestor.getId())){
+            String errMsg = "The user with id " + requestor.getId() + " isn't an active participant of the group " +
+                    "with id " + groupId + ". The user is not allowed to create a conversation for this group";
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+
+        // Set the requestor as the administrator for the new conversation.
+        conversation.setAdmin(requestor.getId());
+
+        try {
+            // Store the conversation in the database.
+            groupDBM.storeConversation(groupId, conversation);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Notify the participants about the new conversation. Also the requestor?
+        List<User> participants = groupDB.getParticipants();
+        // TODO send notification with status CONVERSATION_NEW.
+
+        return conversation;
+    }
+
+    /**
      * A helper method which requests the group with the specified id from the database manager. It can be defined
      * whether the group object should already contain a list of the participants of the group. If the group is not
      * found, the method throws a ServerException.

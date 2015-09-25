@@ -88,6 +88,8 @@ public class Constants {
     public static final int GROUP_ADMIN_NOT_ALLOWED_TO_EXIT = 4011;
 
     public static final int CONVERSATION_NOT_FOUND = 4100;
+    public static final int CONVERSATION_DATA_INCOMPLETE = 4102;
+    public static final int CONVERSATION_INVALID_TITLE = 4103;
 
     public static final int BALLOT_NOT_FOUND = 4200;
     public static final int BALLOT_DATA_INCOMPLETE = 4202;

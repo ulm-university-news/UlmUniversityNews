@@ -3,10 +3,7 @@ package ulm.university.news.api;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import ulm.university.news.controller.GroupController;
-import ulm.university.news.data.Ballot;
-import ulm.university.news.data.Group;
-import ulm.university.news.data.Option;
-import ulm.university.news.data.User;
+import ulm.university.news.data.*;
 import ulm.university.news.data.enums.GroupType;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.PATCH;
@@ -471,6 +468,32 @@ public class GroupAPI {
                                int userId) throws ServerException {
         groupController.deleteVote(accessToken, groupId, ballotId, optionId, userId);
         return Response.status(Response.Status.NO_CONTENT).build();
+    }
+
+    /**
+     * Creates a new conversation for the group which is identified by the specified id. The data of the new
+     * conversation is provided within the conversation object which is generated from the request content. The
+     * created conversation resource will be returned including the URI which can be used to access the conversation
+     * resource.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group for which the conversation is created.
+     * @param conversation The conversation object containing the data from the request.
+     * @param uriInfo Information about the request URI.
+     * @return The created conversation resource and the URI for that resource.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("{groupId}/conversation")
+    public Response createConversation(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, Conversation conversation, @Context UriInfo uriInfo) throws ServerException {
+        conversation = groupController.createConversation(accessToken, groupId, conversation);
+        URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "group" + "/" + "conversation" + "/" +
+                conversation.getId());
+        return Response.status(Response.Status.CREATED).location(createdURI).entity(conversation).build();
     }
 
 }

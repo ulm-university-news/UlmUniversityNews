@@ -2,10 +2,7 @@ package ulm.university.news.manager.database;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ulm.university.news.data.Ballot;
-import ulm.university.news.data.Group;
-import ulm.university.news.data.Option;
-import ulm.university.news.data.User;
+import ulm.university.news.data.*;
 import ulm.university.news.data.enums.GroupType;
 import ulm.university.news.data.enums.Platform;
 import ulm.university.news.util.Constants;
@@ -1402,7 +1399,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             deleteVoteStmt.execute();
 
             logger.info("Deleted the vote from user with id {} for option with id {}.", userId, optionId);
-            deleteVoteStmt.close();;
+            deleteVoteStmt.close();
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
@@ -1412,6 +1409,60 @@ public class GroupDatabaseManager extends DatabaseManager {
             returnConnection(con);
         }
         logger.debug("End.");
+    }
+
+    /**
+     * Stores a new conversation in the database for the group with the specified id.
+     *
+     * @param groupId The id of the group for which the conversation is created.
+     * @param conversation The conversation object containing the data of the new conversation.
+     * @throws DatabaseException If the conversation could not be stored in the database.
+     */
+    public void storeConversation(int groupId, Conversation conversation) throws DatabaseException {
+        logger.debug("Start with groupId:{} and conversation:{}.", groupId, conversation);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String insertConversationQuery =
+                    "INSERT INTO Conversation (Title, Closed, Group_Id, ConversationAdmin_User_Id) " +
+                    "VALUES (?,?,?,?);";
+
+            PreparedStatement insertConversationStmt = con.prepareStatement(insertConversationQuery);
+            insertConversationStmt.setString(1, conversation.getTitle());
+            insertConversationStmt.setBoolean(2, conversation.getClosed());
+            insertConversationStmt.setInt(3, groupId);
+            insertConversationStmt.setInt(4, conversation.getAdmin());
+
+            insertConversationStmt.execute();
+
+            // Retrieve auto incremented id of the database record.
+            String getIdQuery = "SELECT LAST_INSERT_ID();";
+
+            Statement getIdStmt = con.createStatement();
+            ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
+            if(getIdRs.next()){
+                conversation.setId(getIdRs.getInt(1));
+            }
+
+            logger.info("Stored the conversation with id {} in the database. The conversation belongs to the group " +
+                    "with id {}.", conversation.getId(), groupId);
+            getIdStmt.close();
+            insertConversationStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    public List<Conversation> getConversations(int groupId, boolean withSubresources){
+        List<Conversation> conversations = new ArrayList<Conversation>();
+        // TODO
+        return conversations;
     }
 
 }
