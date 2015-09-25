@@ -82,6 +82,7 @@ public class Constants {
     public static final int CHANNEL_DATA_INCOMPLETE = 3002;
     public static final int CHANNEL_INVALID_NAME = 3003;
     public static final int CHANNEL_INVALID_TERM = 3004;
+    public static final int CHANNEL_NAME_ALREADY_EXISTS = 3005;
 
     // Group:
     public static final int GROUP_NOT_FOUND = 4000;

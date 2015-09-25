@@ -8,10 +8,11 @@ import ulm.university.news.data.Lecture;
 import ulm.university.news.data.Sports;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
+import ulm.university.news.util.exceptions.ServerException;
 
 import java.sql.*;
 
-import static ulm.university.news.util.Constants.LOG_SQL_EXCEPTION;
+import static ulm.university.news.util.Constants.*;
 
 /**
  * TODO
@@ -37,8 +38,9 @@ public class ChannelDatabaseManager extends DatabaseManager {
      * @param channel The channel object which contains the channel data.
      * @param moderatorId The id of the moderator who wants to create the channel.
      * @throws DatabaseException If the data could not be stored in the database due to database failure.
+     * @throws ServerException If channel name already exists.
      */
-    public void storeChannel(Channel channel, int moderatorId) throws DatabaseException {
+    public void storeChannel(Channel channel, int moderatorId) throws DatabaseException, ServerException {
         logger.debug("Start with channel:{} and moderatorId:{}.", channel, moderatorId);
         Connection con = null;
         try {
@@ -90,7 +92,6 @@ public class ChannelDatabaseManager extends DatabaseManager {
                     storeLectureStmt.setInt(6, channel.getId());
 
                     storeLectureStmt.execute();
-                    // TODO What about the lecture id in the database? Completely redundant!?
                     logger.info("Stored lecture.");
                     break;
                 case EVENT:
@@ -105,13 +106,12 @@ public class ChannelDatabaseManager extends DatabaseManager {
                     storeEventStmt.setInt(3, channel.getId());
 
                     storeEventStmt.execute();
-                    // TODO What about the event id in the database? Completely redundant!?
                     logger.info("Stored event.");
                     break;
                 case SPORTS:
                     Sports sports = (Sports) channel;
                     String storeSportQuery =
-                            "INSERT INTO CollegeSports (Cost, NumberOfParticipants, Channel_Id) " +
+                            "INSERT INTO Sports (Cost, NumberOfParticipants, Channel_Id) " +
                                     "VALUES (?,?,?); ";
 
                     PreparedStatement storeSportStmt = con.prepareStatement(storeSportQuery);
@@ -120,7 +120,6 @@ public class ChannelDatabaseManager extends DatabaseManager {
                     storeSportStmt.setInt(3, channel.getId());
 
                     storeSportStmt.execute();
-                    // TODO What about the event id in the database? Completely redundant!?
                     logger.info("Stored sports.");
                     break;
                 default:
@@ -128,7 +127,6 @@ public class ChannelDatabaseManager extends DatabaseManager {
                     break;
             }
 
-            // TODO Can the addModeratorToChannel() method be used here regarding the transaction and rollback?
             // Add moderator (creator of the channel) to responsible moderators.
             String addModeratorQuery =
                     "INSERT INTO ModeratorChannel (Moderator_Id, Channel_Id, Active) " +
@@ -157,8 +155,14 @@ public class ChannelDatabaseManager extends DatabaseManager {
                 logger.warn("Rollback failed.");
                 logger.error(Constants.LOG_SQL_EXCEPTION, e1.getSQLState(), e1.getErrorCode(), e1.getMessage());
             }
-            // Throw back DatabaseException to the Controller.
             logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Check if the uniqueness of the channel name was harmed.
+            if (e.getErrorCode() == 1062 && e.getMessage().contains("Name_UNIQUE")) {
+                logger.error("Uniqueness of the channel name was harmed. Cannot store channel.");
+                logger.error(LOG_SERVER_EXCEPTION, 409, CHANNEL_NAME_ALREADY_EXISTS, "Channel name already exits.");
+                throw new ServerException(409, CHANNEL_NAME_ALREADY_EXISTS);
+            }
+            // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
         } finally {
             returnConnection(con);
@@ -179,6 +183,8 @@ public class ChannelDatabaseManager extends DatabaseManager {
         try {
             con = getDatabaseConnection();
 
+            // TODO Check active, existing in link table.
+
             // Add a moderator as responsible to a channel.
             String addModeratorQuery =
                     "INSERT INTO ModeratorChannel (Moderator_Id, Channel_Id, Active) " +
@@ -195,11 +201,14 @@ public class ChannelDatabaseManager extends DatabaseManager {
 
             addModeratorStmt.close();
         } catch (SQLException e) {
-            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Check if the uniqueness of the channel name was harmed.
+            if (e.getErrorCode() == 1062 && e.getMessage().contains("Name_UNIQUE")) {
+                logger.info("Double primary key. Moderator already in link table. Set moderator to active.");
+            }
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
