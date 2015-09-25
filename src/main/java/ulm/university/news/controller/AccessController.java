@@ -73,7 +73,8 @@ public class AccessController {
     }
 
     /**
-     * Checks if the requestor identified by access token is a valid moderator.
+     * Checks if the requestor identified by access token is a valid moderator. Validates the access token and rejects
+     * the request if the access token does not identify a valid moderator.
      *
      * @param accessToken The access token of the requestor.
      * @return The valid moderator object of the requestor from the database.
@@ -103,6 +104,8 @@ public class AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
     }
+
+
 
     /**
      * Checks if the requestor identified by the access token is a valid user. Validates the access token and rejects

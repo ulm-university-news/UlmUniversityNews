@@ -41,6 +41,12 @@ public class Constants {
     /** The maximum length of a text assigned to a option. */
     public static final int OPTION_TEXT_MAX_LENGTH = 300;
 
+    /** The maximum length of a moderators first or last name. */
+    public static final int MODERATOR_NAME_MAX_LENGTH = 45;
+
+    /** The maximum length of the motivation text. */
+    public static final int MOTIVATION_TEXT_MAX_LENGTH = 300;
+
 
 
     // Logging:
@@ -61,12 +67,15 @@ public class Constants {
     public static final int MODERATOR_FORBIDDEN = 2001;
     public static final int MODERATOR_DATA_INCOMPLETE = 2002;
     public static final int MODERATOR_INVALID_NAME = 2003;
-    public static final int MODERATOR_INVALID_EMAIL = 2004;
-    public static final int MODERATOR_INVALID_PASSWORD = 2005;
-    public static final int MODERATOR_NAME_ALREADY_EXISTS = 2006;
-    public static final int MODERATOR_DELETED = 2007;
-    public static final int MODERATOR_LOCKED = 2008;
-    public static final int MODERATOR_UNAUTHORIZED = 2009;
+    public static final int MODERATOR_INVALID_FIRST_NAME = 2004;
+    public static final int MODERATOR_INVALID_LAST_NAME = 2005;
+    public static final int MODERATOR_INVALID_EMAIL = 2006;
+    public static final int MODERATOR_INVALID_PASSWORD = 2007;
+    public static final int MODERATOR_INVALID_MOTIVATION = 2008;
+    public static final int MODERATOR_NAME_ALREADY_EXISTS = 2009;
+    public static final int MODERATOR_DELETED = 2010;
+    public static final int MODERATOR_LOCKED = 2011;
+    public static final int MODERATOR_UNAUTHORIZED = 2012;
 
     // Channel:
     public static final int CHANNEL_NOT_FOUND = 3000;

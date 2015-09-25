@@ -6,14 +6,14 @@ import ulm.university.news.data.Moderator;
 import ulm.university.news.data.enums.Language;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
-import ulm.university.news.util.exceptions.ModeratorNameAlreadyExistsException;
+import ulm.university.news.util.exceptions.ServerException;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import static ulm.university.news.util.Constants.LOG_SQL_EXCEPTION;
+import static ulm.university.news.util.Constants.*;
 
 /**
  * TODO
@@ -50,7 +50,7 @@ public class ModeratorDatabaseManager extends DatabaseManager {
             String query =
                     "SELECT * " +
                             "FROM Moderator " +
-                            "WHERE ServerAccessToken=?;";
+                            "WHERE ServerAccessToken=? AND Deleted=FALSE;";
 
             PreparedStatement getModeratorStmt = con.prepareStatement(query);
             getModeratorStmt.setString(1, accessToken);
@@ -80,7 +80,7 @@ public class ModeratorDatabaseManager extends DatabaseManager {
      * @throws DatabaseException If the data could not be stored in the database due to database failure.
      */
     public void storeModerator(Moderator moderator) throws TokenAlreadyExistsException,
-            ModeratorNameAlreadyExistsException, DatabaseException {
+            ServerException, DatabaseException {
         logger.debug("Start with moderator:{}.", moderator);
         Connection con = null;
         try {
@@ -129,8 +129,8 @@ public class ModeratorDatabaseManager extends DatabaseManager {
                             "created.");
                 } else if (e.getMessage().contains("Name_UNIQUE")) {
                     logger.error("Uniqueness of the moderator name harmed. Cannot store moderator.");
-                    throw new ModeratorNameAlreadyExistsException("Name already exits in database. Requestor will be " +
-                            "notified.");
+                    logger.error(LOG_SERVER_EXCEPTION, 409, MODERATOR_NAME_ALREADY_EXISTS, "Moderator name already exits.");
+                    throw new ServerException(409, MODERATOR_NAME_ALREADY_EXISTS);
                 }
             }
             // Throw back DatabaseException to the Controller.
