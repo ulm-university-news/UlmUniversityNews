@@ -9,7 +9,6 @@ import ulm.university.news.util.Constants;
 import ulm.university.news.util.PATCH;
 import ulm.university.news.util.exceptions.ServerException;
 
-import javax.print.attribute.standard.Media;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import java.io.IOException;
@@ -537,6 +536,49 @@ public class GroupAPI {
             groupId, @PathParam("conversationId") int conversationId) throws ServerException {
         Conversation conversation = groupController.getConversation(accessToken, groupId, conversationId);
         return Response.status(Response.Status.OK).entity(conversation).build();
+    }
+
+    /**
+     * Updates the conversation data of the conversation which is identified by the id specified in the URL. The data
+     * is updated based on a description of changes. The description of changes is provided in the JSON Merge Patch
+     * format which is automatically translated into a conversation object.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation which should be updated.
+     * @param conversation The conversation object which has been generated from the JSON Merge Patch document. It
+     *                     contains the new data for the conversation.
+     * @return Returns an updated version of the conversation resource.
+     * @throws ServerException If the execution of the PATCH request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @PATCH
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/conversation/{conversationId}")
+    public Response changeConversation(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("conversationId") int conversationId, Conversation conversation) throws
+            ServerException {
+        conversation = groupController.changeConversation(accessToken, groupId, conversationId, conversation);
+        return Response.status(Response.Status.OK).entity(conversation).build();
+    }
+
+    /**
+     * Deletes the conversation resource which is identified by the specified id taken from the request URL.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation that should be deleted.
+     * @return A response with no content.
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Path("/{groupId}/conversation/{conversationId}")
+    public Response deleteConversation(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
+            groupId, @PathParam("conversationId") int conversationId) throws ServerException {
+        groupController.deleteConversation(accessToken, groupId, conversationId);
+        return Response.status(Response.Status.NO_CONTENT).build();
     }
 
 }

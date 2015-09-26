@@ -1360,7 +1360,7 @@ public class GroupController extends AccessController {
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
-        logger.info("The requestor, i.e. the user with id {}, request the conversation with id {} of the group with " +
+        logger.info("The requestor, i.e. the user with id {}, requests the conversation with id {} of the group with " +
                         "id {}.", requestor.getId(), conversationId, groupId);
 
         // Check if the group exists and the user is an active participant of it. If not, reject the request.
@@ -1371,6 +1371,147 @@ public class GroupController extends AccessController {
         conversation = getConversation(groupId, conversationId);
 
         return conversation;
+    }
+
+    /**
+     * Performs an update on the data of the conversation which is identified by the specified id. The conversation
+     * object, which is generated from the request, contains the fields which should be updated and the new data
+     * values. As far as no data conditions are harmed, the fields will be updated in the database.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation which should be updated.
+     * @param conversation The conversation object which contains the data values taken from the request.
+     * @return An updated version of the conversation object taken from the database.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group or the
+     * conversation are not found or the update fails due to a database failure.
+     */
+    public Conversation changeConversation(String accessToken, int groupId, int conversationId, Conversation
+            conversation) throws ServerException {
+        /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group which is also the
+        administrator of the conversation, is allowed to execute this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with the id {}, requests to update the conversation with id {} in " +
+                "the group with id {}.", requestor.getId(), conversationId, groupId);
+
+        // First, get the group from the database. The group should already contain a list of all participants.
+        Group groupDB = getGroup(groupId, true);
+        // Check if the requestor is an active participant of the group. Otherwise reject the request.
+        if(!groupDB.isValidParticipant(requestor.getId())){
+            String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
+                    " with id " + groupId + ". The user is not allowed to change the conversation, the request is " +
+                    "rejected.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+
+        // Second, get the conversation from the database.
+        Conversation conversationDB = getConversation(groupId, conversationId);
+        // Check if the requestor is the administrator of the conversation. If not, reject the request.
+        if(!conversationDB.isAdmin(requestor.getId())){
+            String errMsg = "The user with id " + requestor.getId() + " is not the administrator of the conversation " +
+                    "with the id " + conversationId + ". The user is thus not allowed to change the conversation.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+
+        try {
+            // Determine what needs to be updated and update the fields in the object taken from the database.
+            conversationDB = updateConversation(conversation, conversationDB);
+            // Update the values in the database.
+            groupDBM.updateConversation(conversationDB);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        return conversationDB;
+    }
+
+    /**
+     * Compares the conversation object with the received data from the request with the conversation object taken
+     * from the database. Updates the database object with the new data which has been received through the request.
+     * Note that some fields cannot be changed, so if some changes to these fields are described, they will be ignored.
+     *
+     * @param conversation The conversation object which contains the data from the request.
+     * @param conversationDB The conversation object which contains the data from the database.
+     * @return Returns an updated version of the conversation object taken from the database.
+     * @throws ServerException If some data based conditions are harmed.
+     */
+    private Conversation updateConversation(Conversation conversation, Conversation conversationDB) throws
+            ServerException {
+        String newTitle = conversation.getTitle();
+        if(newTitle != null){
+            // Update the title if conditions are met.
+            if(newTitle.matches(NAME_PATTERN)){
+                conversationDB.setTitle(newTitle);
+            }
+            else{
+                String errMsg = "Invalid conversation title. The given title is " + conversation.getTitle() + ".";
+                logger.error(LOG_SERVER_EXCEPTION, 400, CONVERSATION_INVALID_TITLE, errMsg);
+                throw new ServerException(400, CONVERSATION_INVALID_TITLE);
+            }
+        }
+
+        Boolean closed = conversation.getClosed();
+        if(closed != null){
+            // Update the closed field if necessary.
+            if(closed == Boolean.TRUE && conversationDB.getClosed() == Boolean.FALSE){
+                logger.info("The conversation with id {} is getting closed.", conversationDB.getId());
+                conversationDB.setClosed(true);
+            }
+            else if(closed == Boolean.FALSE && conversationDB.getClosed() == Boolean.TRUE){
+                logger.info("The conversation with id {} is getting opend again.", conversationDB.getId());
+                conversationDB.setClosed(false);
+            }
+        }
+
+        return conversationDB;
+    }
+
+    /**
+     * Deletes the conversation with the specified id which belongs to the defined group.
+     *
+     * @param accessToken The access token of the reqeustor.
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation that should be deleted.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group or the
+     * conversation are not found or the deletion fails due to a database failure.
+     */
+    public void deleteConversation(String accessToken, int groupId, int conversationId) throws ServerException {
+        /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group which is also the
+        administrator of the conversation, is allowed to execute this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with the id {}, requests to delete the conversation with id {} in " +
+                "the group with id {}.", requestor.getId(), conversationId, groupId);
+
+        // First, get the group from the database. The group should already contain a list of all participants.
+        Group groupDB = getGroup(groupId, true);
+        // Check if the requestor is an active participant of the group. Otherwise reject the request.
+        if(!groupDB.isValidParticipant(requestor.getId())){
+            String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
+                    " with id " + groupId + ". The user is not allowed to delete the conversation, the request is " +
+                    "rejected.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+
+        // Second, get the conversation from the database.
+        Conversation conversationDB = getConversation(groupId, conversationId);
+        // Check if the requestor is the administrator of the conversation. If not, reject the request.
+        if(!conversationDB.isAdmin(requestor.getId())){
+            String errMsg = "The user with id " + requestor.getId() + " is not the administrator of the conversation " +
+                    "with the id " + conversationId + ". The user is thus not allowed to delete the conversation.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+
+        try {
+            groupDBM.deleteConversation(groupId, conversationId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
     }
 
     /**

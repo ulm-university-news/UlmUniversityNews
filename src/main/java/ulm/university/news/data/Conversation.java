@@ -59,6 +59,19 @@ public class Conversation {
         this.admin = admin;
     }
 
+    /**
+     * Checks whether the user with the specified id is the administrator of the conversation.
+     *
+     * @param userId The id of the user.
+     * @return Returns true if the user is the administrator of the conversation, false otherwise.
+     */
+    public boolean isAdmin(int userId){
+        if(userId == admin){
+            return true;
+        }
+        return false;
+    }
+
     public int getId() {
         return id;
     }

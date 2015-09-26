@@ -1429,6 +1429,9 @@ public class GroupDatabaseManager extends DatabaseManager {
                     "INSERT INTO Conversation (Title, Closed, Group_Id, ConversationAdmin_User_Id) " +
                     "VALUES (?,?,?,?);";
 
+            // Conversation is not closed when it is stored within the database.
+            conversation.setClosed(false);
+
             PreparedStatement insertConversationStmt = con.prepareStatement(insertConversationQuery);
             insertConversationStmt.setString(1, conversation.getTitle());
             insertConversationStmt.setBoolean(2, conversation.getClosed());
@@ -1643,8 +1646,81 @@ public class GroupDatabaseManager extends DatabaseManager {
             returnConnection(con);
         }
 
-        logger.debug("End with conversation:{].", conversation);
+        logger.debug("End with conversation:{}.", conversation);
         return conversation;
+    }
+
+    /**
+     * Updates the data record of the specified conversation. The conversation object contains the new data values
+     * which are then used to update the record in the database.
+     *
+     * @param conversation The conversation object containing the new data values for the conversation.
+     * @throws DatabaseException If the update fails due to a database failure.
+     */
+    public void updateConversation(Conversation conversation) throws DatabaseException {
+        logger.debug("Start with conversation:{}.", conversation);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String updateConversationQuery =
+                    "UPDATE Conversation " +
+                    "SET Title=?, ConversationAdmin_User_Id=?, Closed=? " +
+                    "WHERE Id=?;";
+
+            PreparedStatement updateConversationStmt = con.prepareStatement(updateConversationQuery);
+            updateConversationStmt.setString(1, conversation.getTitle());
+            updateConversationStmt.setInt(2, conversation.getAdmin());
+            updateConversationStmt.setBoolean(3, conversation.getClosed());
+            updateConversationStmt.setInt(4, conversation.getId());
+
+            updateConversationStmt.executeUpdate();
+
+            logger.info("Updated the conversation data for the conversation with id {}.", conversation.getId());
+            updateConversationStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Removes the conversation with the specified id from the database.
+     *
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation.
+     * @throws DatabaseException If the deletion of the conversation fails due to a database failure.
+     */
+    public void deleteConversation(int groupId, int conversationId) throws DatabaseException {
+        logger.debug("Start with groupId:{} and conversationId:{}.", groupId, conversationId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String deleteConversationQuery =
+                    "DELETE FROM Conversation " +
+                    "WHERE Id=? AND Group_Id=?;";
+
+            PreparedStatement deleteConversationStmt = con.prepareStatement(deleteConversationQuery);
+            deleteConversationStmt.setInt(1, conversationId);
+            deleteConversationStmt.setInt(2, groupId);
+
+            deleteConversationStmt.execute();
+
+            logger.info("Deleted the conversation with id {} from the group with id {}.", conversationId, groupId);
+            deleteConversationStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
     }
 
 }
