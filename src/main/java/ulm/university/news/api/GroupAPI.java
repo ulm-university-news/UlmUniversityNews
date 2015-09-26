@@ -581,4 +581,28 @@ public class GroupAPI {
         return Response.status(Response.Status.NO_CONTENT).build();
     }
 
+    /**
+     * Creates a new message for the conversation which is identified by the specified id. The data of the message is
+     * taken from the request.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation.
+     * @param conversationMessage The object containing the data of the message taken from the request.
+     * @return Returns the created message resource.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/conversation/{conversationId}/message")
+    public Response createConversationMessage(@HeaderParam("Authorization") String accessToken, @PathParam("groupId")
+           int groupId, @PathParam("conversationId") int conversationId, ConversationMessage conversationMessage) throws
+           ServerException {
+        conversationMessage = groupController.createConversationMessage(accessToken, groupId, conversationId,
+                conversationMessage);
+        return Response.status(Response.Status.CREATED).entity(conversationMessage).build();
+    }
+
 }

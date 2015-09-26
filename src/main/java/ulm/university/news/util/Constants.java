@@ -50,6 +50,9 @@ public class Constants {
     /** The maximum length of the motivation text. */
     public static final int MOTIVATION_TEXT_MAX_LENGTH = 300;
 
+    /** The maximum length of a message. */
+    public static final int MESSAGE_MAX_LENGTH = 500;
+
     /** The location of the Email resource bundle. */
     public static final String RESOURCE_BUNDLE_EMAIL = "i18n/Email";
 
@@ -106,17 +109,20 @@ public class Constants {
     public static final int CONVERSATION_DATA_INCOMPLETE = 4102;
     public static final int CONVERSATION_INVALID_TITLE = 4103;
 
-    public static final int BALLOT_NOT_FOUND = 4200;
-    public static final int BALLOT_DATA_INCOMPLETE = 4202;
-    public static final int BALLOT_INVALID_TITLE = 4203;
-    public static final int BALLOT_INVALID_DESCRIPTION = 4204;
-    public static final int BALLOT_CLOSED = 4205;
-    public static final int BALLOT_USER_HAS_ALREADY_VOTED = 4206;
+    public static final int CONVERSATIONMESSAGE_DATA_INCOMPLETE = 4202;
+    public static final int CONVERSATIONMESSAGE_INVALID_TEXT = 4203;
 
-    public static final int OPTION_NOT_FOUND = 4300;
-    public static final int OPTION_DATA_INCOMPLETE = 4302;
-    public static final int OPTION_INVALID_TEXT = 4303;
-    public static final int OPTION_USER_HAS_ALREADY_VOTED = 4306;
+    public static final int BALLOT_NOT_FOUND = 4300;
+    public static final int BALLOT_DATA_INCOMPLETE = 4302;
+    public static final int BALLOT_INVALID_TITLE = 4303;
+    public static final int BALLOT_INVALID_DESCRIPTION = 4304;
+    public static final int BALLOT_CLOSED = 4305;
+    public static final int BALLOT_USER_HAS_ALREADY_VOTED = 4306;
+
+    public static final int OPTION_NOT_FOUND = 4400;
+    public static final int OPTION_DATA_INCOMPLETE = 4402;
+    public static final int OPTION_INVALID_TEXT = 4403;
+    public static final int OPTION_USER_HAS_ALREADY_VOTED = 4406;
 
 
     // General:

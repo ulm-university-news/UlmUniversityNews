@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import sun.rmi.runtime.Log;
 import ulm.university.news.data.*;
 import ulm.university.news.data.enums.GroupType;
+import ulm.university.news.data.enums.Priority;
 import ulm.university.news.data.enums.TokenType;
 import ulm.university.news.manager.database.GroupDatabaseManager;
 import ulm.university.news.util.exceptions.DatabaseException;
@@ -1425,6 +1426,10 @@ public class GroupController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
+        // Notify participants about changed conversation.
+        List<User> participants = groupDB.getParticipants();
+        // TODO send notification
+
         return conversationDB;
     }
 
@@ -1512,6 +1517,92 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+
+        // Send notification about the deleted conversation to the participants.
+        List<User> participants = groupDB.getParticipants();
+        // TODO send notification
+    }
+
+    /**
+     * Creates a new message for the specified conversation. The message will be sent into the conversation which is
+     * identified by the given id and belongs to the defined group.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation.
+     * @param conversationMessage The object which contains the data of the message.
+     * @return The created message resource.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group or the
+     * conversation are not found or the message cannot be created due to a database failure.
+     */
+    public ConversationMessage createConversationMessage(String accessToken, int groupId, int conversationId,
+            ConversationMessage conversationMessage) throws ServerException {
+        // Validate the received data.
+        if(conversationMessage == null || conversationMessage.getText() == null ||
+                conversationMessage.getPriority() == null){
+            String errMsg = "Incomplete data record. The given conversationMessage is " + conversationMessage + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 400, CONVERSATIONMESSAGE_DATA_INCOMPLETE, errMsg);
+            throw new ServerException(400, CONVERSATIONMESSAGE_DATA_INCOMPLETE);
+        }
+        else if(conversationMessage.getText().length() > MESSAGE_MAX_LENGTH){
+            String errMsg = "Invalid message text. The text exceeded the max length.";
+            logger.error(LOG_SERVER_EXCEPTION, 400, CONVERSATIONMESSAGE_INVALID_TEXT, errMsg);
+            throw new ServerException(400, CONVERSATIONMESSAGE_INVALID_TEXT);
+        }
+
+        /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
+        execute this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with the id {}, requests to create a new message for the " +
+                "conversation with id {} within the group with id {}.", requestor.getId(), conversationId, groupId);
+
+        // Get the group from the database including a list of the participants.
+        Group groupDB = getGroup(groupId, true);
+        if(!groupDB.isValidParticipant(requestor.getId())){
+            String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group " +
+                    "with id " + groupId + ". The user is thus not allowed to create a new conversation message";
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+
+        // Get the conversation from the database. Reject the request if the conversation is closed.
+        Conversation conversationDB = getConversation(groupId, conversationId);
+        if(conversationDB.getClosed() == Boolean.TRUE){
+            String errMsg = "The conversation with id " + conversationId + " is closed. No message can be sent.";
+            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
+            throw new ServerException(403, USER_FORBIDDEN);
+        }
+
+        // Check the priority and adjust it if necessary.
+        Priority priority = conversationMessage.getPriority();
+        if(priority == Priority.HIGH && groupDB.getGroupType() == GroupType.WORKING){
+            // In a working group no messages can be sent with priority high.
+            conversationMessage.setPriority(Priority.NORMAL);
+        }
+        else if(priority == Priority.HIGH && groupDB.getGroupType() == GroupType.TUTORIAL &&
+                !groupDB.isGroupAdmin(requestor.getId())){
+            // In a tutorial group only the group administrator (tutor) can send a message with priority high.
+            conversationMessage.setPriority(Priority.NORMAL);
+        }
+
+        // Set relevant fields in the conversationMessage object.
+        conversationMessage.setConversationId(conversationId);
+        conversationMessage.setAuthorUser(requestor.getId());
+        conversationMessage.computeCreationDate();
+
+        try {
+            // Store the conversation message in the database.
+            groupDBM.storeConversationMessage(conversationId, conversationMessage);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Send notification about the new conversation message to the participants.
+        List<User> participants = groupDB.getParticipants();
+        // TODO send notification CONVERSATION_MESSAGE_NEW
+
+        return conversationMessage;
     }
 
     /**

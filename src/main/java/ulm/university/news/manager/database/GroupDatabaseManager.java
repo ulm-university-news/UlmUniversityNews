@@ -1723,4 +1723,103 @@ public class GroupDatabaseManager extends DatabaseManager {
         logger.debug("End.");
     }
 
+    /**
+     * Stores a new conversation message into the database. The message belongs to the conversation with the given id
+     * . The conversationMessage object contains the data of the message.
+     *
+     * @param conversationId The id of the conversation to which the message belongs.
+     * @param conversationMessage Contains the data of the message.
+     * @throws DatabaseException If the message could not be stored due to a database failure.
+     */
+    public void storeConversationMessage(int conversationId, ConversationMessage conversationMessage) throws
+            DatabaseException {
+        logger.debug("Start with conversationId:{} and conversationMessage:{}.", conversationId, conversationMessage);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            // Set auto commit to false for the following queries.
+            con.setAutoCommit(false);
+
+            String insertMsgQuery =
+                    "INSERT INTO Message (Text, CreationDate, Priority) " +
+                    "VALUES (?,?,?);";
+            String insertConversationMsgQuery =
+                    "INSERT INTO ConversationMessage (MessageNumber, Conversation_Id, Author_User_Id, Message_Id) " +
+                    "VALUES (?,?,?,?);";
+            String getMessageNumberQuery =
+                    "SELECT MAX(MessageNumber) " +
+                    "FROM ConversationMessage " +
+                    "WHERE Conversation_Id=?;";
+
+            PreparedStatement insertMsgStmt = con.prepareStatement(insertMsgQuery);
+            PreparedStatement insertConversationMsgStmt = con.prepareStatement(insertConversationMsgQuery);
+            PreparedStatement getMessageNumberStmt = con.prepareStatement(getMessageNumberQuery);
+
+            // First, insert the message relevant data fields into the Message table.
+            insertMsgStmt.setString(1, conversationMessage.getText());
+            insertMsgStmt.setTimestamp(2, Timestamp.from(conversationMessage.getCreationDate().toInstant()));
+            insertMsgStmt.setInt(3, conversationMessage.getPriority().ordinal());
+
+            insertMsgStmt.execute();
+
+            // Second, retrieve auto incremented id of the database record for the message.
+            String getIdQuery = "SELECT LAST_INSERT_ID();";
+
+            Statement getIdStmt = con.createStatement();
+            ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
+            if(getIdRs.next()){
+                // Set the id taken from the database to the conversationMessage object.
+                conversationMessage.setId(getIdRs.getInt(1));
+            }
+
+            // The message number for the new message.
+            int messageNumber = 0;
+            // Third, retrieve the next message number for the given conversation.
+            getMessageNumberStmt.setInt(1, conversationId);
+            ResultSet getMessageNumberRs = getMessageNumberStmt.executeQuery();
+            if(getMessageNumberRs.next()){
+                messageNumber = getMessageNumberRs.getInt(1);
+            }
+            messageNumber++; // Increment to get the next free message number.
+            // Set the message number in the object.
+            conversationMessage.setMessageNumber(messageNumber);
+
+            // Fourth, insert the conversation message data fields into the ConversationMessage table.
+            insertConversationMsgStmt.setInt(1, messageNumber);
+            insertConversationMsgStmt.setInt(2, conversationId);
+            insertConversationMsgStmt.setInt(3, conversationMessage.getAuthorUser());
+            insertConversationMsgStmt.setInt(4, conversationMessage.getId());
+
+            insertConversationMsgStmt.execute();
+
+            //End transaction.
+            con.commit();
+            logger.info("Stored the conversation message with the id {} and the message number {}.",
+                    conversationMessage.getId(), messageNumber);
+
+        } catch (SQLException e) {
+            try {
+                logger.warn("SQLException occurred during conversationMsg storage, need to rollback the transaction.");
+                con.rollback();
+            } catch (SQLException e1) {
+                logger.warn("Rollback failed.");
+                logger.error(Constants.LOG_SQL_EXCEPTION, e1.getSQLState(), e1.getErrorCode(), e1.getMessage());
+            }
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            try {
+                con.setAutoCommit(true);
+            } catch (SQLException e) {
+                logger.warn("Set auto commit to true has failed.");
+                logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            }
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
 }

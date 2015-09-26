@@ -4,6 +4,8 @@ import ulm.university.news.data.enums.Priority;
 
 import java.time.ZonedDateTime;
 
+import static ulm.university.news.util.Constants.TIME_ZONE;
+
 /**
  * The Message class represents a general message. A message contains a message text, a number and was created at a
  * certain date and time. Each message is sent with a defined priority.
@@ -62,6 +64,15 @@ public class Message {
         this.messageNumber = messageNumber;
         this.creationDate = creationDate;
         this.priority = priority;
+    }
+
+    /**
+     * Computes the creation date of the Message. If the creation date is already set, this method does nothing.
+     */
+    public void computeCreationDate(){
+        if (creationDate == null) {
+            creationDate = ZonedDateTime.now(TIME_ZONE);
+        }
     }
 
     public int getId() {
