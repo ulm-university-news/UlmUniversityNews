@@ -9,6 +9,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
+import java.util.Locale;
 
 /**
  * This class represents the Moderator of the application. A Moderator manages channels. In addition to his
@@ -179,6 +180,19 @@ public class Moderator {
     public void encryptPassword() {
         // Hash and salt password. Stores encryption and salt in one field.
         password = BCrypt.hashpw(password, BCrypt.gensalt());
+    }
+
+    /**
+     * Returns the moderators language as a Locale.
+     *
+     * @return The Locale of the moderators language.
+     */
+    public Locale getLanguageAsLocale() {
+        switch (language) {
+            case GERMAN: return Locale.GERMAN;
+            case ENGLISH: return Locale.ENGLISH;
+            default: return Locale.ENGLISH;
+        }
     }
 
     @Override

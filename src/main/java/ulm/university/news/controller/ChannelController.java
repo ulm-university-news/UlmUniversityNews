@@ -2,7 +2,9 @@ package ulm.university.news.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ulm.university.news.data.*;
+import ulm.university.news.data.Channel;
+import ulm.university.news.data.Lecture;
+import ulm.university.news.data.Moderator;
 import ulm.university.news.data.enums.ChannelType;
 import ulm.university.news.manager.database.ChannelDatabaseManager;
 import ulm.university.news.util.exceptions.DatabaseException;

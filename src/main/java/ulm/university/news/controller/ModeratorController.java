@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.data.enums.Language;
 import ulm.university.news.manager.email.EmailManager;
+import ulm.university.news.util.Translator;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
 import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
@@ -13,6 +14,7 @@ import ulm.university.news.util.exceptions.TokenAlreadyExistsException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.regex.Pattern;
 
@@ -412,13 +414,13 @@ public class ModeratorController extends AccessController {
         // Generate a new password.
         String newPassword = generatePassword();
 
-        // TODO Internationalization. Get mail text from properties file.
-        String subject = "Ulm University News - Password Reset";
-        String message;
-        message = "Hello " + moderatorDB.getFirstName() + " " + moderatorDB.getLastName() + ",\n\n";
-        message += "your password has been reset.\nYour new password is: ";
-        message += newPassword + "\n\n";
-        message += "Regards, the team of Ulm University News";
+        // Internationalization: Get email text from properties file.
+        Locale locale = moderatorDB.getLanguageAsLocale();
+        String key = "moderator.password.reset.subject";
+        String subject = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, APPLICATION_NAME);
+        key = "moderator.password.reset.message";
+        String message = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, moderatorDB
+                .getFirstName(), moderatorDB.getLastName(), newPassword, APPLICATION_NAME);
 
         // Send email with new plain text password to the moderator.
         if (!EmailManager.getInstance().sendMail(moderatorDB.getEmail(), subject, message)) {

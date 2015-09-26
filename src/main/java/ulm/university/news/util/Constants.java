@@ -9,6 +9,9 @@ import java.time.ZoneId;
  * @author Philipp Speidel
  */
 public class Constants {
+    /** The name of the application. */
+    public static final String APPLICATION_NAME = "Ulm University News";
+
     /** The time zone where the server is located. */
     public static final ZoneId TIME_ZONE = ZoneId.of("Europe/Berlin");
 
@@ -47,6 +50,8 @@ public class Constants {
     /** The maximum length of the motivation text. */
     public static final int MOTIVATION_TEXT_MAX_LENGTH = 300;
 
+    /** The location of the Email resource bundle. */
+    public static final String RESOURCE_BUNDLE_EMAIL = "i18n/Email";
 
 
     // Logging:
@@ -119,5 +124,6 @@ public class Constants {
     public static final int TOKEN_INVALID = 5001;
     public static final int DATA_INCOMPLETE = 5002;
     public static final int EMAIL_FAILURE = 5003;
+    public static final int RESOURCE_BUNDLE_NOT_FOUND = 5004;
 
 }

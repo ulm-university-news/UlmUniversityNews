@@ -129,7 +129,8 @@ public class ModeratorDatabaseManager extends DatabaseManager {
                             "created.");
                 } else if (e.getMessage().contains("Name_UNIQUE")) {
                     logger.error("Uniqueness of the moderator name harmed. Cannot store moderator.");
-                    logger.error(LOG_SERVER_EXCEPTION, 409, MODERATOR_NAME_ALREADY_EXISTS, "Moderator name already exits.");
+                    logger.error(LOG_SERVER_EXCEPTION, 409, MODERATOR_NAME_ALREADY_EXISTS, "Moderator name already " +
+                            "exits.");
                     throw new ServerException(409, MODERATOR_NAME_ALREADY_EXISTS);
                 }
             }
