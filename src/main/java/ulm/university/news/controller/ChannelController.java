@@ -2,9 +2,7 @@ package ulm.university.news.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ulm.university.news.data.Channel;
-import ulm.university.news.data.Lecture;
-import ulm.university.news.data.Moderator;
+import ulm.university.news.data.*;
 import ulm.university.news.data.enums.ChannelType;
 import ulm.university.news.manager.database.ChannelDatabaseManager;
 import ulm.university.news.util.exceptions.DatabaseException;
@@ -34,7 +32,7 @@ public class ChannelController extends AccessController {
     private ModeratorController moderatorCtrl = new ModeratorController();
 
     /**
-     * Creates a new channel and adds the creator to its responsible moderators.
+     * Validates received channel data. Creates a new channel and adds the creator to its responsible moderators.
      *
      * @param accessToken The access token of the requestor.
      * @param channel The channel object including the data of the new channel.
@@ -51,20 +49,63 @@ public class ChannelController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_NAME, "Channel name is invalid.");
             throw new ServerException(400, CHANNEL_INVALID_NAME);
         } else if(channel.getTerm() != null && !channel.getTerm().matches(TERM_PATTERN)){
-            logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_TERM, "Invalid term.");
+            logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_TERM, "Term is invalid.");
             throw new ServerException(400, CHANNEL_INVALID_TERM);
+        } else if(channel.getContacts().length() > CHANNEL_CONTACTS_MAX_LENGTH){
+            logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_CONTACTS, "Contacts to long.");
+            throw new ServerException(400, CHANNEL_INVALID_CONTACTS);
+        } else if(channel.getDescription() != null && channel.getDescription().length() > DESCRIPTION_MAX_LENGTH){
+            logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_DESCRIPTION, "Description to long.");
+            throw new ServerException(400, CHANNEL_INVALID_DESCRIPTION);
+        } else if(channel.getLocations() != null && channel.getLocations().length() > CHANNEL_LOCATIONS_MAX_LENGTH){
+            logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_LOCATIONS, "Locations to long.");
+            throw new ServerException(400, CHANNEL_INVALID_LOCATIONS);
+        } else if(channel.getDates() != null && channel.getDates().length() > CHANNEL_DATES_MAX_LENGTH){
+            logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_DATES, "Dates to long.");
+            throw new ServerException(400, CHANNEL_INVALID_DATES);
         }
-        // TODO Other (e.g. contacts) input validation? Verify length only!
 
-        // Perform special checks for the received data of the lecture subclass.
+        // Perform special checks for the received data of the Lecture subclass.
         if (channel.getType() == ChannelType.LECTURE) {
                 Lecture lecture = (Lecture) channel;
                 if (lecture.getLecturer() == null || lecture.getFaculty() == null) {
-                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Channel data is incomplete.");
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Lecture data is incomplete.");
                     throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
+                } else if(lecture.getLecturer().length() > CHANNEL_CONTACTS_MAX_LENGTH){
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_LECTURER, "Lecturer to long.");
+                    throw new ServerException(400, CHANNEL_INVALID_LECTURER);
+                } else if(lecture.getAssistant() != null && lecture.getAssistant().length() >
+                        CHANNEL_CONTACTS_MAX_LENGTH){
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_ASSISTANT, "Assistant to long.");
+                    throw new ServerException(400, CHANNEL_INVALID_ASSISTANT);
                 }
         }
-        // TODO Input validation of subclass fields? Verify length only!
+
+        // Perform special checks for the received data of the Sports subclass.
+        if (channel.getType() == ChannelType.SPORTS) {
+            Sports sports = (Sports) channel;
+            if(sports.getCost() != null && sports.getCost().length() > CHANNEL_COST_MAX_LENGTH){
+                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_COST, "Costs to long.");
+                throw new ServerException(400, CHANNEL_INVALID_COST);
+            } else if(sports.getNumberOfParticipants() != null && sports.getNumberOfParticipants().length() >
+                    CHANNEL_PARTICIPANTS_MAX_LENGTH){
+                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_PARTICIPANTS, "Number of participants to long.");
+                throw new ServerException(400, CHANNEL_INVALID_PARTICIPANTS);
+            }
+        }
+
+        // Perform special checks for the received data of the Event subclass.
+        if (channel.getType() == ChannelType.EVENT) {
+            Event event = (Event) channel;
+            if(event.getCost() != null && event.getCost().length() > CHANNEL_COST_MAX_LENGTH){
+                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_COST, "Costs to long.");
+                throw new ServerException(400, CHANNEL_INVALID_COST);
+            } else if(event.getOrganizer() != null && event.getOrganizer().length() >
+                    CHANNEL_CONTACTS_MAX_LENGTH){
+                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_ORGANIZER, "Organizer to long.");
+                throw new ServerException(400, CHANNEL_INVALID_ORGANIZER);
+            }
+        }
 
         // Check if requestor is a valid moderator.
         Moderator moderatorDB = verifyModeratorAccess(accessToken);

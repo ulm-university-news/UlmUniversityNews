@@ -17,7 +17,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 
-import static ulm.university.news.util.Constants.CHANNEL_DATA_INCOMPLETE;
+import static ulm.university.news.util.Constants.CHANNEL_INVALID_TYPE;
 import static ulm.university.news.util.Constants.LOG_SERVER_EXCEPTION;
 
 /**
@@ -69,8 +69,8 @@ public class ChannelAPI {
                 channelType = ChannelType.valueOf(type);
             } catch (IllegalArgumentException e) {
                 // Invalid channel type. Abort method.
-                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Channel data is incomplete.");
-                throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
+                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_TYPE, "Channel type is invalid.");
+                throw new ServerException(400, CHANNEL_INVALID_TYPE);
             }
 
             // Generate appropriate channel subclass from JSON representation.
@@ -95,8 +95,8 @@ public class ChannelAPI {
                     break;
             }
         } catch (IOException e) {
-            logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Channel data is incomplete.");
-            throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
+            logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_TYPE, "Channel type is invalid.");
+            throw new ServerException(400, CHANNEL_INVALID_TYPE);
         }
 
         channel = channelCtrl.createChannel(accessToken, channel);

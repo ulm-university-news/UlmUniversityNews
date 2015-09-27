@@ -34,9 +34,13 @@ public class Constants {
      *  the year yyyy. In WS, the year can also be given as yyyy/yy, e.g. 2015/16.*/
     public static final String TERM_PATTERN = "^[W,S][S][0-9]{4}[/]?[0-9]{0,2}$";
 
+    // TODO Replace with length only?
     /** A pattern which describes a valid resource description. A resource description can contain any ASCII characters,
      *  but is limited to 500 characters. */
     public static final String DESCRIPTION_PATTERN = "^[öÖäÄüÜßa.\\p{Print}\\p{Blank}]{1,500}$";
+
+    /** The maximum length of a description field. */
+    public static final int DESCRIPTION_MAX_LENGTH = 500;
 
     /** The maximum length of a push access token which is used to send push notifications to the client. */
     public static final int PUSH_TOKEN_MAX_LENGTH = 1024;
@@ -49,6 +53,22 @@ public class Constants {
 
     /** The maximum length of the motivation text. */
     public static final int MOTIVATION_TEXT_MAX_LENGTH = 300;
+
+    /** The maximum length of the contacts text of a channel. */
+    public static final int CHANNEL_CONTACTS_MAX_LENGTH = 120;
+
+    // TODO Increase max length in database to about 120!
+    /** The maximum length of the locations text of a channel. */
+    public static final int CHANNEL_LOCATIONS_MAX_LENGTH = 65;
+
+    /** The maximum length of the dates text of a channel. */
+    public static final int CHANNEL_DATES_MAX_LENGTH = 150;
+
+    /** The maximum length of the cost text of a channel. */
+    public static final int CHANNEL_COST_MAX_LENGTH = 150;
+
+    /** The maximum length of the participants text of a channel. */
+    public static final int CHANNEL_PARTICIPANTS_MAX_LENGTH = 150;
 
     /** The maximum length of a message. */
     public static final int MESSAGE_MAX_LENGTH = 500;
@@ -90,7 +110,17 @@ public class Constants {
     public static final int CHANNEL_DATA_INCOMPLETE = 3002;
     public static final int CHANNEL_INVALID_NAME = 3003;
     public static final int CHANNEL_INVALID_TERM = 3004;
-    public static final int CHANNEL_NAME_ALREADY_EXISTS = 3005;
+    public static final int CHANNEL_INVALID_CONTACTS = 3005;
+    public static final int CHANNEL_INVALID_LOCATIONS = 3006;
+    public static final int CHANNEL_INVALID_DESCRIPTION = 3007;
+    public static final int CHANNEL_INVALID_DATES = 3008;
+    public static final int CHANNEL_INVALID_TYPE = 3009;
+    public static final int CHANNEL_INVALID_LECTURER = 3010;
+    public static final int CHANNEL_INVALID_ASSISTANT = 3011;
+    public static final int CHANNEL_INVALID_COST = 3012;
+    public static final int CHANNEL_INVALID_PARTICIPANTS = 3013;
+    public static final int CHANNEL_INVALID_ORGANIZER = 3014;
+    public static final int CHANNEL_NAME_ALREADY_EXISTS = 3015;
 
     // Group:
     public static final int GROUP_NOT_FOUND = 4000;
