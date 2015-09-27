@@ -233,6 +233,10 @@ public class ModeratorController extends AccessController {
             throw new ServerException(403, MODERATOR_FORBIDDEN);
         }
 
+        // Identifies weather to send an email or not regarding the locked and admin field.
+        boolean emailLocked = false;
+        boolean emailAdmin = false;
+
         if (!isOwnAccountChanged) {
             try {
                 // Get requested moderator identified by id from database.
@@ -246,6 +250,14 @@ public class ModeratorController extends AccessController {
             if (moderatorDB == null) {
                 logger.error(LOG_SERVER_EXCEPTION, 404, MODERATOR_NOT_FOUND, "Moderator account not found.");
                 throw new ServerException(404, MODERATOR_NOT_FOUND);
+            }
+            // Check if locked field will be changed.
+            if (moderator.isLocked() != null && moderator.isLocked() != moderatorDB.isLocked()) {
+                emailLocked = true;
+            }
+            // Check if admin field will be changed.
+            if (moderator.isAdmin() != null && moderator.isAdmin() != moderatorDB.isAdmin()) {
+                emailAdmin = true;
             }
             moderatorDB = updateModeratorAsAdmin(moderator, moderatorDB);
         } else {
@@ -261,7 +273,55 @@ public class ModeratorController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // TODO Send account (un)locked / (remove/add) admin rights email to moderator.
+        // After database update send email to moderator if locked and/or admin field has changed.
+        Locale locale = moderatorDB.getLanguageAsLocale();
+        String key, subject, message;
+
+        // Internationalization: Get email text from properties file.
+        if(emailLocked) {
+            if(moderatorDB.isLocked()){
+                // Moderator account was locked.
+                key = "moderator.locked.subject";
+                subject = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, APPLICATION_NAME);
+                key = "moderator.locked.message";
+                message = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, moderatorDB
+                        .getFirstName(), moderatorDB.getLastName(), APPLICATION_NAME);
+            } else {
+                // Moderator account was unlocked.
+                key = "moderator.unlocked.subject";
+                subject = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, APPLICATION_NAME);
+                key = "moderator.unlocked.message";
+                message = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, moderatorDB
+                        .getFirstName(), moderatorDB.getLastName(), APPLICATION_NAME);
+            }
+            // Send account (un)locked email to moderator.
+            if (!EmailManager.getInstance().sendMail(moderatorDB.getEmail(), subject, message)) {
+                logger.error(LOG_SERVER_EXCEPTION, 500, EMAIL_FAILURE, "Couldn't sent email to moderator.");
+                throw new ServerException(500, EMAIL_FAILURE);
+            }
+        }
+        if(emailAdmin) {
+            if(moderatorDB.isAdmin()){
+                // Admin rights added.
+                key = "moderator.adminadded.subject";
+                subject = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, APPLICATION_NAME);
+                key = "moderator.adminadded.message";
+                message = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, moderatorDB
+                        .getFirstName(), moderatorDB.getLastName(), APPLICATION_NAME);
+            } else {
+                // Admin rights removed.
+                key = "moderator.adminremoved.subject";
+                subject = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, APPLICATION_NAME);
+                key = "moderator.adminremoved.message";
+                message = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, moderatorDB
+                        .getFirstName(), moderatorDB.getLastName(), APPLICATION_NAME);
+            }
+            // Send admin rights removed/added email to moderator.
+            if (!EmailManager.getInstance().sendMail(moderatorDB.getEmail(), subject, message)) {
+                logger.error(LOG_SERVER_EXCEPTION, 500, EMAIL_FAILURE, "Couldn't sent email to moderator.");
+                throw new ServerException(500, EMAIL_FAILURE);
+            }
+        }
 
         // Clear fields which should not be delivered to the requestor.
         moderatorDB.setPassword(null);
@@ -292,7 +352,6 @@ public class ModeratorController extends AccessController {
         if (moderator.isAdmin() != null) {
             moderatorDB.setAdmin(moderator.isAdmin());
         }
-        // TODO Send account (un)locked / (remove/add) admin rights email to moderator.
         return moderatorDB;
     }
 
