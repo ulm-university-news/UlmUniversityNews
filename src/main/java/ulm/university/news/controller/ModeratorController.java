@@ -102,7 +102,19 @@ public class ModeratorController extends AccessController {
             }
         }
 
-        // TODO Send account created email to moderator.
+        // Internationalization: Get email text from properties file.
+        Locale locale = moderator.getLanguageAsLocale();
+        String key = "moderator.created.subject";
+        String subject = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, APPLICATION_NAME);
+        key = "moderator.created.message";
+        String message = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, moderator
+                .getFirstName(), moderator.getLastName(), APPLICATION_NAME);
+
+        // Send account created email to moderator.
+        if (!EmailManager.getInstance().sendMail(moderator.getEmail(), subject, message)) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, EMAIL_FAILURE, "Couldn't sent email to moderator.");
+            throw new ServerException(500, EMAIL_FAILURE);
+        }
 
         // Clear fields which should not be delivered to the requestor.
         moderator.setPassword(null);
@@ -424,8 +436,7 @@ public class ModeratorController extends AccessController {
 
         // Send email with new plain text password to the moderator.
         if (!EmailManager.getInstance().sendMail(moderatorDB.getEmail(), subject, message)) {
-            logger.error(LOG_SERVER_EXCEPTION, 500, EMAIL_FAILURE, "Couldn't sent email to moderator. Password " +
-                    "was not reset.");
+            logger.error(LOG_SERVER_EXCEPTION, 500, EMAIL_FAILURE, "Couldn't sent email to moderator.");
             throw new ServerException(500, EMAIL_FAILURE);
         }
 
