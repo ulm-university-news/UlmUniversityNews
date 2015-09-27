@@ -191,4 +191,36 @@ public class ChannelController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
     }
+
+    /**
+     * Removes a user from a channel. Afterwards the user is no longer a subscriber of the channel.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the user is subscribed.
+     * @param userId The id of the user who should be removed as subscriber from the channel.
+     * @throws ServerException If the authorization of the requestor fails, the requestor isn't allowed to perform
+     * the operation or the channel wasn't found. Furthermore, a failure of the database also causes a ServerException.
+     */
+    public void unsubscribeChannel(String accessToken, int channelId, int userId) throws ServerException {
+        // Check if requestor is a valid user.
+        User userDB = verifyUserAccess(accessToken);
+        try {
+            // Check if requestor id is another user id as the one which should be unsubscribed.
+            if(userDB.getId() != userId) {
+                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is not allowed to perform the requested" +
+                        " operation.");
+                throw new ServerException(403, USER_FORBIDDEN);
+            }
+            // Check if channel with given id exits.
+            if(!channelDBM.isValidChannelId(channelId)) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, CHANNEL_NOT_FOUND, "Channel id not found in database.");
+                throw new ServerException(404, CHANNEL_NOT_FOUND);
+            }
+            channelDBM.removeSubscriberFromChannel(channelId, userId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Could not add user to " +
+                    "channel.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
 }

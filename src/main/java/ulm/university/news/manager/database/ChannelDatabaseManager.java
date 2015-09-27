@@ -274,6 +274,40 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
+     * Removes the user with the given id as subscriber from the channel with the given id.
+     *
+     * @param channelId The id of the channel to which the user is subscribed.
+     * @param userId The id of the user who should be removed as subscriber from the channel.
+     * @throws DatabaseException If the data could not be stored in the database due to a database failure.
+     */
+    public void removeSubscriberFromChannel(int channelId, int userId) throws DatabaseException {
+        logger.debug("Start with channelId:{} and userId:{}.", channelId, userId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            // Remove a user as subscriber from a channel.
+            String removeUserQuery =
+                    "DELETE FROM UserChannel WHERE User_Id=? AND Channel_Id=?;";
+
+            PreparedStatement removeUserStmt = con.prepareStatement(removeUserQuery);
+            removeUserStmt.setInt(1, userId);
+            removeUserStmt.setInt(2, channelId);
+
+            removeUserStmt.executeUpdate();
+            logger.info("Removed the user with id {} as subscriber from the channel with id {}.", userId, channelId);
+            removeUserStmt.close();
+        } catch (SQLException e) {
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
      * Checks whether the moderator identified by the given moderator id is responsible for the channel identified by
      * the given channel id or not.
      *
