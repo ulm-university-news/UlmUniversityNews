@@ -7,7 +7,10 @@ import ulm.university.news.data.enums.GroupType;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.ZonedDateTime;
 import java.util.List;
+
+import static ulm.university.news.util.Constants.TIME_ZONE;
 
 /**
  * The Group class represents a group. It contains the relevant data for the group and provides methods to access this
@@ -31,9 +34,9 @@ public class Group {
     /** The type of the group. Defines whether the group is a tutorial group or a working group. */
     private GroupType groupType;
     /** The date and time when the group was created. */
-    private Timestamp creationDate;
+    private ZonedDateTime creationDate;
     /** The date and time when the group was updated the last time. */
-    private Timestamp modificationDate;
+    private ZonedDateTime modificationDate;
     /** The specified term. */
     private String term;
     /** The password which protects the group form unwished participants. Every user needs to provide the
@@ -67,7 +70,7 @@ public class Group {
      * @param password The password which protects the group from unwished participants.
      * @param groupAdmin The id of the user which assumes the role of the group administrator.
      */
-    public Group(String name, String description, GroupType groupType, Timestamp creationDate, Timestamp
+    public Group(String name, String description, GroupType groupType, ZonedDateTime creationDate, ZonedDateTime
             modificationDate, String term, String password, int groupAdmin){
         this.name = name;
         this.description = description;
@@ -92,7 +95,7 @@ public class Group {
      * @param password The password which protects the group from unwished participants.
      * @param groupAdmin The id of the user which assumes the role of the group administrator.
      */
-    public Group(int id, String name, String description, GroupType groupType, Timestamp creationDate, Timestamp
+    public Group(int id, String name, String description, GroupType groupType, ZonedDateTime creationDate, ZonedDateTime
             modificationDate, String term, String password, int groupAdmin){
         this.id = id;
         this.name = name;
@@ -110,9 +113,8 @@ public class Group {
      * the creation date of the group.
      */
     public void computeCreationDate(){
-        if(creationDate == null){
-            java.util.Date date = new java.util.Date();
-            creationDate = new Timestamp(date.getTime());
+        if (creationDate == null) {
+            creationDate = ZonedDateTime.now(TIME_ZONE);
         }
     }
 
@@ -120,8 +122,7 @@ public class Group {
      * Sets the current date and time as the new value for the modification date.
      */
     public void updateModificationDate(){
-        java.util.Date date = new java.util.Date();
-        modificationDate = new Timestamp(date.getTime());
+        modificationDate = ZonedDateTime.now(TIME_ZONE);
     }
 
     /**
@@ -227,19 +228,19 @@ public class Group {
         this.groupType = groupType;
     }
 
-    public Timestamp getCreationDate() {
+    public ZonedDateTime getCreationDate() {
         return creationDate;
     }
 
-    public void setCreationDate(Timestamp creationDate) {
+    public void setCreationDate(ZonedDateTime creationDate) {
         this.creationDate = creationDate;
     }
 
-    public Timestamp getModificationDate() {
+    public ZonedDateTime getModificationDate() {
         return modificationDate;
     }
 
-    public void setModificationDate(Timestamp modificationDate) {
+    public void setModificationDate(ZonedDateTime modificationDate) {
         this.modificationDate = modificationDate;
     }
 

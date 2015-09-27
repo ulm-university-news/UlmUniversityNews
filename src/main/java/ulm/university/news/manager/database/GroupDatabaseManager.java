@@ -54,8 +54,8 @@ public class GroupDatabaseManager extends DatabaseManager {
             insertGroupStmt.setString(1, group.getName());
             insertGroupStmt.setString(2, group.getDescription());
             insertGroupStmt.setInt(3, group.getGroupType().ordinal());
-            insertGroupStmt.setTimestamp(4,group.getCreationDate());
-            insertGroupStmt.setTimestamp(5, group.getModificationDate());
+            insertGroupStmt.setTimestamp(4, Timestamp.from(group.getCreationDate().toInstant()));
+            insertGroupStmt.setTimestamp(5, Timestamp.from(group.getModificationDate().toInstant()));
             insertGroupStmt.setString(6, group.getTerm());
             insertGroupStmt.setString(7, group.getPassword());
             insertGroupStmt.setInt(8,group.getGroupAdmin());
@@ -172,8 +172,10 @@ public class GroupDatabaseManager extends DatabaseManager {
                 String name = getGroupsRs.getString("Name");
                 String description = getGroupsRs.getString("Description");
                 groupType = GroupType.values[getGroupsRs.getInt("Type")];
-                Timestamp creationDate = getGroupsRs.getTimestamp("CreationDate");
-                Timestamp modificationDate = getGroupsRs.getTimestamp("ModificationDate");
+                ZonedDateTime creationDate = getGroupsRs.getTimestamp("CreationDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
+                ZonedDateTime modificationDate = getGroupsRs.getTimestamp("ModificationDate").toLocalDateTime()
+                        .atZone(Constants.TIME_ZONE);
                 String term = getGroupsRs.getString("Term");
                 int groupAdmin = getGroupsRs.getInt("GroupAdmin_User_Id");
 
@@ -223,8 +225,10 @@ public class GroupDatabaseManager extends DatabaseManager {
                 String name = getGroupRs.getString("Name");
                 String description = getGroupRs.getString("Description");
                 GroupType groupType = GroupType.values[getGroupRs.getInt("Type")];
-                Timestamp creationDate = getGroupRs.getTimestamp("CreationDate");
-                Timestamp modificationDate = getGroupRs.getTimestamp("ModificationDate");
+                ZonedDateTime creationDate = getGroupRs.getTimestamp("CreationDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
+                ZonedDateTime modificationDate = getGroupRs.getTimestamp("ModificationDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
                 String password = getGroupRs.getString("Password");
                 String term = getGroupRs.getString("Term");
                 int groupAdmin = getGroupRs.getInt("GroupAdmin_User_Id");
@@ -314,7 +318,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             updateGroupStmt.setString(3, updatedGroup.getPassword());
             updateGroupStmt.setString(4, updatedGroup.getTerm());
             updateGroupStmt.setInt(5, updatedGroup.getGroupAdmin());
-            updateGroupStmt.setTimestamp(6, updatedGroup.getModificationDate());
+            updateGroupStmt.setTimestamp(6, Timestamp.from(updatedGroup.getModificationDate().toInstant()));
             updateGroupStmt.setInt(7, updatedGroup.getId());
 
             updateGroupStmt.executeUpdate();

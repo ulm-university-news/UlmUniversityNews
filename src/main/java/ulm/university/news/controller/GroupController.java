@@ -2,7 +2,6 @@ package ulm.university.news.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.rmi.runtime.Log;
 import ulm.university.news.data.*;
 import ulm.university.news.data.enums.GroupType;
 import ulm.university.news.data.enums.Priority;
