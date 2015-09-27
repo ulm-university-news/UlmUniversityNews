@@ -605,4 +605,29 @@ public class GroupAPI {
         return Response.status(Response.Status.CREATED).entity(conversationMessage).build();
     }
 
+    /**
+     * Returns the messages for the conversation starting from a defined message number which is taken form the
+     * request URL. The method returns a list of all messages of the conversation which have a higher message number
+     * than the one defined in the request.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation.
+     * @param messageNr The starting message number. All messages of the conversation are returned which have a
+     *                  higher message number than the one defined in this parameter.
+     * @return A list of conversation messages. The list can also be empty.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{groupId}/conversation/{conversationId}/message")
+    public List<ConversationMessage> getConversationMessages(@HeaderParam("Authorization") String accessToken,
+           @PathParam("groupId") int groupId, @PathParam("conversationId") int conversationId, @DefaultValue("0")
+           @QueryParam("messageNr") int messageNr) throws ServerException {
+        List<ConversationMessage> messagesList = groupController.getConversationMessages(accessToken, groupId,
+                conversationId, messageNr);
+        return messagesList;
+    }
+
 }

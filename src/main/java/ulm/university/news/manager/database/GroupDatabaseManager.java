@@ -1798,6 +1798,9 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.info("Stored the conversation message with the id {} and the message number {}.",
                     conversationMessage.getId(), messageNumber);
 
+            insertMsgStmt.close();
+            insertConversationMsgStmt.close();
+            getMessageNumberStmt.close();
         } catch (SQLException e) {
             try {
                 logger.warn("SQLException occurred during conversationMsg storage, need to rollback the transaction.");
@@ -1812,6 +1815,7 @@ public class GroupDatabaseManager extends DatabaseManager {
         }
         finally {
             try {
+                assert con != null;
                 con.setAutoCommit(true);
             } catch (SQLException e) {
                 logger.warn("Set auto commit to true has failed.");
@@ -1820,6 +1824,101 @@ public class GroupDatabaseManager extends DatabaseManager {
             returnConnection(con);
         }
         logger.debug("End.");
+    }
+
+    /**
+     * Returns the conversation messages of the conversation which is identified by the specified id. The method
+     * returns all messages which have a message number higher than the defined one.
+     *
+     * @param conversationId The id of the conversation for which the messages are retrieved.
+     * @param messageNumber Defines the starting message number. The method will return all messsages from the
+     *                      conversation which have a higher message number than the one defined with this parameter.
+     * @return A list of conversation messages. The list can also be empty.
+     * @throws DatabaseException If the retrieval fails due to a database failure.
+     */
+    public List<ConversationMessage> getConversationMessages(int conversationId, int messageNumber) throws
+            DatabaseException {
+        logger.debug("Start with conversationId:{} and messageNumber:{}.", conversationId, messageNumber);
+        List<ConversationMessage> messages = new ArrayList<ConversationMessage>();
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * " +
+                    "FROM Message AS m JOIN ConversationMessage AS cm ON m.Id=cm.Message_Id " +
+                    "WHERE cm.Conversation_Id=? AND cm.MessageNumber > ?;";
+
+            PreparedStatement getMessagesStmt = con.prepareStatement(query);
+            getMessagesStmt.setInt(1, conversationId);
+            getMessagesStmt.setInt(2, messageNumber);
+
+            ResultSet getMessagesRs = getMessagesStmt.executeQuery();
+            while (getMessagesRs.next()){
+                int messageId = getMessagesRs.getInt("Id");
+                String text = getMessagesRs.getString("Text");
+                ZonedDateTime creationDate = getMessagesRs.getTimestamp("CreationDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
+                Priority priority = Priority.values[getMessagesRs.getInt("Priority")];
+                int messageNr = getMessagesRs.getInt("MessageNumber");
+                int authorId = getMessagesRs.getInt("Author_User_Id");
+
+                ConversationMessage tmp = new ConversationMessage(messageId, text, messageNr, priority, creationDate,
+                        authorId, conversationId);
+                messages.add(tmp);
+            }
+
+            getMessagesStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+
+        logger.debug("End with messages:{}.", messages);
+        return messages;
+    }
+
+    /**
+     * Checks if the conversation with the specified id is a valid conversation of the given group.
+     *
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation.
+     * @return Returns true if the conversation is a valid conversation of the group, false otherwise.
+     * @throws DatabaseException If the validation fails due to a database failure.
+     */
+    public boolean isValidConversation(int groupId, int conversationId) throws DatabaseException {
+        logger.debug("Start with groupId:{} and conversationId:{}.", groupId, conversationId);
+        boolean isValid = false;
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT Id " +
+                    "FROM Conversation " +
+                    "WHERE Id=? AND Group_Id=?;";
+
+            PreparedStatement stmt = con.prepareStatement(query);
+            stmt.setInt(1, conversationId);
+            stmt.setInt(2, groupId);
+
+            ResultSet rs = stmt.executeQuery();
+            if(rs.next()){
+                isValid = true;
+            }
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+
+        logger.debug("End with isValid:{}.", isValid);
+        return isValid;
     }
 
 }

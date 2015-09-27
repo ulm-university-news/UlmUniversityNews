@@ -1606,6 +1606,48 @@ public class GroupController extends AccessController {
     }
 
     /**
+     * Returns a list of conversation messages which belong to the conversation with the specified id. The result of
+     * the method depends on the given message number. The method returns the messages of the conversation which have
+     * a higher message number than the specified one.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation for which the messages are requested.
+     * @param messageNumber Defines the starting message number. The method returns all messages which have a higher
+     *                      message number than the one specified in this parameter.
+     * @return A list of conversation messages. The list can also be empty.
+     * @throws ServerException If the requestor is not allowed to execute the operation, the group or the
+     * conversation are not found or the retrieval of the messages fails due to a database failure.
+     */
+    public List<ConversationMessage> getConversationMessages(String accessToken, int groupId, int conversationId, int
+            messageNumber) throws ServerException {
+        List<ConversationMessage> messages = null;
+
+        /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
+        execute this operation. */
+        User requestor = verifyUserAccess(accessToken);
+        logger.info("The requestor, i.e. the user with id {}, requests the messages from the conversation with id {}" +
+                ". The conversation belongs to the group with id {}.", requestor.getId(), conversationId, groupId);
+
+        // Check if the group exists and the requestor is an active participant. If not, reject the request.
+        verifyGroupExistenceViaDB(groupId);
+        verifyParticipationInGroupViaDB(groupId, requestor.getId());
+
+        // Check if the conversation exists. If not, reject the request.
+        verifyConversationExistenceViaDB(groupId, conversationId);
+
+        try {
+            // Request the messages from the database.
+            messages = groupDBM.getConversationMessages(conversationId, messageNumber);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        return messages;
+    }
+
+    /**
      * A helper method which requests the group with the specified id from the database manager. It can be defined
      * whether the group object should already contain a list of the participants of the group. If the group is not
      * found, the method throws a ServerException.
@@ -1806,6 +1848,30 @@ public class GroupController extends AccessController {
             throw new ServerException(404, CONVERSATION_NOT_FOUND);
         }
         return conversation;
+    }
+
+    /**
+     * A helper method which checks whether the conversation with the specified id exists within the group which is
+     * identified by the given id. The method does not supply any return value, it just throws a ServerException if
+     * the conversation is not found in the defined group.
+     *
+     * @param groupId The id of the group to which the conversation belongs.
+     * @param conversationId The id of the conversation whose existence should be checked.
+     * @throws ServerException If the conversation is not found within the group or the verification fails due to a
+     * database failure.
+     */
+    private void verifyConversationExistenceViaDB(int groupId, int conversationId) throws ServerException {
+        try {
+            if(!groupDBM.isValidConversation(groupId, conversationId)){
+                String errMsg = "The given conversation with id " + conversationId + " could not be found for the " +
+                        "group with id " + groupId + ".";
+                logger.error(LOG_SERVER_EXCEPTION, 404, CONVERSATION_NOT_FOUND, errMsg);
+                throw new ServerException(404, CONVERSATION_NOT_FOUND);
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
     }
 
 }
