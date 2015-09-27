@@ -123,7 +123,25 @@ public class ChannelAPI {
     public Response addModeratorToChannel(@HeaderParam("Authorization") String accessToken, @PathParam("id") int
             channelId, Moderator moderator) throws ServerException {
         channelCtrl.addModeratorToChannel(accessToken, channelId, moderator.getName());
-        // Return 201 Created
+        // Return 201 Created TODO Set Location Header?
+        return Response.status(Response.Status.CREATED).build();
+    }
+
+    /**
+     * Adds a user to a channel. Afterwards the user is registered as subscriber of the channel.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the user should be added.
+     * @return Response object.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @POST
+    @Path("/{id}/user")
+    public Response subscribeChannel(@HeaderParam("Authorization") String accessToken, @PathParam("id") int
+            channelId) throws ServerException {
+        channelCtrl.subscribeChannel(accessToken, channelId);
+        // Return 201 Created TODO Set Location Header?
         return Response.status(Response.Status.CREATED).build();
     }
 

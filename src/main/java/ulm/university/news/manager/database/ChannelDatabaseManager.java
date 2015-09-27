@@ -175,7 +175,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
      *
      * @param channelId The id of the channel to which the moderator should be added.
      * @param moderatorId The id of the moderator who should be added to the channel.
-     * @throws DatabaseException If the data could not be stored in the database due to database failure.
+     * @throws DatabaseException If the data could not be stored in the database due to a database failure.
      */
     public void addModeratorToChannel(int channelId, int moderatorId) throws DatabaseException {
         logger.debug("Start with channelId:{} and moderatorId:{}.", channelId, moderatorId);
@@ -196,7 +196,6 @@ public class ChannelDatabaseManager extends DatabaseManager {
             addModeratorStmt.executeUpdate();
             logger.info("Added the moderator with id {} as responsible for the channel with id {}.", moderatorId,
                     channelId);
-
             addModeratorStmt.close();
         } catch (SQLException e) {
             logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
@@ -234,12 +233,53 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
-     * Checks whether the Moderator identified by the given moderator id is responsible for the Channel identified by
+     * Adds the user with the given id as subscriber to the channel with the given id.
+     *
+     * @param channelId The id of the channel to which the user should be added.
+     * @param userId The id of the user who should be added to the channel.
+     * @throws DatabaseException If the data could not be stored in the database due to a database failure.
+     */
+    public void addSubscriberToChannel(int channelId, int userId) throws DatabaseException {
+        logger.debug("Start with channelId:{} and userId:{}.", channelId, userId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            // Add a user as subscriber to a channel.
+            String addUserQuery =
+                    "INSERT INTO UserChannel (User_Id, Channel_Id) " +
+                            "VALUES (?,?);";
+
+            PreparedStatement addUserStmt = con.prepareStatement(addUserQuery);
+            addUserStmt.setInt(1, userId);
+            addUserStmt.setInt(2, channelId);
+
+            addUserStmt.executeUpdate();
+            logger.info("Added the user with id {} as subscriber to the channel with id {}.", userId, channelId);
+            addUserStmt.close();
+        } catch (SQLException e) {
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Check if primary key (userId + channelId) already exists.
+            if (e.getErrorCode() == 1062 && e.getMessage().contains("PRIMARY")) {
+                // If there is already an entry, do nothing.
+                logger.info("Double primary key. User already in link table. Do nothing.");
+            } else {
+                // Throw back DatabaseException to the Controller.
+                throw new DatabaseException("Database failure.");
+            }
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Checks whether the moderator identified by the given moderator id is responsible for the channel identified by
      * the given channel id or not.
      *
-     * @param channelId The id of the Channel.
-     * @param moderatorId The id of the Moderator.
-     * @return true if the Moderator is responsible for the Channel.
+     * @param channelId The id of the channel.
+     * @param moderatorId The id of the moderator.
+     * @return true if the moderator is responsible for the channel.
      */
     public boolean isResponsibleForChannel(int channelId, int moderatorId) throws DatabaseException {
         logger.debug("Start with moderatorId:{} and channelId:{}.", moderatorId, channelId);
@@ -267,6 +307,39 @@ public class ChannelDatabaseManager extends DatabaseManager {
         }
         logger.debug("End with responsible:{}.", responsible);
         return responsible;
+    }
+
+    /**
+     * Checks whether a channel identified by the given channel id exists in the database or not.
+     *
+     * @param channelId The id of the Channel.
+     * @return true if the channel with the given id exists in the database.
+     */
+    public boolean isValidChannelId(int channelId) throws DatabaseException {
+        logger.debug("Start with channelId:{}.", channelId);
+        Connection con = null;
+        boolean valid = false;
+        try {
+            con = getDatabaseConnection();
+            String query = "SELECT * FROM Channel WHERE Id=?;";
+
+            PreparedStatement getValidStmt = con.prepareStatement(query);
+            getValidStmt.setInt(1, channelId);
+
+            ResultSet getValidRs = getValidStmt.executeQuery();
+            if (getValidRs.next()) {
+                valid = true;
+            }
+            getValidStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with valid:{}.", valid);
+        return valid;
     }
 
 }

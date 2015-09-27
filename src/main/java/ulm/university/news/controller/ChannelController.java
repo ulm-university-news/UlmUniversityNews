@@ -165,4 +165,30 @@ public class ChannelController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
     }
+
+    /**
+     * Adds a user to a channel. Afterwards the user is registered as subscriber of the channel. Subscribers will
+     * receive announcements of the channel.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the user should be added.
+     * @throws ServerException If the authorization of the requestor fails, the requestor isn't allowed to perform
+     * the operation or the channel wasn't found. Furthermore, a failure of the database also causes a ServerException.
+     */
+    public void subscribeChannel(String accessToken, int channelId) throws ServerException {
+        // Check if requestor is a valid user.
+        User userDB = verifyUserAccess(accessToken);
+        try {
+            // Check if channel with given id exits.
+            if(!channelDBM.isValidChannelId(channelId)) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, CHANNEL_NOT_FOUND, "Channel id not found in database.");
+                throw new ServerException(404, CHANNEL_NOT_FOUND);
+            }
+            channelDBM.addSubscriberToChannel(channelId, userDB.getId());
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Could not add user to " +
+                    "channel.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
 }
