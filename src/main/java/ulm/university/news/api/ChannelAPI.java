@@ -16,6 +16,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
+import java.util.List;
 
 import static ulm.university.news.util.Constants.CHANNEL_INVALID_TYPE;
 import static ulm.university.news.util.Constants.LOG_SERVER_EXCEPTION;
@@ -128,6 +129,43 @@ public class ChannelAPI {
     }
 
     /**
+     * Removes a moderator from a channel. Afterwards the moderator is no longer responsible for the channel.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel for which the moderator is responsible.
+     * @param moderatorId The id of the moderator who should be removed as responsible moderator from the channel.
+     * @return Response object.
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Path("/{channelId}/moderator/{moderatorId}")
+    public Response removeModeratorFromChannel(@HeaderParam("Authorization") String accessToken, @PathParam("channelId")
+    int channelId, @PathParam("moderatorId") int moderatorId) throws ServerException {
+        channelCtrl.removeModeratorFromChannel(accessToken, channelId, moderatorId);
+        // Return 204 No Content
+        return Response.status(Response.Status.NO_CONTENT).build();
+    }
+
+    /**
+     * Delivers the moderator data of all moderators who are responsible for the channel with the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param id The id of the channel.
+     * @return Response object including a list with moderator data.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Path("/{id}/moderator")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<Moderator> getResponsibleModerators(@HeaderParam("Authorization") String accessToken, @PathParam
+            ("id") int id) throws ServerException {
+        // Return all the requested moderator resources.
+        return channelCtrl.getResponsibleModerators(accessToken, id);
+    }
+
+    /**
      * Adds a user to a channel. Afterwards the user is registered as subscriber of the channel.
      *
      * @param accessToken The access token of the requestor.
@@ -152,7 +190,7 @@ public class ChannelAPI {
      * @param channelId The id of the channel to which the user is subscribed.
      * @param userId The id of the user who should be removed as subscriber from the channel.
      * @return Response object.
-     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
      * information about the error which has occurred.
      */
     @DELETE

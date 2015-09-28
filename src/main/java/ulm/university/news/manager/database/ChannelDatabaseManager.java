@@ -2,15 +2,14 @@ package ulm.university.news.manager.database;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ulm.university.news.data.Channel;
-import ulm.university.news.data.Event;
-import ulm.university.news.data.Lecture;
-import ulm.university.news.data.Sports;
+import ulm.university.news.data.*;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import static ulm.university.news.util.Constants.*;
 
@@ -233,6 +232,42 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
+     * Removes the moderator with the given id as responsible moderator from the channel with the given id.
+     *
+     * @param channelId The id of the channel for which the moderators is responsible.
+     * @param moderatorId The id of the moderator who should be removed from the channel.
+     * @throws DatabaseException If the data could not be deleted from the database due to a database failure.
+     */
+    public void removeModeratorFromChannel(int channelId, int moderatorId) throws DatabaseException {
+        logger.debug("Start with channelId:{} and moderatorId:{}.", channelId, moderatorId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            // Remove a user as subscriber from a channel.
+            String removeModeratorQuery =
+                    "DELETE FROM ModeratorChannel WHERE Moderator_Id=? AND Channel_Id=?;";
+
+            PreparedStatement removeModeratorStmt = con.prepareStatement(removeModeratorQuery);
+            removeModeratorStmt.setInt(1, moderatorId);
+            removeModeratorStmt.setInt(2, channelId);
+
+            int rowsAffected = removeModeratorStmt.executeUpdate();
+            if(rowsAffected > 0) {
+                logger.info("Removed the moderator with id {} from the channel with id {}.", moderatorId, channelId);
+            }
+            removeModeratorStmt.close();
+        } catch (SQLException e) {
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
      * Adds the user with the given id as subscriber to the channel with the given id.
      *
      * @param channelId The id of the channel to which the user should be added.
@@ -277,8 +312,8 @@ public class ChannelDatabaseManager extends DatabaseManager {
      * Removes the user with the given id as subscriber from the channel with the given id.
      *
      * @param channelId The id of the channel to which the user is subscribed.
-     * @param userId The id of the user who should be removed as subscriber from the channel.
-     * @throws DatabaseException If the data could not be stored in the database due to a database failure.
+     * @param userId The id of the user who should be removed from the channel.
+     * @throws DatabaseException If the data could not be deleted from the database due to a database failure.
      */
     public void removeSubscriberFromChannel(int channelId, int userId) throws DatabaseException {
         logger.debug("Start with channelId:{} and userId:{}.", channelId, userId);
@@ -294,8 +329,10 @@ public class ChannelDatabaseManager extends DatabaseManager {
             removeUserStmt.setInt(1, userId);
             removeUserStmt.setInt(2, channelId);
 
-            removeUserStmt.executeUpdate();
-            logger.info("Removed the user with id {} as subscriber from the channel with id {}.", userId, channelId);
+            int rowsAffected = removeUserStmt.executeUpdate();
+            if(rowsAffected > 0) {
+                logger.info("Removed the user with id {} as subscriber from the channel with id {}.", userId, channelId);
+            }
             removeUserStmt.close();
         } catch (SQLException e) {
             logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
@@ -374,6 +411,49 @@ public class ChannelDatabaseManager extends DatabaseManager {
         }
         logger.debug("End with valid:{}.", valid);
         return valid;
+    }
+
+    /**
+     * Gets all moderators who are responsible for a channel with the given id from the database.
+     *
+     * @param channelId The id of the channel.
+     * @return All moderators who are responsible for the channel.
+     */
+    public List<Moderator> getResponsibleModerators(int channelId) throws DatabaseException {
+        logger.debug("Start with channelId:{}.", channelId);
+        Connection con = null;
+        List<Moderator> moderators = new ArrayList<Moderator>();
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT Moderator.Id, Moderator.Name, Moderator.FirstName, Moderator.LastName, Moderator.Email " +
+                            "FROM Moderator INNER JOIN ModeratorChannel ON " +
+                            "Moderator.Id=ModeratorChannel.Moderator_Id WHERE ModeratorChannel.Channel_Id=?;";
+
+            PreparedStatement getResponsibleStmt = con.prepareStatement(query);
+            getResponsibleStmt.setInt(1, channelId);
+
+            ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
+            while (getResponsibleRs.next()) {
+                // Only set those values which should be returned to the requestor.
+                Moderator moderator = new Moderator();
+                moderator.setId(getResponsibleRs.getInt("Id"));
+                moderator.setName(getResponsibleRs.getString("Name"));
+                moderator.setFirstName(getResponsibleRs.getString("FirstName"));
+                moderator.setLastName(getResponsibleRs.getString("LastName"));
+                moderator.setEmail(getResponsibleRs.getString("Email"));
+                moderators.add(moderator);
+            }
+            getResponsibleStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with moderators:{}.", moderators);
+        return moderators;
     }
 
 }

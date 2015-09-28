@@ -8,6 +8,7 @@ import ulm.university.news.manager.database.ChannelDatabaseManager;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
 import static ulm.university.news.util.Constants.*;
@@ -117,7 +118,7 @@ public class ChannelController extends AccessController {
         try {
             channelDBM.storeChannel(channel, moderatorDB.getId());
         } catch (DatabaseException e) {
-            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Creation of channel failed.");
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
@@ -151,17 +152,68 @@ public class ChannelController extends AccessController {
                         "perform the requested operation.");
                 throw new ServerException(403, MODERATOR_FORBIDDEN);
             }
-        } catch (DatabaseException e) {
-            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Could not check if moderator" +
-                    " is responsible for channel.");
-            throw new ServerException(500, DATABASE_FAILURE);
-        }
-
-        try {
             channelDBM.addModeratorToChannel(channelId, moderatorCtrl.getModeratorIdByName(moderatorName));
         } catch (DatabaseException e) {
-            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Could not add moderator to " +
-                    "channel.");
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
+    /**
+     * Removes a moderator identified by id from a channel identified by id. Afterwards the moderator is no longer a
+     * responsible moderator for the channel.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel for which the moderator is responsible.
+     * @param moderatorId The id of the moderator who should be removed as responsible moderator from the channel.
+     * @throws ServerException If the authorization of the requestor fails or the requestor isn't allowed to perform
+     * the operation. Furthermore, a failure of the database also causes a ServerException.
+     */
+    public void removeModeratorFromChannel(String accessToken, int channelId, int moderatorId) throws
+            ServerException {
+        try {
+            // Check if there is more than one responsible moderator for the channel.
+            List<Moderator> responsibleModerators = getResponsibleModerators(accessToken, channelId);
+            if(responsibleModerators.size() == 1) {
+                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Can't remove moderator from channel " +
+                        "because there has to be at least on responsible moderator per channel.");
+                throw new ServerException(403, MODERATOR_FORBIDDEN);
+            }
+            // Perform no further checks, just try to delete the specified entry. If not found, nothing happens.
+            channelDBM.removeModeratorFromChannel(channelId, moderatorId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
+    /**
+     * Gets all moderators who are responsible for a channel with the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel for which the moderators are responsible.
+     * @throws ServerException If the authorization of the requestor fails or the requestor isn't allowed to perform
+     * the operation. Furthermore, a failure of the database also causes a ServerException.
+     */
+    public List<Moderator> getResponsibleModerators(String accessToken, int channelId) throws ServerException {
+        // Check if requestor is a valid moderator.
+        Moderator moderatorRequestorDB = verifyModeratorAccess(accessToken);
+
+        try {
+            // Only a responsible moderator is allowed to get responsible moderators.
+            if(!channelDBM.isResponsibleForChannel(channelId, moderatorRequestorDB.getId())){
+                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "This moderator is not allowed to " +
+                        "perform the requested operation.");
+                throw new ServerException(403, MODERATOR_FORBIDDEN);
+            }
+            // Check if channel with given id exits.
+            if(!channelDBM.isValidChannelId(channelId)) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, CHANNEL_NOT_FOUND, "Channel id not found in database.");
+                throw new ServerException(404, CHANNEL_NOT_FOUND);
+            }
+            return channelDBM.getResponsibleModerators(channelId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
     }
@@ -186,8 +238,7 @@ public class ChannelController extends AccessController {
             }
             channelDBM.addSubscriberToChannel(channelId, userDB.getId());
         } catch (DatabaseException e) {
-            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Could not add user to " +
-                    "channel.");
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
     }
@@ -211,15 +262,10 @@ public class ChannelController extends AccessController {
                         " operation.");
                 throw new ServerException(403, USER_FORBIDDEN);
             }
-            // Check if channel with given id exits.
-            if(!channelDBM.isValidChannelId(channelId)) {
-                logger.error(LOG_SERVER_EXCEPTION, 404, CHANNEL_NOT_FOUND, "Channel id not found in database.");
-                throw new ServerException(404, CHANNEL_NOT_FOUND);
-            }
+            // Perform no further checks, just try to delete the specified entry. If not found, nothing happens.
             channelDBM.removeSubscriberFromChannel(channelId, userId);
         } catch (DatabaseException e) {
-            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Could not add user to " +
-                    "channel.");
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
     }
