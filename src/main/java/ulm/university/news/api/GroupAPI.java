@@ -491,8 +491,8 @@ public class GroupAPI {
     public Response createConversation(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
             groupId, Conversation conversation, @Context UriInfo uriInfo) throws ServerException {
         conversation = groupController.createConversation(accessToken, groupId, conversation);
-        URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "group" + "/" + "conversation" + "/" +
-                conversation.getId());
+        URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "group" + "/" + groupId + "/" + "conversation" +
+                "/" + conversation.getId());
         return Response.status(Response.Status.CREATED).location(createdURI).entity(conversation).build();
     }
 

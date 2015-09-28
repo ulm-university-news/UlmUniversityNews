@@ -548,11 +548,62 @@ public class GroupController extends AccessController {
             // TODO send notification with type GROUP_PARTICIPANT_REMOVED
         }
 
-        // TODO updateConversationAndBallotAdmin(groupDB, participantId)
+        // Update all ballots and conversations for which the participant is the administrator.
+        updateConversationAndBallotAdmin(groupDB, participantId);
     }
 
-    private void updateConversationAndBallotAdmin(Group groupDB, int participantId){
-        // TODO
+    /**
+     * A helper method which updates the administrators of conversations and ballots which have been administered by
+     * a specific participant. The administrator of the group is set as the new administrator of the conversations
+     * and ballots.
+     *
+     * @param groupDB The group object of the affected group.
+     * @param participantId The id of the participant whose ballots and conversations should get a new administrator.
+     * @throws ServerException If the updates fail due to a database failure.
+     */
+    private void updateConversationAndBallotAdmin(Group groupDB, int participantId) throws ServerException {
+        logger.info("Update the conversation and ballot administrators of those ballots and conversations that are " +
+                "administered by the user with id {} in group with id {}.", participantId, groupDB.getId());
+
+        // Get the administrator of the group.
+        int adminId = groupDB.getGroupAdmin();
+        // Get the participants of the group.
+        List<User> participants = groupDB.getParticipants();
+
+        try {
+            // Request all conversations for which the participant is listed as the administrator.
+            List<Conversation> conversations = groupDBM.getConversations(groupDB.getId(), participantId);
+            /* Set the group administrator as the new administrator of all conversations which have been administered
+               by the participant before. */
+            for (Conversation conversation : conversations) {
+                conversation.setAdmin(adminId);
+                // Update the conversation data record in the database.
+                groupDBM.updateConversation(conversation);
+                logger.debug("User with id {} is now set as the administrator for the conversation with id {}.",
+                        adminId, conversation.getId());
+
+                // Send notification about conversation update.
+                // TODO send notification
+            }
+
+            // Request all ballots for which the participant is listed as the administrator.
+            List<Ballot> ballots = groupDBM.getBallots(groupDB.getId(), participantId);
+            /* Set the group administrator as the new administrator of all ballots which have been administered
+               by the participant before. */
+            for (Ballot ballot : ballots){
+                ballot.setAdmin(adminId);
+                // Update the ballot data record in the database.
+                groupDBM.updateBallot(ballot);
+                logger.debug("User with id {} is now set as the administrator for the ballot with id {}.", adminId,
+                        ballot.getId());
+
+                // Send notification about ballot update.
+                // TODO send notification
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
     }
 
     /**
