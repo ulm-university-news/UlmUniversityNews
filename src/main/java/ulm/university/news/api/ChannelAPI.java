@@ -202,4 +202,21 @@ public class ChannelAPI {
         return Response.status(Response.Status.NO_CONTENT).build();
     }
 
+    /**
+     * Delivers the user data of all users who are subscribed to the channel with the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param id The id of the channel.
+     * @return Response object including a list with user data.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Path("/{id}/user")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<User> getSubscribers(@HeaderParam("Authorization") String accessToken, @PathParam
+            ("id") int id) throws ServerException {
+        // Return all the requested user resources.
+        return channelCtrl.getSubscribers(accessToken, id);
+    }
 }

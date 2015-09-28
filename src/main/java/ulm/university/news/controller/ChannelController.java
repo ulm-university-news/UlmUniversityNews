@@ -126,6 +126,39 @@ public class ChannelController extends AccessController {
     }
 
     /**
+     * Verifies that the requestor is a valid moderator, the channel with the given id exists and the moderator is
+     * responsible for the channel.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel.
+     * @return The moderator (requestor) if he is responsible for the channel.
+     * @throws ServerException If the authorization of the requestor fails, the requestor isn't allowed to perform
+     * the operation, the channel wasn't found or the moderator isn't responsible for the channel. Furthermore, a
+     * failure of the database also causes a ServerException.
+     */
+    private Moderator verifyResponsibleModerator(String accessToken, int channelId) throws ServerException {
+        // Check if requestor is a valid moderator.
+        Moderator moderatorRequestorDB = verifyModeratorAccess(accessToken);
+        try {
+            // Check if channel with given id exits.
+            if(!channelDBM.isValidChannelId(channelId)) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, CHANNEL_NOT_FOUND, "Channel id not found in database.");
+                throw new ServerException(404, CHANNEL_NOT_FOUND);
+            }
+            // Check if moderator is responsible for the channel.
+            if(!channelDBM.isResponsibleForChannel(channelId, moderatorRequestorDB.getId())){
+                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "This moderator is not allowed to " +
+                        "perform the requested operation.");
+                throw new ServerException(403, MODERATOR_FORBIDDEN);
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+        return moderatorRequestorDB;
+    }
+
+    /**
      * Adds a moderator identified by name to a channel identified by id. Afterwards the moderator is registered as
      * responsible moderator for the channel.
      *
@@ -142,16 +175,10 @@ public class ChannelController extends AccessController {
             throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
         }
 
-        // Check if requestor is a valid moderator.
-        Moderator moderatorRequestorDB = verifyModeratorAccess(accessToken);
+        // Only a responsible moderator is allowed to add other moderators.
+        verifyResponsibleModerator(accessToken, channelId);
 
         try {
-            // Only a responsible moderator is allowed to add other moderators.
-            if(!channelDBM.isResponsibleForChannel(channelId, moderatorRequestorDB.getId())){
-                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "This moderator is not allowed to " +
-                        "perform the requested operation.");
-                throw new ServerException(403, MODERATOR_FORBIDDEN);
-            }
             channelDBM.addModeratorToChannel(channelId, moderatorCtrl.getModeratorIdByName(moderatorName));
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
@@ -196,21 +223,9 @@ public class ChannelController extends AccessController {
      * the operation. Furthermore, a failure of the database also causes a ServerException.
      */
     public List<Moderator> getResponsibleModerators(String accessToken, int channelId) throws ServerException {
-        // Check if requestor is a valid moderator.
-        Moderator moderatorRequestorDB = verifyModeratorAccess(accessToken);
-
+        // Check if requestor is a valid responsible moderator of the channel.
+        verifyResponsibleModerator(accessToken, channelId);
         try {
-            // Only a responsible moderator is allowed to get responsible moderators.
-            if(!channelDBM.isResponsibleForChannel(channelId, moderatorRequestorDB.getId())){
-                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "This moderator is not allowed to " +
-                        "perform the requested operation.");
-                throw new ServerException(403, MODERATOR_FORBIDDEN);
-            }
-            // Check if channel with given id exits.
-            if(!channelDBM.isValidChannelId(channelId)) {
-                logger.error(LOG_SERVER_EXCEPTION, 404, CHANNEL_NOT_FOUND, "Channel id not found in database.");
-                throw new ServerException(404, CHANNEL_NOT_FOUND);
-            }
             return channelDBM.getResponsibleModerators(channelId);
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
@@ -264,6 +279,25 @@ public class ChannelController extends AccessController {
             }
             // Perform no further checks, just try to delete the specified entry. If not found, nothing happens.
             channelDBM.removeSubscriberFromChannel(channelId, userId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
+    /**
+     * Gets all users who are subscribed to a channel with the given id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the users are subscribed.
+     * @throws ServerException If the authorization of the requestor fails or the requestor isn't allowed to perform
+     * the operation. Furthermore, a failure of the database also causes a ServerException.
+     */
+    public List<User> getSubscribers(String accessToken, int channelId) throws ServerException {
+        // Check if requestor is a valid moderator.
+        verifyResponsibleModerator(accessToken, channelId);
+        try {
+            return channelDBM.getSubscribers(channelId);
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);

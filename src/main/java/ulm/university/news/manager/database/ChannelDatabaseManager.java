@@ -3,6 +3,7 @@ package ulm.university.news.manager.database;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.*;
+import ulm.university.news.data.enums.Platform;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
@@ -268,6 +269,49 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
+     * Gets all moderators who are responsible for a channel with the given id from the database.
+     *
+     * @param channelId The id of the channel.
+     * @return All moderators who are responsible for the channel.
+     */
+    public List<Moderator> getResponsibleModerators(int channelId) throws DatabaseException {
+        logger.debug("Start with channelId:{}.", channelId);
+        Connection con = null;
+        List<Moderator> moderators = new ArrayList<Moderator>();
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT Moderator.Id, Moderator.Name, Moderator.FirstName, Moderator.LastName, Moderator.Email " +
+                            "FROM Moderator INNER JOIN ModeratorChannel ON " +
+                            "Moderator.Id=ModeratorChannel.Moderator_Id WHERE ModeratorChannel.Channel_Id=?;";
+
+            PreparedStatement getResponsibleStmt = con.prepareStatement(query);
+            getResponsibleStmt.setInt(1, channelId);
+
+            ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
+            while (getResponsibleRs.next()) {
+                // Only set those values which should be returned to the requestor.
+                Moderator moderator = new Moderator();
+                moderator.setId(getResponsibleRs.getInt("Id"));
+                moderator.setName(getResponsibleRs.getString("Name"));
+                moderator.setFirstName(getResponsibleRs.getString("FirstName"));
+                moderator.setLastName(getResponsibleRs.getString("LastName"));
+                moderator.setEmail(getResponsibleRs.getString("Email"));
+                moderators.add(moderator);
+            }
+            getResponsibleStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with moderators:{}.", moderators);
+        return moderators;
+    }
+
+    /**
      * Adds the user with the given id as subscriber to the channel with the given id.
      *
      * @param channelId The id of the channel to which the user should be added.
@@ -419,32 +463,31 @@ public class ChannelDatabaseManager extends DatabaseManager {
      * @param channelId The id of the channel.
      * @return All moderators who are responsible for the channel.
      */
-    public List<Moderator> getResponsibleModerators(int channelId) throws DatabaseException {
+    public List<User> getSubscribers(int channelId) throws DatabaseException {
         logger.debug("Start with channelId:{}.", channelId);
         Connection con = null;
-        List<Moderator> moderators = new ArrayList<Moderator>();
+        List<User> users = new ArrayList<User>();
         try {
             con = getDatabaseConnection();
             String query =
-                    "SELECT Moderator.Id, Moderator.Name, Moderator.FirstName, Moderator.LastName, Moderator.Email " +
-                            "FROM Moderator INNER JOIN ModeratorChannel ON " +
-                            "Moderator.Id=ModeratorChannel.Moderator_Id WHERE ModeratorChannel.Channel_Id=?;";
+                    "SELECT User.Id, User.Name, User.PushAccessToken, User.Platform " +
+                            "FROM User INNER JOIN UserChannel ON " +
+                            "User.Id=UserChannel.User_Id WHERE UserChannel.Channel_Id=?;";
 
-            PreparedStatement getResponsibleStmt = con.prepareStatement(query);
-            getResponsibleStmt.setInt(1, channelId);
+            PreparedStatement getSubscribersStmt = con.prepareStatement(query);
+            getSubscribersStmt.setInt(1, channelId);
 
-            ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
-            while (getResponsibleRs.next()) {
+            ResultSet getSubscribersRs = getSubscribersStmt.executeQuery();
+            while (getSubscribersRs.next()) {
                 // Only set those values which should be returned to the requestor.
-                Moderator moderator = new Moderator();
-                moderator.setId(getResponsibleRs.getInt("Id"));
-                moderator.setName(getResponsibleRs.getString("Name"));
-                moderator.setFirstName(getResponsibleRs.getString("FirstName"));
-                moderator.setLastName(getResponsibleRs.getString("LastName"));
-                moderator.setEmail(getResponsibleRs.getString("Email"));
-                moderators.add(moderator);
+                User user = new User();
+                user.setId(getSubscribersRs.getInt("Id"));
+                user.setName(getSubscribersRs.getString("Name"));
+                user.setPushAccessToken(getSubscribersRs.getString("PushAccessToken"));
+                user.setPlatform(Platform.values[getSubscribersRs.getInt("Platform")]);
+                users.add(user);
             }
-            getResponsibleStmt.close();
+            getSubscribersStmt.close();
         } catch (SQLException e) {
             // Throw back DatabaseException to the Controller.
             logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
@@ -452,8 +495,8 @@ public class ChannelDatabaseManager extends DatabaseManager {
         } finally {
             returnConnection(con);
         }
-        logger.debug("End with moderators:{}.", moderators);
-        return moderators;
+        logger.debug("End with users:{}.", users);
+        return users;
     }
 
 }
