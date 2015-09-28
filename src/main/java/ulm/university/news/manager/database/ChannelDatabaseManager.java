@@ -281,9 +281,9 @@ public class ChannelDatabaseManager extends DatabaseManager {
         try {
             con = getDatabaseConnection();
             String query =
-                    "SELECT Moderator.Id, Moderator.Name, Moderator.FirstName, Moderator.LastName, Moderator.Email " +
-                            "FROM Moderator INNER JOIN ModeratorChannel ON " +
-                            "Moderator.Id=ModeratorChannel.Moderator_Id WHERE ModeratorChannel.Channel_Id=?;";
+                    "SELECT m.Id, m.Name, m.FirstName, m.LastName, m.Email " +
+                            "FROM Moderator AS m INNER JOIN ModeratorChannel AS mc ON " +
+                            "m.Id=mc.Moderator_Id WHERE mc.Channel_Id=?;";
 
             PreparedStatement getResponsibleStmt = con.prepareStatement(query);
             getResponsibleStmt.setInt(1, channelId);
@@ -470,9 +470,9 @@ public class ChannelDatabaseManager extends DatabaseManager {
         try {
             con = getDatabaseConnection();
             String query =
-                    "SELECT User.Id, User.Name, User.PushAccessToken, User.Platform " +
-                            "FROM User INNER JOIN UserChannel ON " +
-                            "User.Id=UserChannel.User_Id WHERE UserChannel.Channel_Id=?;";
+                    "SELECT u.Id, u.Name, u.PushAccessToken, u.Platform " +
+                            "FROM User AS u INNER JOIN UserChannel AS uc " +
+                            "ON u.Id=uc.User_Id WHERE uc.Channel_Id=?;";
 
             PreparedStatement getSubscribersStmt = con.prepareStatement(query);
             getSubscribersStmt.setInt(1, channelId);
