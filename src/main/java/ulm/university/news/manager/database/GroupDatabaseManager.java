@@ -198,6 +198,59 @@ public class GroupDatabaseManager extends DatabaseManager {
     }
 
     /**
+     * Returns all groups for which the user with the given id is listed as an active participant.
+     *
+     * @param participantId The id of the user.
+     * @return Returns a list of all groups in which the specified user is an active participant.
+     * @throws DatabaseException If the retrieval of the groups fails due to a database failure.
+     */
+    public List<Group> getGroupsByParticipant(int participantId) throws DatabaseException {
+        List<Group> groups = new ArrayList<Group>();
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String getGroupsQuery =
+                    "SELECT * " +
+                    "FROM Group AS g JOIN UserGroup AS ug ON g.Id=ug.Group_Id " +
+                    "WHERE ug.User_Id=? AND ug.Active=?;";
+
+            PreparedStatement getGroupsStmt = con.prepareStatement(getGroupsQuery);
+            getGroupsStmt.setInt(1, participantId);
+            getGroupsStmt.setBoolean(2, true);
+
+            ResultSet getGroupsRs = getGroupsStmt.executeQuery();
+            while(getGroupsRs.next()){
+                int id = getGroupsRs.getInt("Id");
+                String name = getGroupsRs.getString("Name");
+                String description = getGroupsRs.getString("Description");
+                GroupType groupType = GroupType.values[getGroupsRs.getInt("Type")];
+                ZonedDateTime creationDate = getGroupsRs.getTimestamp("CreationDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
+                ZonedDateTime modificationDate = getGroupsRs.getTimestamp("ModificationDate").toLocalDateTime()
+                        .atZone(Constants.TIME_ZONE);
+                String term = getGroupsRs.getString("Term");
+                int groupAdmin = getGroupsRs.getInt("GroupAdmin_User_Id");
+
+                // The password is never returned in the GET all groups request, it is set to null.
+                Group tmp = new Group(id, name, description, groupType, creationDate, modificationDate, term, null,
+                        groupAdmin);
+                groups.add(tmp);
+            }
+
+            getGroupsStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+
+        return groups;
+    }
+
+    /**
      * Returns the group which is identified by the given id.
      *
      * @param groupId The id of the group which should be returned.
