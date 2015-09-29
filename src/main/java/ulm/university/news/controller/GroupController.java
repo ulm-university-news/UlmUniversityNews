@@ -141,7 +141,7 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, MODERATOR_FORBIDDEN_ERROR_MSG);
             throw new ServerException(403, MODERATOR_FORBIDDEN);
         }
-        logger.info("Groups are requested by a valid user.");
+        logger.debug("Groups are requested by a valid user.");
 
         try {
             // Get the groups from the database.
@@ -181,7 +181,7 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, MODERATOR_FORBIDDEN_ERROR_MSG);
             throw new ServerException(403, MODERATOR_FORBIDDEN);
         }
-        logger.info("The group with id {} is requested by a valid user. WithParticipants parameter is {}.", groupId,
+        logger.debug("The group with id {} is requested by a valid user. WithParticipants parameter is {}.", groupId,
                 withParticipants);
 
         // Get the group from the database.
@@ -390,7 +390,6 @@ public class GroupController extends AccessController {
 
         // Get all participants of the group. Notify also the requestor?
         List<User> participants = groupDB.getParticipants();
-
         // TODO notify participants about deleted group
     }
 
@@ -416,7 +415,7 @@ public class GroupController extends AccessController {
 
         // Check if the user has provided the correct password in order to join the group.
         boolean verified = groupDB.verifyPassword(password);
-        if(verified == false){
+        if(!verified){
             String errMessage = "The user didn't provide the correct password to be able to join the group.";
             logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_INCORRECT_PASSWORD, errMessage);
             throw new ServerException(403, GROUP_INCORRECT_PASSWORD);
@@ -450,7 +449,7 @@ public class GroupController extends AccessController {
         List<User> users = null;
         // Check if the requestor is a valid user. Only users are allowed to perform this operation.
         User requestor = verifyUserAccess(accessToken);
-        logger.info("The requestor, i.e. the user with id {}, requests the participants of group with id {}.",
+        logger.debug("The requestor, i.e. the user with id {}, requests the participants of group with id {}.",
                 requestor.getId(), groupId);
 
         // Check if group exists. If not, the request is rejected.
@@ -702,7 +701,7 @@ public class GroupController extends AccessController {
         /* Check if requestor is a valid user. Only users (more precisely participants of the group) are allowed to
            perform this operation. */
         User requestor = verifyUserAccess(accessToken);
-        logger.info("The requestor, i.e. the user with id {}, requests all ballots for the group with id {}.",
+        logger.debug("The requestor, i.e. the user with id {}, requests all ballots for the group with id {}.",
                 requestor.getId(), groupId);
 
         // Check if the requestor is a valid participant of the group. If not, the request is rejected.
@@ -737,8 +736,8 @@ public class GroupController extends AccessController {
         /* Check if requestor is a valid user. Only users (more precisely participants of the group) are allowed to
            perform this operation. */
         User requestor = verifyUserAccess(accessToken);
-        logger.info("The requestor, i.e. the user with id {}, requests the ballot with the id {} from the group with " +
-                "the id {}.", requestor.getId(), ballotId, groupId);
+        logger.debug("The requestor, i.e. the user with id {}, requests the ballot with the id {} from the group with" +
+                " the id {}.", requestor.getId(), ballotId, groupId);
 
         // Check if the requestor is a valid participant of the group. If not, the request is rejected.
         verifyParticipationInGroupViaDB(groupId, requestor.getId());
@@ -766,7 +765,11 @@ public class GroupController extends AccessController {
      * not found or the update could not be performed due to a database failure.
      */
     public Ballot changeBallot(String accessToken, int groupId, int ballotId, Ballot ballot) throws ServerException {
-        Ballot ballotDB = null;
+        if(ballot == null){
+            logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_DATA_INCOMPLETE, "No valid data sent with patch request.");
+            throw new ServerException(400, BALLOT_DATA_INCOMPLETE);
+        }
+
         /* Check if requestor is a valid user. The user needs to be an active participant of the group and needs to
            be the administrator of the affected ballot. */
         User requestor = verifyUserAccess(accessToken);
@@ -784,7 +787,7 @@ public class GroupController extends AccessController {
         }
 
         // Second, get the ballot object from the database.
-        ballotDB = getBallot(groupId, ballotId);
+        Ballot ballotDB = getBallot(groupId, ballotId);
         // Check if the requestor is the administrator of the ballot. Otherwise reject the request.
         if(!ballotDB.isBallotAdmin(requestor.getId())){
             String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not the " +
@@ -1000,7 +1003,7 @@ public class GroupController extends AccessController {
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
-        logger.info("The requestor, i.e. the user with id {}, requests the options for the ballot with id {} which " +
+        logger.debug("The requestor, i.e. the user with id {}, requests the options for the ballot with id {} which " +
                 "belongs to the group with id {}.", requestor.getId(), ballotId, groupId);
 
         // Check if the group exists. If not, the request is rejected.
@@ -1038,7 +1041,7 @@ public class GroupController extends AccessController {
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
-        logger.info("The requestor, i.e. the user with id {}, requests the option with id {} for the ballot with id " +
+        logger.debug("The requestor, i.e. the user with id {}, requests the option with id {} for the ballot with id " +
                 "{} which belongs to the group with id {}.", requestor.getId(), optionId, ballotId, groupId);
 
         // Check if the group exists. If not, the request is rejected.
@@ -1205,7 +1208,7 @@ public class GroupController extends AccessController {
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
-        logger.info("The requestor, i.e. the user with id {}, requests the voters for the option with id {} in the " +
+        logger.debug("The requestor, i.e. the user with id {}, requests the voters for the option with id {} in the " +
                 "ballot with id {}. The ballot belongs to the group with id {}.", requestor.getId(), optionId,
                 ballotId, groupId);
 
@@ -1377,7 +1380,7 @@ public class GroupController extends AccessController {
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
-        logger.info("The requestor, i.e. the user with id {}, requests the conversations of the group with id {}.",
+        logger.debug("The requestor, i.e. the user with id {}, requests the conversations of the group with id {}.",
                 requestor.getId(), groupId);
 
         // Check if the group exists and the user is an active participant of it. If not, reject the request.
@@ -1411,8 +1414,8 @@ public class GroupController extends AccessController {
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
-        logger.info("The requestor, i.e. the user with id {}, requests the conversation with id {} of the group with " +
-                        "id {}.", requestor.getId(), conversationId, groupId);
+        logger.debug("The requestor, i.e. the user with id {}, requests the conversation with id {} of the group with" +
+                " id {}.", requestor.getId(), conversationId, groupId);
 
         // Check if the group exists and the user is an active participant of it. If not, reject the request.
         verifyGroupExistenceViaDB(groupId);
@@ -1439,6 +1442,12 @@ public class GroupController extends AccessController {
      */
     public Conversation changeConversation(String accessToken, int groupId, int conversationId, Conversation
             conversation) throws ServerException {
+        if(conversation == null){
+            logger.error(LOG_SERVER_EXCEPTION, 400, CONVERSATION_DATA_INCOMPLETE, "No valid data sent with patch " +
+                    "request.");
+            throw new ServerException(400, CONVERSATION_DATA_INCOMPLETE);
+        }
+
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group which is also the
         administrator of the conversation, is allowed to execute this operation. */
         User requestor = verifyUserAccess(accessToken);
@@ -1676,7 +1685,7 @@ public class GroupController extends AccessController {
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
         execute this operation. */
         User requestor = verifyUserAccess(accessToken);
-        logger.info("The requestor, i.e. the user with id {}, requests the messages from the conversation with id {}" +
+        logger.debug("The requestor, i.e. the user with id {}, requests the messages from the conversation with id {}" +
                 ". The conversation belongs to the group with id {}.", requestor.getId(), conversationId, groupId);
 
         // Check if the group exists and the requestor is an active participant. If not, reject the request.
@@ -1695,6 +1704,34 @@ public class GroupController extends AccessController {
         }
 
         return messages;
+    }
+
+    /**
+     * This method determines in which groups the user with the specified id is an active participant. All
+     * participants of these groups are then notified with push notifications that an update of the user account with
+     * the specified id has taken place. The method uses the operations offered by the PushManager to distribute the
+     * push notifications.
+     *
+     * @param userId The id of the user whose user account has been changed.
+     * @throws ServerException If the notification fails due to a database failure.
+     */
+    public void notifyGroupParticipantsAboutUserChange(int userId) throws ServerException {
+        List<Group> groups;
+        try {
+            // Get all groups in which the user is a participant.
+            groups = groupDBM.getGroupsByParticipant(userId);
+
+            // For each group get the list of participants and send the notification about the changed user account.
+            for (Group group : groups) {
+                List<User> participants = groupDBM.getParticipants(group.getId());
+
+                // TODO send notification USER_CHANGE with userId and groupId
+                // Remove the changed user from the participants list before?
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
     }
 
     /**

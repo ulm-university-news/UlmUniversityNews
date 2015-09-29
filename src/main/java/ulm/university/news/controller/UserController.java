@@ -26,6 +26,10 @@ public class UserController extends AccessController{
     /** An instance of the Logger class which performs logging for the UserController class. */
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
+    /** An instance of the GroupController class which is required to send notifications to all participants of the
+     * groups of an user if the user account has changed. */
+    private GroupController groupController = new GroupController();
+
     /**
      * Creates an instance of the UserController class.
      */
@@ -195,7 +199,8 @@ public class UserController extends AccessController{
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        //TODO notify all participants of groups in which the user is participant.
+        // Notify all participants of groups in which the user is participant.
+        groupController.notifyGroupParticipantsAboutUserChange(userId);
 
         return userDB;
     }

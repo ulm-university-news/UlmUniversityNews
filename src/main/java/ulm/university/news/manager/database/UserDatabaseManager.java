@@ -289,7 +289,4 @@ public class UserDatabaseManager extends DatabaseManager {
         }
         logger.debug("End.");
     }
-
-
-
 }

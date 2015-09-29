@@ -211,7 +211,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getGroupsQuery =
                     "SELECT * " +
-                    "FROM Group AS g JOIN UserGroup AS ug ON g.Id=ug.Group_Id " +
+                    "FROM `Group` AS g JOIN UserGroup AS ug ON g.Id=ug.Group_Id " +
                     "WHERE ug.User_Id=? AND ug.Active=?;";
 
             PreparedStatement getGroupsStmt = con.prepareStatement(getGroupsQuery);
