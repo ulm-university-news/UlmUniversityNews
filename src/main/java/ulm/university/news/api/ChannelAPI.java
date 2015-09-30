@@ -138,7 +138,7 @@ public class ChannelAPI {
             logger.error(LOG_SERVER_EXCEPTION, 400, PARSING_FAILURE, "Couldn't parse date String.");
             throw new ServerException(400, PARSING_FAILURE);
         }
-        // Get all the requested moderator resources.
+        // Get all the requested channel resources.
         List<Channel> channels = channelCtrl.getChannels(accessToken, moderatorId, lastUpdatedDate);
 
         // Write channels with subclass attributes as JSON String.
@@ -149,6 +149,37 @@ public class ChannelAPI {
         mapper.configure(SerializationFeature.WRITE_DATES_WITH_ZONE_ID, true);
         try {
             return mapper.writeValueAsString(channels);
+        } catch (JsonProcessingException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, PARSING_FAILURE, "Couldn't parse channels to JSON String.");
+            throw new ServerException(500, PARSING_FAILURE);
+        }
+    }
+
+    /**
+     * Delivers the channel data of a specific channel identified by id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel.
+     * @return Response object including a the channel data.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Path("/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public String getChannel(@HeaderParam("Authorization") String accessToken, @PathParam("id") int channelId) throws
+            ServerException {
+        // Get the requested channel resource.
+        Channel channel = channelCtrl.getChannel(accessToken, channelId);
+
+        // Write channel with subclass attributes as JSON String.
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
+        // Make sure that dates are formatted correctly.
+        mapper.registerModule(new JavaTimeModule());
+        mapper.configure(SerializationFeature.WRITE_DATES_WITH_ZONE_ID, true);
+        try {
+            return mapper.writeValueAsString(channel);
         } catch (JsonProcessingException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, PARSING_FAILURE, "Couldn't parse channels to JSON String.");
             throw new ServerException(500, PARSING_FAILURE);

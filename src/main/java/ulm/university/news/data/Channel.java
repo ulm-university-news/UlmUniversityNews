@@ -9,7 +9,9 @@ import java.util.List;
 import static ulm.university.news.util.Constants.TIME_ZONE;
 
 /**
- * TODO
+ * The Channel class is the superclass of Lecture, Event and Sports. It provides information which are used by all
+ * kinds of channels. One or more moderators are responsible for a channel. They create new announcements and
+ * reminders. Users can subscribe to a channel to receive the announcements.
  *
  * @author Matthias Mak
  * @author Philipp Speidel

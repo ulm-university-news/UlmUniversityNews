@@ -179,7 +179,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
      *
      * @param moderatorId Get only channels for which the moderator with the given id is responsible.
      * @param lastUpdated Get only channels with a newer modification data as the last updated date.
-     * @return All moderators who are responsible for the channel.
+     * @return All requested channels.
      */
     public List<Channel> getChannels(Integer moderatorId, ZonedDateTime lastUpdated) throws DatabaseException {
         logger.debug("Start with moderatorId:{} and lastUpdated:{}.", moderatorId, lastUpdated);
@@ -297,6 +297,107 @@ public class ChannelDatabaseManager extends DatabaseManager {
         }
         logger.debug("End with channels:{}.", channels);
         return channels;
+    }
+
+    /**
+     * Gets the requested channel from the database.
+     *
+     * @param channelId The id of the channel.
+     * @return The channel with the specified channel id.
+     */
+    public Channel getChannel(int channelId) throws DatabaseException {
+        logger.debug("Start with channelId:{}.", channelId);
+        Connection con = null;
+        Channel channel = null;
+        try {
+            con = getDatabaseConnection();
+
+            String query = "SELECT * FROM Channel WHERE Id=?";
+            PreparedStatement getChannelsStmt = con.prepareStatement(query);
+            getChannelsStmt.setInt(1, channelId);
+            ResultSet getChannelsRs = getChannelsStmt.executeQuery();
+
+            // Create fields before while loop, not within every pass.
+            String name, description, term, locations, dates, contacts, website, startDate, endDate, lecturer,
+                    assistant, cost, organizer, participants;
+            ChannelType type;
+            Faculty faculty;
+            ZonedDateTime creationDate, modificationDate;
+            // Get channel data from database.
+            if (getChannelsRs.next()) {
+                int id = getChannelsRs.getInt("Id");
+                name = getChannelsRs.getString("Name");
+                description = getChannelsRs.getString("Description");
+                type = ChannelType.values[getChannelsRs.getInt("Type")];
+                creationDate = getChannelsRs.getTimestamp("CreationDate").toLocalDateTime().atZone(Constants.TIME_ZONE);
+                modificationDate = getChannelsRs.getTimestamp("ModificationDate").toLocalDateTime().atZone(Constants
+                        .TIME_ZONE);
+                term = getChannelsRs.getString("Term");
+                locations = getChannelsRs.getString("Locations");
+                dates = getChannelsRs.getString("Dates");
+                contacts = getChannelsRs.getString("Contacts");
+                website = getChannelsRs.getString("Website");
+
+                // If necessary get additional channel data and create corresponding channel subclass.
+                PreparedStatement getSubclassStmt;
+                ResultSet getSubclassRs;
+                switch (type) {
+                    case LECTURE:
+                        query = "SELECT * FROM Lecture WHERE Channel_Id=?;";
+                        getSubclassStmt = con.prepareStatement(query);
+                        getSubclassStmt.setInt(1, id);
+                        getSubclassRs = getSubclassStmt.executeQuery();
+                        if (getSubclassRs.next()) {
+                            faculty = Faculty.values[getSubclassRs.getInt("Faculty")];
+                            startDate = getSubclassRs.getString("StartDate");
+                            endDate = getSubclassRs.getString("EndDate");
+                            lecturer = getSubclassRs.getString("Lecturer");
+                            assistant = getSubclassRs.getString("Assistant");
+                            channel = new Lecture(id, name, description, type, creationDate,
+                                    modificationDate, term, locations, dates, contacts, website, faculty, startDate,
+                                    endDate, lecturer, assistant);
+                        }
+                        break;
+                    case EVENT:
+                        query = "SELECT * FROM Event WHERE Channel_Id=?;";
+                        getSubclassStmt = con.prepareStatement(query);
+                        getSubclassStmt.setInt(1, id);
+                        getSubclassRs = getSubclassStmt.executeQuery();
+                        if (getSubclassRs.next()) {
+                            cost = getSubclassRs.getString("Cost");
+                            organizer = getSubclassRs.getString("Organizer");
+                            channel = new Event(id, name, description, type, creationDate,
+                                    modificationDate, term, locations, dates, contacts, website, cost, organizer);
+                        }
+                        break;
+                    case SPORTS:
+                        query = "SELECT * FROM Sports WHERE Channel_Id=?;";
+                        getSubclassStmt = con.prepareStatement(query);
+                        getSubclassStmt.setInt(1, id);
+                        getSubclassRs = getSubclassStmt.executeQuery();
+                        if (getSubclassRs.next()) {
+                            cost = getSubclassRs.getString("Cost");
+                            participants = getSubclassRs.getString("NumberOfParticipants");
+                            channel = new Sports (id, name, description, type, creationDate,
+                                    modificationDate, term, locations, dates, contacts, website, cost, participants);
+                        }
+                        break;
+                    default:
+                        // There is no subclass for channel type OTHER and STUDENT_GROUP, so create channel object.
+                        channel = new Channel(id, name, description, type, creationDate, modificationDate, term,
+                                locations, dates, contacts, website);
+                }
+            }
+            getChannelsStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with channel:{}.", channel);
+        return channel;
     }
 
     /**

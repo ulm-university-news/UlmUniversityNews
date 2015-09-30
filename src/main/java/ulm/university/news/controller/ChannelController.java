@@ -51,47 +51,47 @@ public class ChannelController extends AccessController {
         } else if (!Pattern.compile(NAME_PATTERN).matcher(channel.getName()).matches()) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_NAME, "Channel name is invalid.");
             throw new ServerException(400, CHANNEL_INVALID_NAME);
-        } else if(channel.getTerm() != null && !channel.getTerm().matches(TERM_PATTERN)){
+        } else if (channel.getTerm() != null && !channel.getTerm().matches(TERM_PATTERN)) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_TERM, "Term is invalid.");
             throw new ServerException(400, CHANNEL_INVALID_TERM);
-        } else if(channel.getContacts().length() > CHANNEL_CONTACTS_MAX_LENGTH){
+        } else if (channel.getContacts().length() > CHANNEL_CONTACTS_MAX_LENGTH) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_CONTACTS, "Contacts to long.");
             throw new ServerException(400, CHANNEL_INVALID_CONTACTS);
-        } else if(channel.getDescription() != null && channel.getDescription().length() > DESCRIPTION_MAX_LENGTH){
+        } else if (channel.getDescription() != null && channel.getDescription().length() > DESCRIPTION_MAX_LENGTH) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_DESCRIPTION, "Description to long.");
             throw new ServerException(400, CHANNEL_INVALID_DESCRIPTION);
-        } else if(channel.getLocations() != null && channel.getLocations().length() > CHANNEL_LOCATIONS_MAX_LENGTH){
+        } else if (channel.getLocations() != null && channel.getLocations().length() > CHANNEL_LOCATIONS_MAX_LENGTH) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_LOCATIONS, "Locations to long.");
             throw new ServerException(400, CHANNEL_INVALID_LOCATIONS);
-        } else if(channel.getDates() != null && channel.getDates().length() > CHANNEL_DATES_MAX_LENGTH){
+        } else if (channel.getDates() != null && channel.getDates().length() > CHANNEL_DATES_MAX_LENGTH) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_DATES, "Dates to long.");
             throw new ServerException(400, CHANNEL_INVALID_DATES);
         }
 
         // Perform special checks for the received data of the Lecture subclass.
         if (channel.getType() == ChannelType.LECTURE) {
-                Lecture lecture = (Lecture) channel;
-                if (lecture.getLecturer() == null || lecture.getFaculty() == null) {
-                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Lecture data is incomplete.");
-                    throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
-                } else if(lecture.getLecturer().length() > CHANNEL_CONTACTS_MAX_LENGTH){
-                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_LECTURER, "Lecturer to long.");
-                    throw new ServerException(400, CHANNEL_INVALID_LECTURER);
-                } else if(lecture.getAssistant() != null && lecture.getAssistant().length() >
-                        CHANNEL_CONTACTS_MAX_LENGTH){
-                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_ASSISTANT, "Assistant to long.");
-                    throw new ServerException(400, CHANNEL_INVALID_ASSISTANT);
-                }
+            Lecture lecture = (Lecture) channel;
+            if (lecture.getLecturer() == null || lecture.getFaculty() == null) {
+                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Lecture data is incomplete.");
+                throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
+            } else if (lecture.getLecturer().length() > CHANNEL_CONTACTS_MAX_LENGTH) {
+                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_LECTURER, "Lecturer to long.");
+                throw new ServerException(400, CHANNEL_INVALID_LECTURER);
+            } else if (lecture.getAssistant() != null && lecture.getAssistant().length() >
+                    CHANNEL_CONTACTS_MAX_LENGTH) {
+                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_ASSISTANT, "Assistant to long.");
+                throw new ServerException(400, CHANNEL_INVALID_ASSISTANT);
+            }
         }
 
         // Perform special checks for the received data of the Sports subclass.
         if (channel.getType() == ChannelType.SPORTS) {
             Sports sports = (Sports) channel;
-            if(sports.getCost() != null && sports.getCost().length() > CHANNEL_COST_MAX_LENGTH){
+            if (sports.getCost() != null && sports.getCost().length() > CHANNEL_COST_MAX_LENGTH) {
                 logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_COST, "Costs to long.");
                 throw new ServerException(400, CHANNEL_INVALID_COST);
-            } else if(sports.getNumberOfParticipants() != null && sports.getNumberOfParticipants().length() >
-                    CHANNEL_PARTICIPANTS_MAX_LENGTH){
+            } else if (sports.getNumberOfParticipants() != null && sports.getNumberOfParticipants().length() >
+                    CHANNEL_PARTICIPANTS_MAX_LENGTH) {
                 logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_PARTICIPANTS, "Number of participants to long.");
                 throw new ServerException(400, CHANNEL_INVALID_PARTICIPANTS);
             }
@@ -100,11 +100,11 @@ public class ChannelController extends AccessController {
         // Perform special checks for the received data of the Event subclass.
         if (channel.getType() == ChannelType.EVENT) {
             Event event = (Event) channel;
-            if(event.getCost() != null && event.getCost().length() > CHANNEL_COST_MAX_LENGTH){
+            if (event.getCost() != null && event.getCost().length() > CHANNEL_COST_MAX_LENGTH) {
                 logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_COST, "Costs to long.");
                 throw new ServerException(400, CHANNEL_INVALID_COST);
-            } else if(event.getOrganizer() != null && event.getOrganizer().length() >
-                    CHANNEL_CONTACTS_MAX_LENGTH){
+            } else if (event.getOrganizer() != null && event.getOrganizer().length() >
+                    CHANNEL_CONTACTS_MAX_LENGTH) {
                 logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_ORGANIZER, "Organizer to long.");
                 throw new ServerException(400, CHANNEL_INVALID_ORGANIZER);
             }
@@ -143,12 +143,11 @@ public class ChannelController extends AccessController {
         TokenType tokenType = verifyAccessToken(accessToken);
 
         // Check if there is a valid access token provided.
-        if(tokenType == TokenType.INVALID){
+        if (tokenType == TokenType.INVALID) {
             String errMsg = "To perform this operation a valid access token needs to be provided.";
             logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
             throw new ServerException(401, TOKEN_INVALID);
-        }
-        else if(tokenType == TokenType.MODERATOR){
+        } else if (tokenType == TokenType.MODERATOR) {
             // The requestor is a valid moderator.
             try {
                 Moderator moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
@@ -157,7 +156,7 @@ public class ChannelController extends AccessController {
                 logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
                 throw new ServerException(500, DATABASE_FAILURE);
             }
-        } else if(tokenType == TokenType.USER){
+        } else if (tokenType == TokenType.USER) {
             // The requestor is a valid user.
             try {
                 // Ignore parameter moderatorId because requestor is a user.
@@ -169,6 +168,33 @@ public class ChannelController extends AccessController {
         }
 
         return null;
+    }
+
+
+    /**
+     * Delivers the channel data of a specific channel identified by id.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel.
+     * @return The requested channel object.
+     * @throws ServerException If the authorization of the requestor fails or the requestor isn't allowed to perform
+     * the operation. Furthermore, a failure of the database also causes a ServerException.
+     */
+    public Channel getChannel(String accessToken, int channelId) throws ServerException {
+        // Check if there is a valid access token provided.
+        TokenType tokenType = verifyAccessToken(accessToken);
+        if (tokenType == TokenType.INVALID) {
+            String errMsg = "To perform this operation a valid access token needs to be provided.";
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+        try {
+            // Requestor is a valid user or a moderator. Both are allowed to perform this operation.
+            return channelDBM.getChannel(channelId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
     }
 
     /**
@@ -187,12 +213,12 @@ public class ChannelController extends AccessController {
         Moderator moderatorRequestorDB = verifyModeratorAccess(accessToken);
         try {
             // Check if channel with given id exits.
-            if(!channelDBM.isValidChannelId(channelId)) {
+            if (!channelDBM.isValidChannelId(channelId)) {
                 logger.error(LOG_SERVER_EXCEPTION, 404, CHANNEL_NOT_FOUND, "Channel id not found in database.");
                 throw new ServerException(404, CHANNEL_NOT_FOUND);
             }
             // Check if moderator is responsible for the channel.
-            if(!channelDBM.isResponsibleForChannel(channelId, moderatorRequestorDB.getId())){
+            if (!channelDBM.isResponsibleForChannel(channelId, moderatorRequestorDB.getId())) {
                 logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "This moderator is not allowed to " +
                         "perform the requested operation.");
                 throw new ServerException(403, MODERATOR_FORBIDDEN);
@@ -216,7 +242,7 @@ public class ChannelController extends AccessController {
      */
     public void addModeratorToChannel(String accessToken, int channelId, String moderatorName) throws ServerException {
         // Check weather the moderator name is set or not.
-        if(moderatorName == null) {
+        if (moderatorName == null) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Moderator name isn't set.");
             throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
         }
@@ -247,7 +273,7 @@ public class ChannelController extends AccessController {
         try {
             // Check if there is more than one responsible moderator for the channel.
             List<Moderator> responsibleModerators = getResponsibleModerators(accessToken, channelId);
-            if(responsibleModerators.size() == 1) {
+            if (responsibleModerators.size() == 1) {
                 logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Can't remove moderator from channel " +
                         "because there has to be at least on responsible moderator per channel.");
                 throw new ServerException(403, MODERATOR_FORBIDDEN);
@@ -293,7 +319,7 @@ public class ChannelController extends AccessController {
         User userDB = verifyUserAccess(accessToken);
         try {
             // Check if channel with given id exits.
-            if(!channelDBM.isValidChannelId(channelId)) {
+            if (!channelDBM.isValidChannelId(channelId)) {
                 logger.error(LOG_SERVER_EXCEPTION, 404, CHANNEL_NOT_FOUND, "Channel id not found in database.");
                 throw new ServerException(404, CHANNEL_NOT_FOUND);
             }
@@ -318,7 +344,7 @@ public class ChannelController extends AccessController {
         User userDB = verifyUserAccess(accessToken);
         try {
             // Check if requestor id is another user id as the one which should be unsubscribed.
-            if(userDB.getId() != userId) {
+            if (userDB.getId() != userId) {
                 logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is not allowed to perform the requested" +
                         " operation.");
                 throw new ServerException(403, USER_FORBIDDEN);
