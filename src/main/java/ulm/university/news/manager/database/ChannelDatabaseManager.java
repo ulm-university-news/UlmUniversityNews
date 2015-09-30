@@ -475,17 +475,19 @@ public class ChannelDatabaseManager extends DatabaseManager {
         try {
             con = getDatabaseConnection();
 
-            // Remove a user as subscriber from a channel.
+            // Set a moderator as inactive for a channel.
             String removeModeratorQuery =
-                    "DELETE FROM ModeratorChannel WHERE Moderator_Id=? AND Channel_Id=?;";
+                    "UPDATE ModeratorChannel SET Active=? WHERE Moderator_Id=? AND Channel_Id=?;";
 
             PreparedStatement removeModeratorStmt = con.prepareStatement(removeModeratorQuery);
-            removeModeratorStmt.setInt(1, moderatorId);
-            removeModeratorStmt.setInt(2, channelId);
+            removeModeratorStmt.setBoolean(1, false);
+            removeModeratorStmt.setInt(2, moderatorId);
+            removeModeratorStmt.setInt(3, channelId);
 
             int rowsAffected = removeModeratorStmt.executeUpdate();
             if (rowsAffected > 0) {
-                logger.info("Removed the moderator with id {} from the channel with id {}.", moderatorId, channelId);
+                logger.info("Set the moderator with id {} to inactive for the channel with id {}.", moderatorId,
+                        channelId);
             }
             removeModeratorStmt.close();
         } catch (SQLException e) {
@@ -513,10 +515,11 @@ public class ChannelDatabaseManager extends DatabaseManager {
             String query =
                     "SELECT m.Id, m.Name, m.FirstName, m.LastName, m.Email " +
                             "FROM Moderator AS m INNER JOIN ModeratorChannel AS mc ON " +
-                            "m.Id=mc.Moderator_Id WHERE mc.Channel_Id=?;";
+                            "m.Id=mc.Moderator_Id WHERE mc.Channel_Id=? AND mc.Active=?;";
 
             PreparedStatement getResponsibleStmt = con.prepareStatement(query);
             getResponsibleStmt.setInt(1, channelId);
+            getResponsibleStmt.setBoolean(2, true);
 
             ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
             while (getResponsibleRs.next()) {
