@@ -191,7 +191,7 @@ public class ChannelController extends AccessController {
         try {
             // Requestor is a valid user or a moderator. Both are allowed to perform this operation.
             Channel channel = channelDBM.getChannel(channelId);
-            if(channel == null) {
+            if (channel == null) {
                 logger.error(LOG_SERVER_EXCEPTION, 404, CHANNEL_NOT_FOUND, "Channel not found in database.");
                 throw new ServerException(404, CHANNEL_NOT_FOUND);
             } else {
@@ -200,6 +200,41 @@ public class ChannelController extends AccessController {
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
+    /**
+     * Deletes a channel from the database. Afterwards, it's no longer available on the server.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel which should be deleted.
+     * @throws ServerException If the authorization of the requestor fails, the requestor isn't allowed to perform
+     * the operation or the channel with given id isn't found in the database. Furthermore, a failure of the database
+     * also causes a ServerException.
+     */
+    public void deleteChannel(String accessToken, int channelId) throws ServerException {
+        // Check if requestor is a valid moderator and responsible for the given channel.
+        verifyResponsibleModerator(accessToken, channelId);
+
+        List<Moderator> deletedModerators = null;
+        List<User> subscribers = null;
+        try {
+            // Get all deleted moderators of the specified channel for later deletion.
+            deletedModerators = channelDBM.getDeletedModeratorsByChannel(channelId);
+            // Get all subscribers of the specified channel for later notification.
+            subscribers = channelDBM.getSubscribers(channelId);
+            // Delete channel and all entries which are linked to it.
+            channelDBM.deleteChannel(channelId);
+        } catch (DatabaseException e) {
+            e.printStackTrace();
+        }
+
+        // TODO notifySubscribers(channelId, subscribers, CHANNEL_DELETED)
+
+        if (deletedModerators != null) {
+            for (Moderator deletedModerator : deletedModerators) {
+                // TODO deleteModerator(deletedModerator.getId())
+            }
         }
     }
 

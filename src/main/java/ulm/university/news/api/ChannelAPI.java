@@ -129,12 +129,12 @@ public class ChannelAPI {
         // TODO Note: On client site replace + in date String with %2B
         // TODO Replace other reserved characters too? https://de.wikipedia.org/wiki/URL-Encoding
         ZonedDateTime lastUpdatedDate = null;
-        try{
+        try {
             // Verify correct date format.
-            if(lastUpdated != null){
+            if (lastUpdated != null) {
                 lastUpdatedDate = ZonedDateTime.parse(lastUpdated);
             }
-        }catch(DateTimeParseException e){
+        } catch (DateTimeParseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 400, PARSING_FAILURE, "Couldn't parse date String.");
             throw new ServerException(400, PARSING_FAILURE);
         }
@@ -187,6 +187,24 @@ public class ChannelAPI {
     }
 
     /**
+     * Deletes a channel from the database. Afterwards, it's no longer available on the server.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel which should be deleted.
+     * @return Response object.
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Path("/{id}")
+    public Response deleteChannel(@HeaderParam("Authorization") String accessToken, @PathParam("id") int channelId)
+            throws ServerException {
+        channelCtrl.deleteChannel(accessToken, channelId);
+        // Return 204 No Content
+        return Response.status(Response.Status.NO_CONTENT).build();
+    }
+
+    /**
      * Adds a moderator to a channel. Afterwards the moderator is registered as responsible moderator for the channel.
      *
      * @param accessToken The access token of the requestor.
@@ -230,7 +248,7 @@ public class ChannelAPI {
      * Delivers the moderator data of all moderators who are responsible for the channel with the given id.
      *
      * @param accessToken The access token of the requestor.
-     * @param id The id of the channel.
+     * @param channelId The id of the channel.
      * @return Response object including a list with moderator data.
      * @throws ServerException If the execution of the GET request has failed. The ServerException contains
      * information about the error which has occurred.
@@ -239,9 +257,9 @@ public class ChannelAPI {
     @Path("/{id}/moderator")
     @Produces(MediaType.APPLICATION_JSON)
     public List<Moderator> getResponsibleModerators(@HeaderParam("Authorization") String accessToken, @PathParam
-            ("id") int id) throws ServerException {
+            ("id") int channelId) throws ServerException {
         // Return all the requested moderator resources.
-        return channelCtrl.getResponsibleModerators(accessToken, id);
+        return channelCtrl.getResponsibleModerators(accessToken, channelId);
     }
 
     /**
@@ -285,7 +303,7 @@ public class ChannelAPI {
      * Delivers the user data of all users who are subscribed to the channel with the given id.
      *
      * @param accessToken The access token of the requestor.
-     * @param id The id of the channel.
+     * @param channelId The id of the channel.
      * @return Response object including a list with user data.
      * @throws ServerException If the execution of the GET request has failed. The ServerException contains
      * information about the error which has occurred.
@@ -294,8 +312,8 @@ public class ChannelAPI {
     @Path("/{id}/user")
     @Produces(MediaType.APPLICATION_JSON)
     public List<User> getSubscribers(@HeaderParam("Authorization") String accessToken, @PathParam
-            ("id") int id) throws ServerException {
+            ("id") int channelId) throws ServerException {
         // Return all the requested user resources.
-        return channelCtrl.getSubscribers(accessToken, id);
+        return channelCtrl.getSubscribers(accessToken, channelId);
     }
 }

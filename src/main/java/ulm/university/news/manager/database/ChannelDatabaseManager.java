@@ -275,7 +275,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
                         if (getSubclassRs.next()) {
                             cost = getSubclassRs.getString("Cost");
                             participants = getSubclassRs.getString("NumberOfParticipants");
-                            Sports sports = new Sports (id, name, description, type, creationDate,
+                            Sports sports = new Sports(id, name, description, type, creationDate,
                                     modificationDate, term, locations, dates, contacts, website, cost, participants);
                             channels.add(sports);
                         }
@@ -378,7 +378,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
                         if (getSubclassRs.next()) {
                             cost = getSubclassRs.getString("Cost");
                             participants = getSubclassRs.getString("NumberOfParticipants");
-                            channel = new Sports (id, name, description, type, creationDate,
+                            channel = new Sports(id, name, description, type, creationDate,
                                     modificationDate, term, locations, dates, contacts, website, cost, participants);
                         }
                         break;
@@ -475,7 +475,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
         try {
             con = getDatabaseConnection();
 
-            // Set a moderator as inactive for a channel.
+            // Set the moderator as inactive for the channel.
             String removeModeratorQuery =
                     "UPDATE ModeratorChannel SET Active=? WHERE Moderator_Id=? AND Channel_Id=?;";
 
@@ -485,12 +485,146 @@ public class ChannelDatabaseManager extends DatabaseManager {
             removeModeratorStmt.setInt(3, channelId);
 
             int rowsAffected = removeModeratorStmt.executeUpdate();
-            if (rowsAffected > 0) {
+            if (rowsAffected == 1) {
                 logger.info("Set the moderator with id {} to inactive for the channel with id {}.", moderatorId,
                         channelId);
             }
             removeModeratorStmt.close();
         } catch (SQLException e) {
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Deletes the channel identified by given channel id from the database. This method deletes the channel
+     * superclass and subclass. Furthermore it deletes the links between moderators and users and the channel.
+     * Finally announcements and reminders of the channel are deleted.
+     *
+     * @param channelId The channel which should be deleted.
+     * @throws DatabaseException If not all the data could be deleted from the database.
+     */
+    public void deleteChannel(int channelId) throws DatabaseException {
+        logger.debug("Start with channelId:{}.", channelId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            // Start of transaction.
+            con.setAutoCommit(false);
+            String query;
+            int rowsAffected;
+
+            // First: Delete the channel subclass.
+            query = "SELECT Type FROM Channel WHERE Id=?;";
+            PreparedStatement getTypeStmt = con.prepareStatement(query);
+            getTypeStmt.setInt(1, channelId);
+            ResultSet getTypeRs = getTypeStmt.executeQuery();
+            PreparedStatement removeSubclassStmt = null;
+            if(getTypeRs.next()){
+                // Get channel type from database.
+                ChannelType type = ChannelType.values[getTypeRs.getInt("Type")];
+                switch (type) {
+                    case LECTURE:
+                        query = "DELETE FROM Lecture WHERE Channel_Id=?;";
+                        removeSubclassStmt = con.prepareStatement(query);
+                        removeSubclassStmt.setInt(1, channelId);
+                        rowsAffected = removeSubclassStmt.executeUpdate();
+                        if (rowsAffected == 1) {
+                            logger.info("Removed the lecture entry with channelId {} from database.", channelId);
+                        }
+                        break;
+                    case EVENT:
+                        query = "DELETE FROM Event WHERE Channel_Id=?;";
+                        removeSubclassStmt = con.prepareStatement(query);
+                        removeSubclassStmt.setInt(1, channelId);
+                        rowsAffected = removeSubclassStmt.executeUpdate();
+                        if (rowsAffected == 1) {
+                            logger.info("Removed the event entry with channelId {} from database.", channelId);
+                        }
+                        break;
+                    case SPORTS:
+                        query = "DELETE FROM Sports WHERE Channel_Id=?;";
+                        removeSubclassStmt = con.prepareStatement(query);
+                        removeSubclassStmt.setInt(1, channelId);
+                        rowsAffected = removeSubclassStmt.executeUpdate();
+                        if (rowsAffected == 1) {
+                            logger.info("Removed the sports entry with channelId {} from database.", channelId);
+                        }
+                        break;
+                    default:
+                        // There is no subclass for channel type OTHER and STUDENT_GROUP, so delete superclass only.
+                        break;
+                }
+            }
+
+            // Second: Delete the channel superclass.
+            query = "DELETE FROM Channel WHERE Id=?;";
+            PreparedStatement removeChannelStmt = con.prepareStatement(query);
+            removeChannelStmt.setInt(1, channelId);
+            rowsAffected = removeChannelStmt.executeUpdate();
+            if (rowsAffected == 1) {
+                logger.info("Removed the channel with id {} from database.", channelId);
+            }
+
+            // Third: Delete link between moderators and channel.
+            query = "DELETE FROM ModeratorChannel WHERE Channel_Id=?;";
+            PreparedStatement removeModeratorsStmt = con.prepareStatement(query);
+            removeModeratorsStmt.setInt(1, channelId);
+            rowsAffected = removeModeratorsStmt.executeUpdate();
+            if (rowsAffected > 1) {
+                logger.info("Removed {} moderators from channel with id {} from database.", rowsAffected, channelId);
+            }
+
+            // Fourth: Delete link between users and channel.
+            query = "DELETE FROM UserChannel WHERE Channel_Id=?;";
+            PreparedStatement removeUsersStmt = con.prepareStatement(query);
+            removeUsersStmt.setInt(1, channelId);
+            rowsAffected = removeUsersStmt.executeUpdate();
+            if (rowsAffected > 1) {
+                logger.info("Removed {} users from channel with id {} from database.", rowsAffected, channelId);
+            }
+
+            // Fifth: Delete announcements of the channel.
+            query = "DELETE FROM Reminder WHERE Channel_Id=?;";
+            PreparedStatement removeRemindersStmt = con.prepareStatement(query);
+            removeRemindersStmt.setInt(1, channelId);
+            rowsAffected = removeRemindersStmt.executeUpdate();
+            if (rowsAffected > 1) {
+                logger.info("Removed {} reminders from channel with id {} from database.", rowsAffected, channelId);
+            }
+
+            // Sixth: Delete reminders of the channel.
+            query = "DELETE FROM Announcement WHERE Channel_Id=?;";
+            PreparedStatement removeAnnouncementsStmt = con.prepareStatement(query);
+            removeAnnouncementsStmt.setInt(1, channelId);
+            rowsAffected = removeAnnouncementsStmt.executeUpdate();
+            if (rowsAffected > 1) {
+                logger.info("Removed {} announcements from channel with id {} from database.", rowsAffected, channelId);
+            }
+
+            // End transaction.
+            con.commit();
+
+            if(removeSubclassStmt != null) {
+                removeSubclassStmt.close();
+            }
+            removeModeratorsStmt.close();
+            removeUsersStmt.close();
+            removeRemindersStmt.close();
+            removeAnnouncementsStmt.close();
+            removeChannelStmt.close();
+        } catch (SQLException e) {
+            try {
+                logger.warn("Need to rollback the transaction.");
+                con.rollback();
+            } catch (SQLException e1) {
+                logger.warn("Rollback failed.");
+                logger.error(Constants.LOG_SQL_EXCEPTION, e1.getSQLState(), e1.getErrorCode(), e1.getMessage());
+            }
             logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
@@ -530,6 +664,47 @@ public class ChannelDatabaseManager extends DatabaseManager {
                 moderator.setFirstName(getResponsibleRs.getString("FirstName"));
                 moderator.setLastName(getResponsibleRs.getString("LastName"));
                 moderator.setEmail(getResponsibleRs.getString("Email"));
+                moderators.add(moderator);
+            }
+            getResponsibleStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with moderators:{}.", moderators);
+        return moderators;
+    }
+
+    /**
+     * Gets all moderators who are deleted but once were responsible for the channel with the given id.
+     *
+     * @param channelId The id of the channel.
+     * @return All deleted moderators of the specified channel.
+     * @throws DatabaseException If a database failure occurs.
+     */
+    public List<Moderator> getDeletedModeratorsByChannel(int channelId) throws DatabaseException {
+        logger.debug("Start with channelId:{}.", channelId);
+        Connection con = null;
+        List<Moderator> moderators = new ArrayList<Moderator>();
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT m.Id " +
+                            "FROM Moderator AS m INNER JOIN ModeratorChannel AS mc ON " +
+                            "m.Id=mc.Moderator_Id WHERE mc.Channel_Id=? AND m.Deleted=?;";
+
+            PreparedStatement getResponsibleStmt = con.prepareStatement(query);
+            getResponsibleStmt.setInt(1, channelId);
+            getResponsibleStmt.setBoolean(2, true);
+
+            ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
+            while (getResponsibleRs.next()) {
+                // Only needed values.
+                Moderator moderator = new Moderator();
+                moderator.setId(getResponsibleRs.getInt("Id"));
                 moderators.add(moderator);
             }
             getResponsibleStmt.close();
@@ -607,7 +782,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
             removeUserStmt.setInt(2, channelId);
 
             int rowsAffected = removeUserStmt.executeUpdate();
-            if (rowsAffected > 0) {
+            if (rowsAffected == 1) {
                 logger.info("Removed the user with id {} as subscriber from the channel with id {}.", userId, channelId);
             }
             removeUserStmt.close();
