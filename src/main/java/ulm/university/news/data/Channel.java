@@ -1,5 +1,6 @@
 package ulm.university.news.data;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import ulm.university.news.data.enums.ChannelType;
 
 import java.time.ZonedDateTime;
@@ -130,6 +131,8 @@ public class Channel {
         this.type = type;
     }
 
+    // Make sure that date is serialized correctly.
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     public ZonedDateTime getCreationDate() {
         return creationDate;
     }
@@ -138,6 +141,8 @@ public class Channel {
         this.creationDate = creationDate;
     }
 
+    // Make sure that date is serialized correctly.
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     public ZonedDateTime getModificationDate() {
         return modificationDate;
     }

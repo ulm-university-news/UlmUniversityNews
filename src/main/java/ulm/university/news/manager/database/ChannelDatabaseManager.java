@@ -3,12 +3,15 @@ package ulm.university.news.manager.database;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.*;
+import ulm.university.news.data.enums.ChannelType;
+import ulm.university.news.data.enums.Faculty;
 import ulm.university.news.data.enums.Platform;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
 
 import java.sql.*;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,8 +52,8 @@ public class ChannelDatabaseManager extends DatabaseManager {
             con.setAutoCommit(false);
 
             String storeChannelQuery =
-                    "INSERT INTO Channel (Name, Description, Type, Term, Locations, Contacts, CreationDate, " +
-                            "ModificationDate, Dates) VALUES (?,?,?,?,?,?,?,?,?); ";
+                    "INSERT INTO Channel (Name, Description, Type, Term, Locations, Contacts, Website, CreationDate, " +
+                            "ModificationDate, Dates) VALUES (?,?,?,?,?,?,?,?,?,?); ";
 
             PreparedStatement storeChannelStmt = con.prepareStatement(storeChannelQuery);
             storeChannelStmt.setString(1, channel.getName());
@@ -59,9 +62,10 @@ public class ChannelDatabaseManager extends DatabaseManager {
             storeChannelStmt.setString(4, channel.getTerm());
             storeChannelStmt.setString(5, channel.getLocations());
             storeChannelStmt.setString(6, channel.getContacts());
-            storeChannelStmt.setTimestamp(7, Timestamp.from(channel.getCreationDate().toInstant()));
-            storeChannelStmt.setTimestamp(8, Timestamp.from(channel.getModificationDate().toInstant()));
-            storeChannelStmt.setString(9, channel.getDates());
+            storeChannelStmt.setString(7, channel.getWebsite());
+            storeChannelStmt.setTimestamp(8, Timestamp.from(channel.getCreationDate().toInstant()));
+            storeChannelStmt.setTimestamp(9, Timestamp.from(channel.getModificationDate().toInstant()));
+            storeChannelStmt.setString(10, channel.getDates());
 
             storeChannelStmt.execute();
 
@@ -80,7 +84,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
                 case LECTURE:
                     Lecture lecture = (Lecture) channel;
                     String storeLectureQuery =
-                            "INSERT INTO Lecture (Faculty, StartDate, EndDate, Lecturer, Assistent, Channel_Id) " +
+                            "INSERT INTO Lecture (Faculty, StartDate, EndDate, Lecturer, Assistant, Channel_Id) " +
                                     "VALUES (?,?,?,?,?,?); ";
 
                     PreparedStatement storeLectureStmt = con.prepareStatement(storeLectureQuery);
@@ -171,6 +175,131 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
+     * Gets all requested channels from the database.
+     *
+     * @param moderatorId Get only channels for which the moderator with the given id is responsible.
+     * @param lastUpdated Get only channels with a newer modification data as the last updated date.
+     * @return All moderators who are responsible for the channel.
+     */
+    public List<Channel> getChannels(Integer moderatorId, ZonedDateTime lastUpdated) throws DatabaseException {
+        logger.debug("Start with moderatorId:{} and lastUpdated:{}.", moderatorId, lastUpdated);
+        Connection con = null;
+        List<Channel> channels = new ArrayList<Channel>();
+        try {
+            con = getDatabaseConnection();
+
+            // Create proper SQL statement.
+            String query = "SELECT * FROM Channel";
+            PreparedStatement getChannelsStmt;
+            if (moderatorId != null && lastUpdated != null) {
+                query += " AS c INNER JOIN ModeratorChannel AS mc ON c.Id=mc.Channel_Id " +
+                        "WHERE mc.Moderator_Id=? AND ModificationDate>?;";
+                getChannelsStmt = con.prepareStatement(query);
+                getChannelsStmt.setInt(1, moderatorId);
+                getChannelsStmt.setTimestamp(2, Timestamp.from(lastUpdated.toInstant()));
+            } else if (moderatorId != null) {
+                query += " AS c INNER JOIN ModeratorChannel AS mc ON c.Id=mc.Channel_Id WHERE mc.Moderator_Id=?;";
+                getChannelsStmt = con.prepareStatement(query);
+                getChannelsStmt.setInt(1, moderatorId);
+            } else if (lastUpdated != null) {
+                query += " WHERE ModificationDate>?;";
+                getChannelsStmt = con.prepareStatement(query);
+                getChannelsStmt.setTimestamp(1, Timestamp.from(lastUpdated.toInstant()));
+            } else {
+                query += ";";
+                getChannelsStmt = con.prepareStatement(query);
+            }
+            logger.debug("SQL query:{}", query);
+            ResultSet getChannelsRs = getChannelsStmt.executeQuery();
+
+            // Create fields before while loop, not within every pass.
+            String name, description, term, locations, dates, contacts, website, startDate, endDate, lecturer,
+                    assistant, cost, organizer, participants;
+            ChannelType type;
+            Faculty faculty;
+            ZonedDateTime creationDate, modificationDate;
+            // Get channel data from database.
+            while (getChannelsRs.next()) {
+                int id = getChannelsRs.getInt("Id");
+                name = getChannelsRs.getString("Name");
+                description = getChannelsRs.getString("Description");
+                type = ChannelType.values[getChannelsRs.getInt("Type")];
+                creationDate = getChannelsRs.getTimestamp("CreationDate").toLocalDateTime().atZone(Constants.TIME_ZONE);
+                modificationDate = getChannelsRs.getTimestamp("ModificationDate").toLocalDateTime().atZone(Constants
+                        .TIME_ZONE);
+                term = getChannelsRs.getString("Term");
+                locations = getChannelsRs.getString("Locations");
+                dates = getChannelsRs.getString("Dates");
+                contacts = getChannelsRs.getString("Contacts");
+                website = getChannelsRs.getString("Website");
+
+                // If necessary get additional channel data and create corresponding channel subclass.
+                PreparedStatement getSubclassStmt;
+                ResultSet getSubclassRs;
+                switch (type) {
+                    case LECTURE:
+                        query = "SELECT * FROM Lecture WHERE Channel_Id=?;";
+                        getSubclassStmt = con.prepareStatement(query);
+                        getSubclassStmt.setInt(1, id);
+                        getSubclassRs = getSubclassStmt.executeQuery();
+                        if (getSubclassRs.next()) {
+                            faculty = Faculty.values[getSubclassRs.getInt("Faculty")];
+                            startDate = getSubclassRs.getString("StartDate");
+                            endDate = getSubclassRs.getString("EndDate");
+                            lecturer = getSubclassRs.getString("Lecturer");
+                            assistant = getSubclassRs.getString("Assistant");
+                            Lecture lecture = new Lecture(id, name, description, type, creationDate,
+                                    modificationDate, term, locations, dates, contacts, website, faculty, startDate,
+                                    endDate, lecturer, assistant);
+                            channels.add(lecture);
+                        }
+                        break;
+                    case EVENT:
+                        query = "SELECT * FROM Event WHERE Channel_Id=?;";
+                        getSubclassStmt = con.prepareStatement(query);
+                        getSubclassStmt.setInt(1, id);
+                        getSubclassRs = getSubclassStmt.executeQuery();
+                        if (getSubclassRs.next()) {
+                            cost = getSubclassRs.getString("Cost");
+                            organizer = getSubclassRs.getString("Organizer");
+                            Event event = new Event(id, name, description, type, creationDate,
+                                    modificationDate, term, locations, dates, contacts, website, cost, organizer);
+                            channels.add(event);
+                        }
+                        break;
+                    case SPORTS:
+                        query = "SELECT * FROM Sports WHERE Channel_Id=?;";
+                        getSubclassStmt = con.prepareStatement(query);
+                        getSubclassStmt.setInt(1, id);
+                        getSubclassRs = getSubclassStmt.executeQuery();
+                        if (getSubclassRs.next()) {
+                            cost = getSubclassRs.getString("Cost");
+                            participants = getSubclassRs.getString("NumberOfParticipants");
+                            Sports sports = new Sports (id, name, description, type, creationDate,
+                                    modificationDate, term, locations, dates, contacts, website, cost, participants);
+                            channels.add(sports);
+                        }
+                        break;
+                    default:
+                        // There is no subclass for channel type OTHER and STUDENT_GROUP, so create channel object.
+                        Channel channel = new Channel(id, name, description, type, creationDate, modificationDate, term,
+                                locations, dates, contacts, website);
+                        channels.add(channel);
+                }
+            }
+            getChannelsStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with channels:{}.", channels);
+        return channels;
+    }
+
+    /**
      * Adds the moderator with the given id to the channel with the given id as responsible moderator.
      *
      * @param channelId The id of the channel to which the moderator should be added.
@@ -254,7 +383,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
             removeModeratorStmt.setInt(2, channelId);
 
             int rowsAffected = removeModeratorStmt.executeUpdate();
-            if(rowsAffected > 0) {
+            if (rowsAffected > 0) {
                 logger.info("Removed the moderator with id {} from the channel with id {}.", moderatorId, channelId);
             }
             removeModeratorStmt.close();
@@ -374,7 +503,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
             removeUserStmt.setInt(2, channelId);
 
             int rowsAffected = removeUserStmt.executeUpdate();
-            if(rowsAffected > 0) {
+            if (rowsAffected > 0) {
                 logger.info("Removed the user with id {} as subscriber from the channel with id {}.", userId, channelId);
             }
             removeUserStmt.close();

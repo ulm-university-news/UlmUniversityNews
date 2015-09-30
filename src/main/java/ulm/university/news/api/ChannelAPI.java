@@ -1,7 +1,10 @@
 package ulm.university.news.api;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.controller.ChannelController;
@@ -16,10 +19,11 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
-import static ulm.university.news.util.Constants.CHANNEL_INVALID_TYPE;
-import static ulm.university.news.util.Constants.LOG_SERVER_EXCEPTION;
+import static ulm.university.news.util.Constants.*;
 
 /**
  * The ChannelAPI is responsible for accepting incoming channel requests, reading the required data and handing
@@ -105,6 +109,50 @@ public class ChannelAPI {
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel" + "/" + channel.getId());
         // Return the created channel resource and set the Location Header.
         return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(channel).build();
+    }
+
+    /**
+     * Delivers all the existing channel data. The requested channels can be restricted to a specific selection by the
+     * given query params.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param moderatorId Get only channels for which the moderator with the given id is responsible.
+     * @param lastUpdated Get only channels with a newer modification data as the last updated date.
+     * @return Response object including a list with channel data.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public String getChannels(@HeaderParam("Authorization") String accessToken, @QueryParam("moderatorId")
+    Integer moderatorId, @QueryParam("lastUpdated") String lastUpdated) throws ServerException {
+        // TODO Note: On client site replace + in date String with %2B
+        // TODO Replace other reserved characters too? https://de.wikipedia.org/wiki/URL-Encoding
+        ZonedDateTime lastUpdatedDate = null;
+        try{
+            // Verify correct date format.
+            if(lastUpdated != null){
+                lastUpdatedDate = ZonedDateTime.parse(lastUpdated);
+            }
+        }catch(DateTimeParseException e){
+            logger.error(LOG_SERVER_EXCEPTION, 400, PARSING_FAILURE, "Couldn't parse date String.");
+            throw new ServerException(400, PARSING_FAILURE);
+        }
+        // Get all the requested moderator resources.
+        List<Channel> channels = channelCtrl.getChannels(accessToken, moderatorId, lastUpdatedDate);
+
+        // Write channels with subclass attributes as JSON String.
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
+        // Make sure that dates are formatted correctly.
+        mapper.registerModule(new JavaTimeModule());
+        mapper.configure(SerializationFeature.WRITE_DATES_WITH_ZONE_ID, true);
+        try {
+            return mapper.writeValueAsString(channels);
+        } catch (JsonProcessingException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, PARSING_FAILURE, "Couldn't parse channels to JSON String.");
+            throw new ServerException(500, PARSING_FAILURE);
+        }
     }
 
     /**

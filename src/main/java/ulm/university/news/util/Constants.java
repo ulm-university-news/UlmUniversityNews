@@ -161,5 +161,6 @@ public class Constants {
     public static final int DATA_INCOMPLETE = 5002;
     public static final int EMAIL_FAILURE = 5003;
     public static final int RESOURCE_BUNDLE_NOT_FOUND = 5004;
+    public static final int PARSING_FAILURE = 5005;
 
 }

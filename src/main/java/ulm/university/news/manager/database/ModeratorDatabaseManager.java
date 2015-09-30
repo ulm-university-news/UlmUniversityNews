@@ -346,23 +346,24 @@ public class ModeratorDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
 
             // Create proper SQL statement.
-            String query = "SELECT * FROM Moderator;";
-            PreparedStatement getModeratorsStmt = con.prepareStatement(query);
+            String query = "SELECT * FROM Moderator";
+            PreparedStatement getModeratorsStmt;
             if (isLocked != null && isAdmin != null) {
                 query += " WHERE Locked=? AND Admin=?;";
                 getModeratorsStmt = con.prepareStatement(query);
                 getModeratorsStmt.setBoolean(1, isLocked);
                 getModeratorsStmt.setBoolean(2, isAdmin);
+            } else if (isLocked != null) {
+                query += " WHERE Locked=?;";
+                getModeratorsStmt = con.prepareStatement(query);
+                getModeratorsStmt.setBoolean(1, isLocked);
+            } else if (isAdmin != null) {
+                query += " WHERE Admin=?;";
+                getModeratorsStmt = con.prepareStatement(query);
+                getModeratorsStmt.setBoolean(1, isAdmin);
             } else {
-                if (isLocked != null) {
-                    query += " WHERE Locked=?;";
-                    getModeratorsStmt = con.prepareStatement(query);
-                    getModeratorsStmt.setBoolean(1, isLocked);
-                } else if (isAdmin != null) {
-                    query += " WHERE Admin=?;";
-                    getModeratorsStmt = con.prepareStatement(query);
-                    getModeratorsStmt.setBoolean(1, isAdmin);
-                }
+                query += ";";
+                getModeratorsStmt = con.prepareStatement(query);
             }
             logger.debug("SQL query:{}", query);
 

@@ -4,10 +4,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.*;
 import ulm.university.news.data.enums.ChannelType;
+import ulm.university.news.data.enums.TokenType;
 import ulm.university.news.manager.database.ChannelDatabaseManager;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -123,6 +125,50 @@ public class ChannelController extends AccessController {
         }
 
         return channel;
+    }
+
+    /**
+     * Gets all the existing channel data. The requested channels can be restricted to a specific selection by the
+     * given params: moderatorId and lastUpdated.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param moderatorId Get only channels for which the moderator with the given id is responsible.
+     * @param lastUpdated Get only channels with a newer modification data as the last updated date.
+     * @return A list with all requested channel objects.
+     * @throws ServerException If the authorization of the requestor fails or the requestor isn't allowed to perform
+     * the operation. Furthermore, a failure of the database also causes a ServerException.
+     */
+    public List<Channel> getChannels(String accessToken, Integer moderatorId, ZonedDateTime lastUpdated) throws
+            ServerException {
+        TokenType tokenType = verifyAccessToken(accessToken);
+
+        // Check if there is a valid access token provided.
+        if(tokenType == TokenType.INVALID){
+            String errMsg = "To perform this operation a valid access token needs to be provided.";
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+        else if(tokenType == TokenType.MODERATOR){
+            // The requestor is a valid moderator.
+            try {
+                Moderator moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
+                return channelDBM.getChannels(moderatorId, lastUpdated);
+            } catch (DatabaseException e) {
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+                throw new ServerException(500, DATABASE_FAILURE);
+            }
+        } else if(tokenType == TokenType.USER){
+            // The requestor is a valid user.
+            try {
+                // Ignore parameter moderatorId because requestor is a user.
+                return channelDBM.getChannels(null, lastUpdated);
+            } catch (DatabaseException e) {
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+                throw new ServerException(500, DATABASE_FAILURE);
+            }
+        }
+
+        return null;
     }
 
     /**
