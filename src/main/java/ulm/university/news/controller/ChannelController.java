@@ -190,7 +190,13 @@ public class ChannelController extends AccessController {
         }
         try {
             // Requestor is a valid user or a moderator. Both are allowed to perform this operation.
-            return channelDBM.getChannel(channelId);
+            Channel channel = channelDBM.getChannel(channelId);
+            if(channel == null) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, CHANNEL_NOT_FOUND, "Channel not found in database.");
+                throw new ServerException(404, CHANNEL_NOT_FOUND);
+            } else {
+                return channel;
+            }
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
