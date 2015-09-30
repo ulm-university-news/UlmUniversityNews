@@ -513,118 +513,23 @@ public class ChannelDatabaseManager extends DatabaseManager {
         Connection con = null;
         try {
             con = getDatabaseConnection();
-            // Start of transaction.
-            con.setAutoCommit(false);
-            String query;
-            int rowsAffected;
 
-            // First: Delete the channel subclass.
-            query = "SELECT Type FROM Channel WHERE Id=?;";
-            PreparedStatement getTypeStmt = con.prepareStatement(query);
-            getTypeStmt.setInt(1, channelId);
-            ResultSet getTypeRs = getTypeStmt.executeQuery();
-            PreparedStatement removeSubclassStmt = null;
-            if(getTypeRs.next()){
-                // Get channel type from database.
-                ChannelType type = ChannelType.values[getTypeRs.getInt("Type")];
-                switch (type) {
-                    case LECTURE:
-                        query = "DELETE FROM Lecture WHERE Channel_Id=?;";
-                        removeSubclassStmt = con.prepareStatement(query);
-                        removeSubclassStmt.setInt(1, channelId);
-                        rowsAffected = removeSubclassStmt.executeUpdate();
-                        if (rowsAffected == 1) {
-                            logger.info("Removed the lecture entry with channelId {} from database.", channelId);
-                        }
-                        break;
-                    case EVENT:
-                        query = "DELETE FROM Event WHERE Channel_Id=?;";
-                        removeSubclassStmt = con.prepareStatement(query);
-                        removeSubclassStmt.setInt(1, channelId);
-                        rowsAffected = removeSubclassStmt.executeUpdate();
-                        if (rowsAffected == 1) {
-                            logger.info("Removed the event entry with channelId {} from database.", channelId);
-                        }
-                        break;
-                    case SPORTS:
-                        query = "DELETE FROM Sports WHERE Channel_Id=?;";
-                        removeSubclassStmt = con.prepareStatement(query);
-                        removeSubclassStmt.setInt(1, channelId);
-                        rowsAffected = removeSubclassStmt.executeUpdate();
-                        if (rowsAffected == 1) {
-                            logger.info("Removed the sports entry with channelId {} from database.", channelId);
-                        }
-                        break;
-                    default:
-                        // There is no subclass for channel type OTHER and STUDENT_GROUP, so delete superclass only.
-                        break;
-                }
-            }
-
-            // Second: Delete the channel superclass.
-            query = "DELETE FROM Channel WHERE Id=?;";
+            // Delete the entry in the channel table.
+            String query = "DELETE FROM Channel WHERE Id=?;";
             PreparedStatement removeChannelStmt = con.prepareStatement(query);
             removeChannelStmt.setInt(1, channelId);
-            rowsAffected = removeChannelStmt.executeUpdate();
+            int rowsAffected = removeChannelStmt.executeUpdate();
             if (rowsAffected == 1) {
-                logger.info("Removed the channel with id {} from database.", channelId);
+                logger.info("Removed the channel with id {} and all linked entries from database.", channelId);
             }
 
-            // Third: Delete link between moderators and channel.
-            query = "DELETE FROM ModeratorChannel WHERE Channel_Id=?;";
-            PreparedStatement removeModeratorsStmt = con.prepareStatement(query);
-            removeModeratorsStmt.setInt(1, channelId);
-            rowsAffected = removeModeratorsStmt.executeUpdate();
-            if (rowsAffected > 1) {
-                logger.info("Removed {} moderators from channel with id {} from database.", rowsAffected, channelId);
-            }
+            /*
+            Note: MySQL will take care of deletion of other entries which are linked to the channel thanks to the
+            defined foreign keys with ON DELETE CASCADE.
+            */
 
-            // Fourth: Delete link between users and channel.
-            query = "DELETE FROM UserChannel WHERE Channel_Id=?;";
-            PreparedStatement removeUsersStmt = con.prepareStatement(query);
-            removeUsersStmt.setInt(1, channelId);
-            rowsAffected = removeUsersStmt.executeUpdate();
-            if (rowsAffected > 1) {
-                logger.info("Removed {} users from channel with id {} from database.", rowsAffected, channelId);
-            }
-
-            // Fifth: Delete announcements of the channel.
-            query = "DELETE FROM Reminder WHERE Channel_Id=?;";
-            PreparedStatement removeRemindersStmt = con.prepareStatement(query);
-            removeRemindersStmt.setInt(1, channelId);
-            rowsAffected = removeRemindersStmt.executeUpdate();
-            if (rowsAffected > 1) {
-                logger.info("Removed {} reminders from channel with id {} from database.", rowsAffected, channelId);
-            }
-
-            // Sixth: Delete reminders of the channel.
-            query = "DELETE FROM Announcement WHERE Channel_Id=?;";
-            PreparedStatement removeAnnouncementsStmt = con.prepareStatement(query);
-            removeAnnouncementsStmt.setInt(1, channelId);
-            rowsAffected = removeAnnouncementsStmt.executeUpdate();
-            if (rowsAffected > 1) {
-                logger.info("Removed {} announcements from channel with id {} from database.", rowsAffected, channelId);
-            }
-
-            // End transaction.
-            con.commit();
-
-            if(removeSubclassStmt != null) {
-                removeSubclassStmt.close();
-            }
-            removeModeratorsStmt.close();
-            removeUsersStmt.close();
-            removeRemindersStmt.close();
-            removeAnnouncementsStmt.close();
             removeChannelStmt.close();
         } catch (SQLException e) {
-            try {
-                logger.warn("Need to rollback the transaction.");
-                con.rollback();
-            } catch (SQLException e1) {
-                logger.warn("Rollback failed.");
-                logger.error(Constants.LOG_SQL_EXCEPTION, e1.getSQLState(), e1.getErrorCode(), e1.getMessage());
-            }
             logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
