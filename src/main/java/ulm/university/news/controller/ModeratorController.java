@@ -3,6 +3,7 @@ package ulm.university.news.controller;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ulm.university.news.data.Channel;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.data.enums.Language;
 import ulm.university.news.manager.email.EmailManager;
@@ -32,6 +33,27 @@ public class ModeratorController extends AccessController {
 
     /** The logger instance for ModeratorController. */
     private static final Logger logger = LoggerFactory.getLogger(ModeratorController.class);
+
+    /** Instance of the ChannelController class. */
+    private ChannelController channelCtrl;
+
+    /**
+     * Constructor of ModeratorController. Creates a new ChannelController and passes itself as reference. This
+     * prevents infinite mutual constructor invocation of ChannelController and ModeratorController.
+     */
+    public ModeratorController() {
+        if (channelCtrl == null) {
+            channelCtrl = new ChannelController(this);
+        }
+    }
+
+    /**
+     * Constructor of ModeratorController. Sets the given ChannelController as local instance. This
+     * prevents infinite mutual constructor invocation of ChannelController and ModeratorController.
+     */
+    public ModeratorController(ChannelController channelCtrl) {
+        this.channelCtrl = channelCtrl;
+    }
 
     /**
      * Create a new moderator account in the system. This method takes the data which have been received with the
@@ -278,8 +300,8 @@ public class ModeratorController extends AccessController {
         String key, subject, message;
 
         // Internationalization: Get email text from properties file.
-        if(emailLocked) {
-            if(moderatorDB.isLocked()){
+        if (emailLocked) {
+            if (moderatorDB.isLocked()) {
                 // Moderator account was locked.
                 key = "moderator.locked.subject";
                 subject = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, APPLICATION_NAME);
@@ -300,8 +322,8 @@ public class ModeratorController extends AccessController {
                 throw new ServerException(500, EMAIL_FAILURE);
             }
         }
-        if(emailAdmin) {
-            if(moderatorDB.isAdmin()){
+        if (emailAdmin) {
+            if (moderatorDB.isAdmin()) {
                 // Admin rights added.
                 key = "moderator.adminadded.subject";
                 subject = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, APPLICATION_NAME);
@@ -414,38 +436,89 @@ public class ModeratorController extends AccessController {
      */
     public void deleteModerator(String accessToken, int moderatorId) throws ServerException {
         // Check if requestor is a valid moderator.
-        Moderator moderatorDB = verifyModeratorAccess(accessToken);
+        Moderator moderatorRequestorDB = verifyModeratorAccess(accessToken);
 
-        boolean isOwnAccountDeleted = moderatorId == moderatorDB.getId();
+        boolean isOwnAccountDeleted = moderatorId == moderatorRequestorDB.getId();
         // Only an administrator can delete another than their own moderator account.
-        if (!moderatorDB.isAdmin() && !isOwnAccountDeleted) {
+        if (!moderatorRequestorDB.isAdmin() && !isOwnAccountDeleted) {
             logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Only an administrator is allowed to " +
                     "perform the requested operation.");
             throw new ServerException(403, MODERATOR_FORBIDDEN);
         }
 
-        if (!isOwnAccountDeleted) {
-            try {
-                // Get requested moderator identified by id from database.
-                moderatorDB = moderatorDBM.getModeratorById(moderatorId);
-            } catch (DatabaseException e) {
-                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
-                        "account by id.");
-                throw new ServerException(500, DATABASE_FAILURE);
-            }
-            // Verify moderator account exists.
-            if (moderatorDB == null) {
-                logger.error(LOG_SERVER_EXCEPTION, 404, MODERATOR_NOT_FOUND, "Moderator account not found.");
-                throw new ServerException(404, MODERATOR_NOT_FOUND);
-            }
+        Moderator moderatorDeleteDB;
+        try {
+            // Get moderator who should be deleted from database.
+            moderatorDeleteDB = moderatorDBM.getModeratorById(moderatorId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+        // Verify moderator account exists.
+        if (moderatorDeleteDB == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 404, MODERATOR_NOT_FOUND, "Moderator account not found.");
+            throw new ServerException(404, MODERATOR_NOT_FOUND);
         }
 
-        if (moderatorDB.isAdmin()) {
+        // Admin accounts can't be deleted.
+        if (moderatorDeleteDB.isAdmin()) {
             logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Administrator accounts can't be deleted.");
             throw new ServerException(403, MODERATOR_FORBIDDEN);
         }
 
-        // TODO Get channels ...
+        // Get channels for which the moderator (who should be deleted) is responsible.
+        List<Channel> channels = channelCtrl.getChannelsOfModerator(moderatorDeleteDB.getId());
+
+        if (channels != null) {
+            // Check if moderator is single and only moderator of a channel.
+            for (Channel channel : channels) {
+                if (channel.getModerators() != null && channel.getModerators().size() == 1) {
+                    logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Moderator is single and " +
+                            "only responsible for channel with id " +  channel.getId() + ". Resolution required.");
+                    throw new ServerException(403, MODERATOR_FORBIDDEN);
+                }
+            }
+        }
+
+        try {
+            // Set deleted field in database to true.
+            moderatorDBM.markModeratorAsDeleted(moderatorDeleteDB.getId());
+
+            // Set active field in database to false.
+            channelCtrl.removeModeratorFromChannels(moderatorDeleteDB.getId());
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        if (channels != null) {
+            // Notify subscribers that the moderator was removed from the channel.
+            for (Channel channel : channels) {
+                // TODO notifySubscribers(channel.getId(), moderatorDeleteDB.getId(), channel.getSubscribers(),
+                // TODO MODERATOR_REMOVED)
+            }
+        }
+
+        // Finally delete moderator, if there are no constraints.
+        deleteModerator(moderatorId);
+    }
+
+    /**
+     * Deletes a moderator identified by id form the database if there are no active channels for this moderator. If
+     * the moderator is still responsible for a channel, the moderator won't be deleted.
+     *
+     * @param moderatorId The id of the moderator who should be deleted.
+     * @throws ServerException If a database failure occurs.
+     */
+    public void deleteModerator(int moderatorId) throws ServerException {
+        if (!channelCtrl.isModeratorActive(moderatorId)) {
+            try {
+                moderatorDBM.deleteModerator(moderatorId);
+            } catch (DatabaseException e) {
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+                throw new ServerException(500, DATABASE_FAILURE);
+            }
+        }
     }
 
     /**

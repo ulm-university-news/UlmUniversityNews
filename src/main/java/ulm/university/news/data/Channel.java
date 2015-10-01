@@ -17,34 +17,36 @@ import static ulm.university.news.util.Constants.TIME_ZONE;
  * @author Philipp Speidel
  */
 public class Channel {
-    /** The unique id of the Channel. */
+    /** The unique id of the channel. */
     int id;
-    /** The name of the Channel. */
+    /** The name of the channel. */
     String name;
-    /** The description of the Channel. */
+    /** The description of the channel. */
     String description;
-    /** The type of the Channel. */
+    /** The type of the channel. */
     ChannelType type;
-    /** The date on which the Channel was created. */
+    /** The date on which the channel was created. */
     ZonedDateTime creationDate;
-    /** The date on which the Channel was modified. */
+    /** The date on which the channel was modified. */
     ZonedDateTime modificationDate;
-    /** The term to which the Channel corresponds. */
+    /** The term to which the channel corresponds. */
     String term;
-    /** The locations which belong to the Channel. */
+    /** The locations which belong to the channel. */
     String locations;
-    /** Dates which belong to the Channel. */
+    /** Dates which belong to the channel. */
     String dates;
-    /** Contact persons who belong to the Channel. */
+    /** Contact persons who belong to the channel. */
     String contacts;
-    /** The website of the Channel. */
+    /** The website of the channel. */
     String website;
-    /** A list of all Announcements of the Channel. */
+    /** A list of all announcements of the channel. */
     List<Announcement> announcements;
-    /** A list of all Reminders of the Channel. */
+    /** A list of all reminders of the channel. */
     List<Reminder> reminders;
-    /** A list of all Moderators of the Channel. */
+    /** A list of all moderators of the channel. */
     List<Moderator> moderators;
+    /** A list of all subscribers of the channel. */
+    List<User> subscribers;
 
     public Channel() {
     }
@@ -66,7 +68,7 @@ public class Channel {
     }
 
     /**
-     * Computes the creation date of the Channel. If the creation date was already set, this method does nothing.
+     * Computes the creation date of the channel. If the creation date was already set, this method does nothing.
      */
     public void computeCreationDate() {
         if (creationDate == null) {
@@ -75,7 +77,7 @@ public class Channel {
     }
 
     /**
-     * Computes the modification date of the Channel.
+     * Computes the modification date of the channel.
      */
     public void computemModificationDate() {
         modificationDate = ZonedDateTime.now(TIME_ZONE);
@@ -95,9 +97,10 @@ public class Channel {
                 ", dates='" + dates + '\'' +
                 ", contacts='" + contacts + '\'' +
                 ", website='" + website + '\'' +
-                ", moderators=" + moderators +
-                ", reminders=" + reminders +
                 ", announcements=" + announcements +
+                ", reminders=" + reminders +
+                ", moderators=" + moderators +
+                ", subscribers=" + subscribers +
                 '}';
     }
 
@@ -215,5 +218,13 @@ public class Channel {
 
     public void setModerators(List<Moderator> moderators) {
         this.moderators = moderators;
+    }
+
+    public List<User> getSubscribers() {
+        return subscribers;
+    }
+
+    public void setSubscribers(List<User> subscribers) {
+        this.subscribers = subscribers;
     }
 }

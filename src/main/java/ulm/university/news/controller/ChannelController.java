@@ -32,7 +32,25 @@ public class ChannelController extends AccessController {
     protected ChannelDatabaseManager channelDBM = new ChannelDatabaseManager();
 
     /** Instance of the ModeratorController class. */
-    private ModeratorController moderatorCtrl = new ModeratorController();
+    private ModeratorController moderatorCtrl;
+
+    /**
+     * Constructor of ChannelController. Creates a new ModeratorController and passes itself as reference. This
+     * prevents infinite mutual constructor invocation of ChannelController and ModeratorController.
+     */
+    public ChannelController() {
+        if (moderatorCtrl == null) {
+            moderatorCtrl = new ModeratorController(this);
+        }
+    }
+
+    /**
+     * Constructor of ChannelController. Sets the given ModeratorController as local instance. This
+     * prevents infinite mutual constructor invocation of ChannelController and ModeratorController.
+     */
+    public ChannelController(ModeratorController moderatorCtrl) {
+        this.moderatorCtrl = moderatorCtrl;
+    }
 
     /**
      * Validates received channel data. Creates a new channel and adds the creator to its responsible moderators.
@@ -226,15 +244,49 @@ public class ChannelController extends AccessController {
             // Delete channel and all entries which are linked to it.
             channelDBM.deleteChannel(channelId);
         } catch (DatabaseException e) {
-            e.printStackTrace();
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
         }
 
         // TODO notifySubscribers(channelId, subscribers, CHANNEL_DELETED)
 
+        // Attempt to delete moderators who are marked as deleted but are still in the database.
         if (deletedModerators != null) {
             for (Moderator deletedModerator : deletedModerators) {
-                // TODO deleteModerator(deletedModerator.getId())
+                moderatorCtrl.deleteModerator(deletedModerator.getId());
             }
+        }
+    }
+
+    /**
+     * Gets all channels which are managed by the moderator with the given id. The channel objects contain a list of all
+     * their responsible moderators and subscribers.
+     *
+     * @param moderatorId The moderator id who is responsible for the requested channels.
+     * @return The requested channels including lists of responsible moderators and subscribers.
+     * @throws ServerException If a database failure occurs.
+     */
+    public List<Channel> getChannelsOfModerator(int moderatorId) throws ServerException {
+        try {
+            return channelDBM.getChannelsOfModerator(moderatorId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
+    /**
+     * Removes the moderator with the given id as responsible moderator from all channels.
+     *
+     * @param moderatorId The id of the moderator who should be removed from the channels.
+     * @throws ServerException If the data could not be deleted from the database due to a database failure.
+     */
+    public void removeModeratorFromChannels(int moderatorId) throws ServerException {
+        try {
+            channelDBM.removeModeratorFromChannels(moderatorId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
         }
     }
 
@@ -411,6 +463,22 @@ public class ChannelController extends AccessController {
         verifyResponsibleModerator(accessToken, channelId);
         try {
             return channelDBM.getSubscribers(channelId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
+    /**
+     * Checks active field of all channels which are linked to the given moderator id.
+     *
+     * @param moderatorId The id of the moderator.
+     * @return true if the moderator is still active in one or more channels.
+     * @throws ServerException If a database failure occurs.
+     */
+    public boolean isModeratorActive(int moderatorId) throws ServerException {
+        try {
+            return channelDBM.isModeratorActive(moderatorId);
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);

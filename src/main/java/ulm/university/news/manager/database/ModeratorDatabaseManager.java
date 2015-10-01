@@ -143,6 +143,12 @@ public class ModeratorDatabaseManager extends DatabaseManager {
         logger.debug("End.");
     }
 
+    /**
+     * Updates the given moderator in the database.
+     *
+     * @param moderator The moderator object with updated values.
+     * @throws DatabaseException If a database failure occurs.
+     */
     public void updateModerator(Moderator moderator) throws DatabaseException {
         logger.debug("Start with moderator:{}.", moderator);
         Connection con = null;
@@ -167,6 +173,36 @@ public class ModeratorDatabaseManager extends DatabaseManager {
             storeModeratorStmt.execute();
             storeModeratorStmt.close();
             logger.info("Updated moderator with id:{}.", moderator.getId());
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Marks a moderator as deleted. This method only sets the deleted field in the database to true.
+     *
+     * @param moderatorId The moderator account which should be marked as deleted.
+     * @throws DatabaseException If a database failure occurs.
+     */
+    public void markModeratorAsDeleted(int moderatorId) throws DatabaseException {
+        logger.debug("Start with moderatorId:{}.", moderatorId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            String query = "UPDATE Moderator SET Deleted=? WHERE Id=?;";
+
+            PreparedStatement storeModeratorStmt = con.prepareStatement(query);
+            storeModeratorStmt.setBoolean(1, true);
+            storeModeratorStmt.setInt(2, moderatorId);
+            storeModeratorStmt.execute();
+            storeModeratorStmt.close();
+            logger.info("Marked moderator with id:{} as deleted.", moderatorId);
         } catch (SQLException e) {
             // Throw back DatabaseException to the Controller.
             logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());

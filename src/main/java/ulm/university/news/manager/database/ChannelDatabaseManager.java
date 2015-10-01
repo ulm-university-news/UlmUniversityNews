@@ -401,6 +401,93 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
+     * Get all channels which are managed by the moderator with the given id. The channel objects contain a list of all
+     * their responsible moderators and subscribers.
+     *
+     * @param moderatorId The moderator id who is responsible for the requested channels.
+     * @return The requested channels including lists of responsible moderators and subscribers.
+     * @throws DatabaseException If a database failure occurs.
+     */
+    public List<Channel> getChannelsOfModerator(int moderatorId) throws DatabaseException {
+        logger.debug("Start with moderatorId:{}.", moderatorId);
+        Connection con = null;
+        List<Channel> channels = new ArrayList<Channel>();
+        try {
+            con = getDatabaseConnection();
+
+            // First: Get channels for which the moderator is responsible.
+            String query = "SELECT Channel_Id FROM ModeratorChannel WHERE Moderator_Id=? AND Active=?;";
+            PreparedStatement getChannelsStmt = con.prepareStatement(query);
+            getChannelsStmt.setInt(1, moderatorId);
+            getChannelsStmt.setBoolean(2, true);
+            ResultSet getChannelsRs = getChannelsStmt.executeQuery();
+
+            Channel channel;
+            while (getChannelsRs.next()) {
+                channel = new Channel();
+                channel.setId(getChannelsRs.getInt("Channel_Id"));
+                logger.debug("Channel_Id:{}", channel.getId());
+
+                // Second: Get all moderators (id only) who are responsible for this channel.
+                query = "SELECT Moderator_Id FROM ModeratorChannel WHERE Channel_Id=? AND Active=?;";
+
+                PreparedStatement getModeratorsStmt = con.prepareStatement(query);
+                getModeratorsStmt.setInt(1, channel.getId());
+                getModeratorsStmt.setBoolean(2, true);
+                ResultSet getModeratorsRs = getModeratorsStmt.executeQuery();
+
+                Moderator moderator;
+                List<Moderator> moderators = new ArrayList<>();
+                while (getModeratorsRs.next()) {
+                    // Only set the moderator id.
+                    moderator = new Moderator();
+                    moderator.setId(getModeratorsRs.getInt("Moderator_Id"));
+                    logger.debug("Moderator_Id:{}", moderator.getId());
+                    moderators.add(moderator);
+                }
+                // Add list of moderators to the channel object.
+                channel.setModerators(moderators);
+                getModeratorsStmt.close();
+
+                // Third: Get all subscribers of this channel.
+                query = "SELECT u.Id, u.Name, u.PushAccessToken, u.Platform " +
+                        "FROM User AS u INNER JOIN UserChannel AS uc " +
+                        "ON u.Id=uc.User_Id WHERE uc.Channel_Id=?;";
+
+                PreparedStatement getSubscribersStmt = con.prepareStatement(query);
+                getSubscribersStmt.setInt(1, channel.getId());
+                ResultSet getSubscribersRs = getSubscribersStmt.executeQuery();
+
+                User user;
+                List<User> subscribers = new ArrayList<User>();
+                while (getSubscribersRs.next()) {
+                    user = new User();
+                    user.setId(getSubscribersRs.getInt("Id"));
+                    user.setName(getSubscribersRs.getString("Name"));
+                    user.setPushAccessToken(getSubscribersRs.getString("PushAccessToken"));
+                    user.setPlatform(Platform.values[getSubscribersRs.getInt("Platform")]);
+                    logger.debug("user:{}", user);
+                    subscribers.add(user);
+                }
+                channel.setSubscribers(subscribers);
+                getSubscribersStmt.close();
+
+                // Add channel with responsible moderators and subscribers to channel list.
+                channels.add(channel);
+            }
+            getChannelsStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with channels:{}.", channels);
+        return channels;
+    }
+
+    /**
      * Adds the moderator with the given id to the channel with the given id as responsible moderator.
      *
      * @param channelId The id of the channel to which the moderator should be added.
@@ -488,6 +575,41 @@ public class ChannelDatabaseManager extends DatabaseManager {
             if (rowsAffected == 1) {
                 logger.info("Set the moderator with id {} to inactive for the channel with id {}.", moderatorId,
                         channelId);
+            }
+            removeModeratorStmt.close();
+        } catch (SQLException e) {
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Removes the moderator with the given id as responsible moderator from all channels.
+     *
+     * @param moderatorId The id of the moderator who should be removed from the channels.
+     * @throws DatabaseException If the data could not be deleted from the database due to a database failure.
+     */
+    public void removeModeratorFromChannels(int moderatorId) throws DatabaseException {
+        logger.debug("Start with moderatorId:{}.", moderatorId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            // Set the moderator as inactive for the channel.
+            String removeModeratorQuery =
+                    "UPDATE ModeratorChannel SET Active=? WHERE Moderator_Id=?;";
+
+            PreparedStatement removeModeratorStmt = con.prepareStatement(removeModeratorQuery);
+            removeModeratorStmt.setBoolean(1, false);
+            removeModeratorStmt.setInt(2, moderatorId);
+
+            int rowsAffected = removeModeratorStmt.executeUpdate();
+            if (rowsAffected > 1) {
+                logger.info("Set the moderator with id {} to inactive for {} channel(s).", moderatorId, rowsAffected);
             }
             removeModeratorStmt.close();
         } catch (SQLException e) {
@@ -702,75 +824,6 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
-     * Checks whether the moderator identified by the given moderator id is responsible for the channel identified by
-     * the given channel id or not.
-     *
-     * @param channelId The id of the channel.
-     * @param moderatorId The id of the moderator.
-     * @return true if the moderator is responsible for the channel.
-     */
-    public boolean isResponsibleForChannel(int channelId, int moderatorId) throws DatabaseException {
-        logger.debug("Start with moderatorId:{} and channelId:{}.", moderatorId, channelId);
-        Connection con = null;
-        boolean responsible = false;
-        try {
-            con = getDatabaseConnection();
-            String query = "SELECT * FROM ModeratorChannel WHERE Moderator_Id=? AND Channel_Id=?;";
-
-            PreparedStatement getResponsibleStmt = con.prepareStatement(query);
-            getResponsibleStmt.setInt(1, moderatorId);
-            getResponsibleStmt.setInt(2, channelId);
-
-            ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
-            if (getResponsibleRs.next()) {
-                responsible = true;
-            }
-            getResponsibleStmt.close();
-        } catch (SQLException e) {
-            // Throw back DatabaseException to the Controller.
-            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
-            throw new DatabaseException("Database failure.");
-        } finally {
-            returnConnection(con);
-        }
-        logger.debug("End with responsible:{}.", responsible);
-        return responsible;
-    }
-
-    /**
-     * Checks whether a channel identified by the given channel id exists in the database or not.
-     *
-     * @param channelId The id of the Channel.
-     * @return true if the channel with the given id exists in the database.
-     */
-    public boolean isValidChannelId(int channelId) throws DatabaseException {
-        logger.debug("Start with channelId:{}.", channelId);
-        Connection con = null;
-        boolean valid = false;
-        try {
-            con = getDatabaseConnection();
-            String query = "SELECT * FROM Channel WHERE Id=?;";
-
-            PreparedStatement getValidStmt = con.prepareStatement(query);
-            getValidStmt.setInt(1, channelId);
-
-            ResultSet getValidRs = getValidStmt.executeQuery();
-            if (getValidRs.next()) {
-                valid = true;
-            }
-            getValidStmt.close();
-        } catch (SQLException e) {
-            // Throw back DatabaseException to the Controller.
-            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
-            throw new DatabaseException("Database failure.");
-        } finally {
-            returnConnection(con);
-        }
-        logger.debug("End with valid:{}.", valid);
-        return valid;
-    }
-
-    /**
      * Gets all moderators who are responsible for a channel with the given id from the database.
      *
      * @param channelId The id of the channel.
@@ -812,4 +865,108 @@ public class ChannelDatabaseManager extends DatabaseManager {
         return users;
     }
 
+    /**
+     * Checks whether the moderator identified by the given moderator id is responsible for the channel identified by
+     * the given channel id or not.
+     *
+     * @param channelId The id of the channel.
+     * @param moderatorId The id of the moderator.
+     * @return true if the moderator is responsible for the channel.
+     */
+    public boolean isResponsibleForChannel(int channelId, int moderatorId) throws DatabaseException {
+        logger.debug("Start with moderatorId:{} and channelId:{}.", moderatorId, channelId);
+        Connection con = null;
+        boolean responsible = false;
+        try {
+            con = getDatabaseConnection();
+            String query = "SELECT * FROM ModeratorChannel WHERE Moderator_Id=? AND Channel_Id=? AND Active=?;";
+
+            PreparedStatement getResponsibleStmt = con.prepareStatement(query);
+            getResponsibleStmt.setInt(1, moderatorId);
+            getResponsibleStmt.setInt(2, channelId);
+            getResponsibleStmt.setBoolean(3, true);
+
+            ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
+            if (getResponsibleRs.next()) {
+                responsible = true;
+            }
+            getResponsibleStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with responsible:{}.", responsible);
+        return responsible;
+    }
+
+    /**
+     * Checks active field of all channels which are linked to the given moderator id.
+     *
+     * @param moderatorId The id of the moderator.
+     * @return true if the moderator is still active in one or more channels.
+     * @throws DatabaseException If a database failure occurs.
+     */
+    public boolean isModeratorActive(int moderatorId) throws DatabaseException {
+        logger.debug("Start with moderatorId:{}.", moderatorId);
+        Connection con = null;
+        boolean active = false;
+        try {
+            con = getDatabaseConnection();
+            String query = "SELECT * FROM ModeratorChannel WHERE Moderator_Id=? AND Active=?;";
+
+            PreparedStatement getResponsibleStmt = con.prepareStatement(query);
+            getResponsibleStmt.setInt(1, moderatorId);
+            getResponsibleStmt.setBoolean(2, true);
+
+            ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
+            if (getResponsibleRs.next()) {
+                active = true;
+            }
+            getResponsibleStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with active:{}.", active);
+        return active;
+    }
+
+    /**
+     * Checks whether a channel identified by the given channel id exists in the database or not.
+     *
+     * @param channelId The id of the Channel.
+     * @return true if the channel with the given id exists in the database.
+     */
+    public boolean isValidChannelId(int channelId) throws DatabaseException {
+        logger.debug("Start with channelId:{}.", channelId);
+        Connection con = null;
+        boolean valid = false;
+        try {
+            con = getDatabaseConnection();
+            String query = "SELECT * FROM Channel WHERE Id=?;";
+
+            PreparedStatement getValidStmt = con.prepareStatement(query);
+            getValidStmt.setInt(1, channelId);
+
+            ResultSet getValidRs = getValidStmt.executeQuery();
+            if (getValidRs.next()) {
+                valid = true;
+            }
+            getValidStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with valid:{}.", valid);
+        return valid;
+    }
 }
