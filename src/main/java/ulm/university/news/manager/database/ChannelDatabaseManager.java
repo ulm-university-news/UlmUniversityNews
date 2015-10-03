@@ -903,27 +903,26 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
-     * Checks active field of all channels which are linked to the given moderator id.
+     * Checks if moderator has still one or more entries in the ModeratorChannel table.
      *
      * @param moderatorId The id of the moderator.
-     * @return true if the moderator is still active in one or more channels.
+     * @return true if the moderator is still in the database and linked to one or more channels.
      * @throws DatabaseException If a database failure occurs.
      */
-    public boolean isModeratorActive(int moderatorId) throws DatabaseException {
+    public boolean isModeratorStillNeeded(int moderatorId) throws DatabaseException {
         logger.debug("Start with moderatorId:{}.", moderatorId);
         Connection con = null;
-        boolean active = false;
+        boolean needed = false;
         try {
             con = getDatabaseConnection();
-            String query = "SELECT * FROM ModeratorChannel WHERE Moderator_Id=? AND Active=?;";
+            String query = "SELECT * FROM ModeratorChannel WHERE Moderator_Id=?;";
 
             PreparedStatement getResponsibleStmt = con.prepareStatement(query);
             getResponsibleStmt.setInt(1, moderatorId);
-            getResponsibleStmt.setBoolean(2, true);
 
             ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
             if (getResponsibleRs.next()) {
-                active = true;
+                needed = true;
             }
             getResponsibleStmt.close();
         } catch (SQLException e) {
@@ -933,8 +932,8 @@ public class ChannelDatabaseManager extends DatabaseManager {
         } finally {
             returnConnection(con);
         }
-        logger.debug("End with active:{}.", active);
-        return active;
+        logger.debug("End with needed:{}.", needed);
+        return needed;
     }
 
     /**

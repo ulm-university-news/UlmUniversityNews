@@ -61,11 +61,15 @@ public class Constants {
     /** The maximum length of the locations text of a channel. */
     public static final int CHANNEL_LOCATIONS_MAX_LENGTH = 65;
 
+    // TODO One constant field for same length!?
     /** The maximum length of the dates text of a channel. */
     public static final int CHANNEL_DATES_MAX_LENGTH = 150;
 
     /** The maximum length of the cost text of a channel. */
     public static final int CHANNEL_COST_MAX_LENGTH = 150;
+
+    /** The maximum length of the website text of a channel. */
+    public static final int CHANNEL_WEBSITE_MAX_LENGTH = 150;
 
     /** The maximum length of the participants text of a channel. */
     public static final int CHANNEL_PARTICIPANTS_MAX_LENGTH = 150;
@@ -120,7 +124,8 @@ public class Constants {
     public static final int CHANNEL_INVALID_COST = 3012;
     public static final int CHANNEL_INVALID_PARTICIPANTS = 3013;
     public static final int CHANNEL_INVALID_ORGANIZER = 3014;
-    public static final int CHANNEL_NAME_ALREADY_EXISTS = 3015;
+    public static final int CHANNEL_INVALID_WEBSITE = 3015;
+    public static final int CHANNEL_NAME_ALREADY_EXISTS = 3016;
 
     // Group:
     public static final int GROUP_NOT_FOUND = 4000;

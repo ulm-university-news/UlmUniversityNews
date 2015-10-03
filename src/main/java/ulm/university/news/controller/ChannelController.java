@@ -84,6 +84,9 @@ public class ChannelController extends AccessController {
         } else if (channel.getDates() != null && channel.getDates().length() > CHANNEL_DATES_MAX_LENGTH) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_DATES, "Dates to long.");
             throw new ServerException(400, CHANNEL_INVALID_DATES);
+        } if (channel.getWebsite() != null && channel.getWebsite().length() > CHANNEL_WEBSITE_MAX_LENGTH) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_WEBSITE, "Website to long.");
+            throw new ServerException(400, CHANNEL_INVALID_WEBSITE);
         }
 
         // Perform special checks for the received data of the Lecture subclass.
@@ -470,15 +473,15 @@ public class ChannelController extends AccessController {
     }
 
     /**
-     * Checks active field of all channels which are linked to the given moderator id.
+     * Checks if moderator is still linked to one or more channels in the database.
      *
      * @param moderatorId The id of the moderator.
-     * @return true if the moderator is still active in one or more channels.
+     * @return true if the moderator is still in the database and linked to one or more channels.
      * @throws ServerException If a database failure occurs.
      */
-    public boolean isModeratorActive(int moderatorId) throws ServerException {
+    public boolean isModeratorStillNeeded(int moderatorId) throws ServerException {
         try {
-            return channelDBM.isModeratorActive(moderatorId);
+            return channelDBM.isModeratorStillNeeded(moderatorId);
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);

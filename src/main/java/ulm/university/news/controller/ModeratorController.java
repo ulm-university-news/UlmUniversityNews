@@ -511,7 +511,7 @@ public class ModeratorController extends AccessController {
      * @throws ServerException If a database failure occurs.
      */
     public void deleteModerator(int moderatorId) throws ServerException {
-        if (!channelCtrl.isModeratorActive(moderatorId)) {
+        if (!channelCtrl.isModeratorStillNeeded(moderatorId)) {
             try {
                 moderatorDBM.deleteModerator(moderatorId);
             } catch (DatabaseException e) {
