@@ -74,6 +74,9 @@ public class Constants {
     /** The maximum length of the participants text of a channel. */
     public static final int CHANNEL_PARTICIPANTS_MAX_LENGTH = 150;
 
+    /** The maximum length of the channels start or end date. */
+    public static final int CHANNEL_DATE_MAX_LENGTH = 45;
+
     /** The maximum length of a message. */
     public static final int MESSAGE_MAX_LENGTH = 500;
 
@@ -125,7 +128,9 @@ public class Constants {
     public static final int CHANNEL_INVALID_PARTICIPANTS = 3013;
     public static final int CHANNEL_INVALID_ORGANIZER = 3014;
     public static final int CHANNEL_INVALID_WEBSITE = 3015;
-    public static final int CHANNEL_NAME_ALREADY_EXISTS = 3016;
+    public static final int CHANNEL_INVALID_START_DATE = 3016;
+    public static final int CHANNEL_INVALID_END_DATE = 3017;
+    public static final int CHANNEL_NAME_ALREADY_EXISTS = 3018;
 
     // Group:
     public static final int GROUP_NOT_FOUND = 4000;

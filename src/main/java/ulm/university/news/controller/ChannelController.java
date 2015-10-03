@@ -11,7 +11,6 @@ import ulm.university.news.util.exceptions.ServerException;
 
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.regex.Pattern;
 
 import static ulm.university.news.util.Constants.*;
 
@@ -59,20 +58,240 @@ public class ChannelController extends AccessController {
      * @param channel The channel object including the data of the new channel.
      * @return The newly created channel object.
      * @throws ServerException If the authorization of the requestor fails or the requestor isn't allowed to perform
-     * the operation. Furthermore, a failure of the database also causes a ServerException.
+     * the operation. Furthermore, invalid channel data and a failure of the database also causes a ServerException.
      */
     public Channel createChannel(String accessToken, Channel channel) throws ServerException {
-        // Perform checks on the received data. If the data isn't accurate the channel can't be created.
+        // Perform checks on the received channel data. If the data isn't accurate the channel can't be created.
         if (channel.getName() == null || channel.getType() == null || channel.getContacts() == null) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Channel data is incomplete.");
             throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
-        } else if (!Pattern.compile(NAME_PATTERN).matcher(channel.getName()).matches()) {
+        }
+        verifyChannelData(channel);
+
+        // Perform special checks for the received data of the channel subclass.
+        if (channel.getType() == ChannelType.LECTURE) {
+            Lecture lecture = (Lecture) channel;
+            if (lecture.getLecturer() == null || lecture.getFaculty() == null) {
+                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Lecture data is incomplete.");
+                throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
+            }
+        }
+        verifyChannelSubclassData(channel);
+
+        // Check if requestor is a valid moderator.
+        Moderator moderatorDB = verifyModeratorAccess(accessToken);
+
+        // Initialize remaining channel fields.
+        channel.computeCreationDate();
+        channel.setModificationDate(channel.getCreationDate());
+
+        try {
+            channelDBM.storeChannel(channel, moderatorDB.getId());
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+        return channel;
+    }
+
+    /**
+     * Validates received channel data. Changes the channel data according to the given channel object.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channel The channel object including the changed data of the channel.
+     * @return The changed channel object.
+     * @throws ServerException If the authorization of the requestor fails or the requestor isn't allowed to perform
+     * the operation. Furthermore, invalid channel data and a failure of the database also causes a ServerException.
+     */
+    public Channel changeChannel(String accessToken, int channelId, Channel channel) throws ServerException {
+        // Perform checks on the received channel data. If the data isn't accurate the channel can't be changed.
+        verifyChannelData(channel);
+
+        // Check if requestor is a valid moderator.
+        Moderator moderatorRequestorDB = verifyModeratorAccess(accessToken);
+
+        Channel channelDB;
+        try {
+            // Get channel with given id from database.
+            channelDB = channelDBM.getChannel(channelId);
+            // Check if channel exists in database.
+            if (channelDB == null) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, CHANNEL_NOT_FOUND, "Channel not found in database.");
+                throw new ServerException(404, CHANNEL_NOT_FOUND);
+            }
+            // Check if moderator is responsible for the channel.
+            if (!channelDBM.isResponsibleForChannel(channelId, moderatorRequestorDB.getId())) {
+                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "This moderator is not allowed to " +
+                        "perform the requested operation.");
+                throw new ServerException(403, MODERATOR_FORBIDDEN);
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        boolean changed = false;
+        // Check if at least one field of channel will be changed.
+        if (channel.getName() != null || channel.getDescription() != null || channel.getTerm() != null || channel
+                .getLocations() != null || channel.getContacts() != null || channel.getDates() != null || channel
+                .getWebsite() != null) {
+            changed = true;
+        }
+
+        if (changed) {
+            // Update channel fields.
+            channelDB = updateChannel(channel, channelDB);
+        }
+
+        // Update modification date.
+        channelDB.setModificationDate(ZonedDateTime.now(TIME_ZONE));
+
+        // Ignore given channel subclass data if it's not the subclass of the channel in the database.
+        if (channelDB.getType() == channel.getType()) {
+            // Perform special checks for the received data of the channel subclass.
+            verifyChannelSubclassData(channel);
+            // Update channel subclass fields.
+            channelDB = updateChannelSubclass(channel, channelDB, changed);
+            try {
+                channelDBM.updateChannelWithSubclass(channelDB);
+            } catch (DatabaseException e) {
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+                throw new ServerException(500, DATABASE_FAILURE);
+            }
+        } else {
+            if (!changed) {
+                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Channel PATCH data is incomplete.");
+                throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
+            }
+            try {
+                channelDBM.updateChannel(channelDB);
+            } catch (DatabaseException e) {
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+                throw new ServerException(500, DATABASE_FAILURE);
+            }
+        }
+        return channelDB;
+    }
+
+    /**
+     * Updates several fields of the channel object retrieved from the database. Only the following fields can be
+     * changed: name, description, term, locations, contact, modificationDate, dates and website.
+     *
+     * @param channel The channel object with the updated data values.
+     * @param channelDB The channel object from the database.
+     * @return The complete updated channel object.
+     */
+    private Channel updateChannel(Channel channel, Channel channelDB) {
+        // Only update fields which are set.
+        if (channel.getName() != null) {
+            channelDB.setName(channel.getName());
+        }
+        if (channel.getDescription() != null) {
+            channelDB.setDescription(channel.getDescription());
+        }
+        if (channel.getTerm() != null) {
+            channelDB.setTerm(channel.getTerm());
+        }
+        if (channel.getLocations() != null) {
+            channelDB.setLocations(channel.getLocations());
+        }
+        if (channel.getContacts() != null) {
+            channelDB.setContacts(channel.getContacts());
+        }
+        if (channel.getDates() != null) {
+            channelDB.setDates(channel.getDates());
+        }
+        if (channel.getWebsite() != null) {
+            channelDB.setWebsite(channel.getWebsite());
+        }
+        return channelDB;
+    }
+
+    /**
+     * Updates several fields of the channel subclass object retrieved from the database. Only the following fields
+     * can be changed. Lecture: startDate, endDate, lecturer and assistant. Sports: cost and numberOfParticipants.
+     * Event: cost and organizer.
+     *
+     * @param channel The channel object with the updated data values.
+     * @param channelDB The channel object from the database.
+     * @param changed Indicates if one or more fields of the channel superclass were changed.
+     * @return The complete updated channel object.
+     * @throws ServerException If channel PATCH data is incomplete.
+     */
+    private Channel updateChannelSubclass(Channel channel, Channel channelDB, boolean changed) throws ServerException {
+        // Only update fields which are set.
+        switch (channelDB.getType()) {
+            case LECTURE:
+                Lecture lecture = (Lecture) channel;
+                Lecture lectureDB = (Lecture) channelDB;
+                if (!changed && lecture.getStartDate() == null && lecture.getEndDate() == null && lecture.getLecturer()
+                        == null && lecture.getAssistant() == null) {
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Channel PATCH data is " +
+                            "incomplete.");
+                    throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
+                }
+                if (lecture.getStartDate() != null) {
+                    lectureDB.setStartDate(lecture.getStartDate());
+                }
+                if (lecture.getEndDate() != null) {
+                    lectureDB.setEndDate(lecture.getEndDate());
+                }
+                if (lecture.getLecturer() != null) {
+                    lectureDB.setLecturer(lecture.getLecturer());
+                }
+                if (lecture.getAssistant() != null) {
+                    lectureDB.setAssistant(lecture.getAssistant());
+                }
+                break;
+            case SPORTS:
+                Sports sports = (Sports) channel;
+                Sports sportsDB = (Sports) channelDB;
+                if (!changed && sports.getCost() == null && sports.getNumberOfParticipants() == null) {
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Channel PATCH data is " +
+                            "incomplete.");
+                    throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
+                }
+                if (sports.getCost() != null) {
+                    sportsDB.setCost(sports.getCost());
+                }
+                if (sports.getNumberOfParticipants() != null) {
+                    sportsDB.setNumberOfParticipants(sports.getNumberOfParticipants());
+                }
+                break;
+            case EVENT:
+                Event event = (Event) channel;
+                Event eventDB = (Event) channelDB;
+                if (!changed && event.getCost() == null && event.getOrganizer() == null) {
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Channel PATCH data is " +
+                            "incomplete.");
+                    throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
+                }
+                if (event.getCost() != null) {
+                    eventDB.setCost(event.getCost());
+                }
+                if (event.getOrganizer() != null) {
+                    eventDB.setOrganizer(event.getOrganizer());
+                }
+                break;
+        }
+        return channelDB;
+    }
+
+    /**
+     * Perform various checks on any possible channel data.
+     *
+     * @param channel The channel object with the data to check.
+     * @throws ServerException If channel data isn't valid.
+     */
+    private void verifyChannelData(Channel channel) throws ServerException {
+        // Perform checks on the received data. If the data isn't accurate the channel can't be created.
+        if (channel.getName() != null && !channel.getName().matches(NAME_PATTERN)) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_NAME, "Channel name is invalid.");
             throw new ServerException(400, CHANNEL_INVALID_NAME);
         } else if (channel.getTerm() != null && !channel.getTerm().matches(TERM_PATTERN)) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_TERM, "Term is invalid.");
             throw new ServerException(400, CHANNEL_INVALID_TERM);
-        } else if (channel.getContacts().length() > CHANNEL_CONTACTS_MAX_LENGTH) {
+        } else if (channel.getContacts() != null && channel.getContacts().length() > CHANNEL_CONTACTS_MAX_LENGTH) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_CONTACTS, "Contacts to long.");
             throw new ServerException(400, CHANNEL_INVALID_CONTACTS);
         } else if (channel.getDescription() != null && channel.getDescription().length() > DESCRIPTION_MAX_LENGTH) {
@@ -88,64 +307,59 @@ public class ChannelController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_WEBSITE, "Website to long.");
             throw new ServerException(400, CHANNEL_INVALID_WEBSITE);
         }
+    }
 
-        // Perform special checks for the received data of the Lecture subclass.
-        if (channel.getType() == ChannelType.LECTURE) {
-            Lecture lecture = (Lecture) channel;
-            if (lecture.getLecturer() == null || lecture.getFaculty() == null) {
-                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Lecture data is incomplete.");
-                throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
-            } else if (lecture.getLecturer().length() > CHANNEL_CONTACTS_MAX_LENGTH) {
-                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_LECTURER, "Lecturer to long.");
-                throw new ServerException(400, CHANNEL_INVALID_LECTURER);
-            } else if (lecture.getAssistant() != null && lecture.getAssistant().length() >
-                    CHANNEL_CONTACTS_MAX_LENGTH) {
-                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_ASSISTANT, "Assistant to long.");
-                throw new ServerException(400, CHANNEL_INVALID_ASSISTANT);
-            }
+    /**
+     * Perform various checks on any possible channel subclass data.
+     *
+     * @param channel The channel object with the subclass data to check.
+     * @throws ServerException If channel data isn't valid.
+     */
+    private void verifyChannelSubclassData(Channel channel) throws ServerException {
+        switch (channel.getType()) {
+            case LECTURE:
+                // Perform special checks for the received data of the Lecture subclass.
+                Lecture lecture = (Lecture) channel;
+                if (lecture.getLecturer() != null && lecture.getLecturer().length() > CHANNEL_CONTACTS_MAX_LENGTH) {
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_LECTURER, "Lecturer to long.");
+                    throw new ServerException(400, CHANNEL_INVALID_LECTURER);
+                } else if (lecture.getAssistant() != null && lecture.getAssistant().length() >
+                        CHANNEL_CONTACTS_MAX_LENGTH) {
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_ASSISTANT, "Assistant to long.");
+                    throw new ServerException(400, CHANNEL_INVALID_ASSISTANT);
+                } else if (lecture.getStartDate() != null && lecture.getStartDate().length() > CHANNEL_DATE_MAX_LENGTH) {
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_START_DATE, "Start date to long.");
+                    throw new ServerException(400, CHANNEL_INVALID_START_DATE);
+                } else if (lecture.getEndDate() != null && lecture.getEndDate().length() > CHANNEL_DATE_MAX_LENGTH) {
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_END_DATE, "End date to long.");
+                    throw new ServerException(400, CHANNEL_INVALID_END_DATE);
+                }
+                break;
+            case SPORTS:
+                // Perform special checks for the received data of the Sports subclass.
+                Sports sports = (Sports) channel;
+                if (sports.getCost() != null && sports.getCost().length() > CHANNEL_COST_MAX_LENGTH) {
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_COST, "Costs to long.");
+                    throw new ServerException(400, CHANNEL_INVALID_COST);
+                } else if (sports.getNumberOfParticipants() != null && sports.getNumberOfParticipants().length() >
+                        CHANNEL_PARTICIPANTS_MAX_LENGTH) {
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_PARTICIPANTS, "Number of participants to long.");
+                    throw new ServerException(400, CHANNEL_INVALID_PARTICIPANTS);
+                }
+                break;
+            case EVENT:
+                // Perform special checks for the received data of the Event subclass.
+                Event event = (Event) channel;
+                if (event.getCost() != null && event.getCost().length() > CHANNEL_COST_MAX_LENGTH) {
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_COST, "Costs to long.");
+                    throw new ServerException(400, CHANNEL_INVALID_COST);
+                } else if (event.getOrganizer() != null && event.getOrganizer().length() >
+                        CHANNEL_CONTACTS_MAX_LENGTH) {
+                    logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_ORGANIZER, "Organizer to long.");
+                    throw new ServerException(400, CHANNEL_INVALID_ORGANIZER);
+                }
+                break;
         }
-
-        // Perform special checks for the received data of the Sports subclass.
-        if (channel.getType() == ChannelType.SPORTS) {
-            Sports sports = (Sports) channel;
-            if (sports.getCost() != null && sports.getCost().length() > CHANNEL_COST_MAX_LENGTH) {
-                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_COST, "Costs to long.");
-                throw new ServerException(400, CHANNEL_INVALID_COST);
-            } else if (sports.getNumberOfParticipants() != null && sports.getNumberOfParticipants().length() >
-                    CHANNEL_PARTICIPANTS_MAX_LENGTH) {
-                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_PARTICIPANTS, "Number of participants to long.");
-                throw new ServerException(400, CHANNEL_INVALID_PARTICIPANTS);
-            }
-        }
-
-        // Perform special checks for the received data of the Event subclass.
-        if (channel.getType() == ChannelType.EVENT) {
-            Event event = (Event) channel;
-            if (event.getCost() != null && event.getCost().length() > CHANNEL_COST_MAX_LENGTH) {
-                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_COST, "Costs to long.");
-                throw new ServerException(400, CHANNEL_INVALID_COST);
-            } else if (event.getOrganizer() != null && event.getOrganizer().length() >
-                    CHANNEL_CONTACTS_MAX_LENGTH) {
-                logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_INVALID_ORGANIZER, "Organizer to long.");
-                throw new ServerException(400, CHANNEL_INVALID_ORGANIZER);
-            }
-        }
-
-        // Check if requestor is a valid moderator.
-        Moderator moderatorDB = verifyModeratorAccess(accessToken);
-
-        // Initialize remaining channel fields.
-        channel.computeCreationDate();
-        channel.setModificationDate(channel.getCreationDate());
-
-        try {
-            channelDBM.storeChannel(channel, moderatorDB.getId());
-        } catch (DatabaseException e) {
-            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
-            throw new ServerException(500, DATABASE_FAILURE);
-        }
-
-        return channel;
     }
 
     /**
@@ -187,7 +401,6 @@ public class ChannelController extends AccessController {
                 throw new ServerException(500, DATABASE_FAILURE);
             }
         }
-
         return null;
     }
 

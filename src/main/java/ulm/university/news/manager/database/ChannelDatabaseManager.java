@@ -175,6 +175,159 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
+     * Stores the updated channel in the database.
+     *
+     * @param channel The channel object which contains the updated channel data.
+     * @throws DatabaseException If the data could not be stored in the database due to database failure.
+     * @throws ServerException If channel name already exists.
+     */
+    public void updateChannel(Channel channel) throws DatabaseException, ServerException {
+        logger.debug("Start with channel:{}.", channel);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            String updateChannelQuery =
+                    "UPDATE Channel SET Name=?, Description=?, Term=?, Locations=?, Contacts=?, Website=?, " +
+                            "ModificationDate=?, Dates=? WHERE Id=?; ";
+
+            PreparedStatement updateChannelStmt = con.prepareStatement(updateChannelQuery);
+            updateChannelStmt.setString(1, channel.getName());
+            updateChannelStmt.setString(2, channel.getDescription());
+            updateChannelStmt.setString(3, channel.getTerm());
+            updateChannelStmt.setString(4, channel.getLocations());
+            updateChannelStmt.setString(5, channel.getContacts());
+            updateChannelStmt.setString(6, channel.getWebsite());
+            updateChannelStmt.setTimestamp(7, Timestamp.from(channel.getModificationDate().toInstant()));
+            updateChannelStmt.setString(8, channel.getDates());
+            updateChannelStmt.setInt(9, channel.getId());
+            updateChannelStmt.execute();
+            logger.info("Updated channel with id:{}.", channel.getId());
+
+            updateChannelStmt.close();
+        } catch (SQLException e) {
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Check if the uniqueness of the channel name was harmed.
+            if (e.getErrorCode() == 1062 && e.getMessage().contains("Name_UNIQUE")) {
+                logger.error("Uniqueness of the channel name was harmed. Cannot update channel.");
+                logger.error(LOG_SERVER_EXCEPTION, 409, CHANNEL_NAME_ALREADY_EXISTS, "Channel name already exits.");
+                throw new ServerException(409, CHANNEL_NAME_ALREADY_EXISTS);
+            }
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Stores the updated channel and its subclass in the database.
+     *
+     * @param channel The channel object which contains the updated channel data.
+     * @throws DatabaseException If the data could not be stored in the database due to database failure.
+     * @throws ServerException If channel name already exists.
+     */
+    public void updateChannelWithSubclass(Channel channel) throws DatabaseException, ServerException {
+        logger.debug("Start with channel:{}.", channel);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            // Start transaction.
+            con.setAutoCommit(false);
+
+            String updateChannelQuery =
+                    "UPDATE Channel SET Name=?, Description=?, Term=?, Locations=?, Contacts=?, Website=?, " +
+                            "ModificationDate=?, Dates=? WHERE Id=?; ";
+
+            PreparedStatement updateChannelStmt = con.prepareStatement(updateChannelQuery);
+            updateChannelStmt.setString(1, channel.getName());
+            updateChannelStmt.setString(2, channel.getDescription());
+            updateChannelStmt.setString(3, channel.getTerm());
+            updateChannelStmt.setString(4, channel.getLocations());
+            updateChannelStmt.setString(5, channel.getContacts());
+            updateChannelStmt.setString(6, channel.getWebsite());
+            updateChannelStmt.setTimestamp(7, Timestamp.from(channel.getModificationDate().toInstant()));
+            updateChannelStmt.setString(8, channel.getDates());
+            updateChannelStmt.setInt(9, channel.getId());
+            updateChannelStmt.execute();
+            logger.info("Updated channel with id:{}.", channel.getId());
+
+            // Store data of the channels subclass.
+            switch (channel.getType()) {
+                case LECTURE:
+                    Lecture lecture = (Lecture) channel;
+                    String updateLectureQuery =
+                            "UPDATE Lecture SET StartDate=?, EndDate=?, Lecturer=?, Assistant=? WHERE Channel_Id=?;";
+
+                    PreparedStatement updateLectureStmt = con.prepareStatement(updateLectureQuery);
+                    updateLectureStmt.setString(1, lecture.getStartDate());
+                    updateLectureStmt.setString(2, lecture.getEndDate());
+                    updateLectureStmt.setString(3, lecture.getLecturer());
+                    updateLectureStmt.setString(4, lecture.getAssistant());
+                    updateLectureStmt.setInt(5, channel.getId());
+                    updateLectureStmt.execute();
+                    updateLectureStmt.close();
+                    logger.info("Updated lecture.");
+                    break;
+                case EVENT:
+                    Event event = (Event) channel;
+                    String updateEventQuery =
+                            "UPDATE Event SET Cost=?, Organizer=? WHERE Channel_Id=?;";
+
+                    PreparedStatement updateEventStmt = con.prepareStatement(updateEventQuery);
+                    updateEventStmt.setString(1, event.getCost());
+                    updateEventStmt.setString(2, event.getOrganizer());
+                    updateEventStmt.setInt(3, channel.getId());
+                    updateEventStmt.execute();
+                    updateEventStmt.close();
+                    logger.info("Stored event.");
+                    break;
+                case SPORTS:
+                    Sports sports = (Sports) channel;
+                    String updateSportQuery =
+                            "UPDATE Sports SET Cost=?, NumberOfParticipants=? WHERE Channel_Id=?;";
+
+                    PreparedStatement updateSportStmt = con.prepareStatement(updateSportQuery);
+                    updateSportStmt.setString(1, sports.getCost());
+                    updateSportStmt.setString(2, sports.getNumberOfParticipants());
+                    updateSportStmt.setInt(3, channel.getId());
+                    updateSportStmt.execute();
+                    updateSportStmt.close();
+                    logger.info("Updated sports.");
+                    break;
+                default:
+                    // There is no subclass for channel type OTHER and STUDENT_GROUP, so updating is already complete.
+                    break;
+            }
+
+            // End transaction.
+            con.commit();
+            updateChannelStmt.close();
+        } catch (SQLException e) {
+            try {
+                logger.warn("Need to rollback the transaction.");
+                con.rollback();
+            } catch (SQLException e1) {
+                logger.warn("Rollback failed.");
+                logger.error(Constants.LOG_SQL_EXCEPTION, e1.getSQLState(), e1.getErrorCode(), e1.getMessage());
+            }
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Check if the uniqueness of the channel name was harmed.
+            if (e.getErrorCode() == 1062 && e.getMessage().contains("Name_UNIQUE")) {
+                logger.error("Uniqueness of the channel name was harmed. Cannot update channel.");
+                logger.error(LOG_SERVER_EXCEPTION, 409, CHANNEL_NAME_ALREADY_EXISTS, "Channel name already exits.");
+                throw new ServerException(409, CHANNEL_NAME_ALREADY_EXISTS);
+            }
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
      * Gets all requested channels from the database.
      *
      * @param moderatorId Get only channels for which the moderator with the given id is responsible.

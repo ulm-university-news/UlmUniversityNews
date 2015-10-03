@@ -32,7 +32,7 @@ public class ModeratorAPI {
      * Delivers the moderator data identified by a given moderator id.
      *
      * @param accessToken The access token of the requestor.
-     * @param id The id of the moderator account which should be delivered.
+     * @param moderatorId The id of the moderator account which should be delivered.
      * @return Response object including the moderator data.
      * @throws ServerException If the execution of the GET request has failed. The ServerException contains
      * information about the error which has occurred.
@@ -40,9 +40,9 @@ public class ModeratorAPI {
     @GET
     @Path("/{id}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getModerator(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id)
+    public Response getModerator(@HeaderParam("Authorization") String accessToken, @PathParam("id") int moderatorId)
             throws ServerException {
-        Moderator moderator = moderatorCtrl.getModerator(accessToken, id);
+        Moderator moderator = moderatorCtrl.getModerator(accessToken, moderatorId);
         // Return the moderator resource.
         return Response.status(Response.Status.OK).entity(moderator).build();
     }
@@ -92,7 +92,7 @@ public class ModeratorAPI {
      * object. The changed moderator resource will be returned.
      *
      * @param accessToken The access token of the requestor.
-     * @param id The id of the moderator account which should be changed.
+     * @param moderatorId The id of the moderator account which should be changed.
      * @param moderator The changed moderator data.
      * @return Response object including the changed moderator data.
      * @throws ServerException If the execution of the PATCH request has failed. The ServerException contains
@@ -102,9 +102,9 @@ public class ModeratorAPI {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{id}")
-    public Response changeModerator(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id,
+    public Response changeModerator(@HeaderParam("Authorization") String accessToken, @PathParam("id") int moderatorId,
                                     Moderator moderator) throws ServerException {
-        moderator = moderatorCtrl.changeModerator(accessToken, id, moderator);
+        moderator = moderatorCtrl.changeModerator(accessToken, moderatorId, moderator);
         // Return the changed moderator resource.
         return Response.status(Response.Status.OK).entity(moderator).build();
     }
@@ -113,16 +113,16 @@ public class ModeratorAPI {
      * Deletes the moderator account identified by the moderators id.
      *
      * @param accessToken The access token of the requestor.
-     * @param id The id of the moderator account which should be deleted.
+     * @param moderatorId The id of the moderator account which should be deleted.
      * @return Response object with no additionally data.
      * @throws ServerException If the execution of the POST request has failed. The ServerException contains
      * information about the error which has occurred.
      */
     @DELETE
     @Path("/{id}")
-    public Response deleteModerator(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id) throws
-            ServerException {
-        moderatorCtrl.deleteModerator(accessToken, id);
+    public Response deleteModerator(@HeaderParam("Authorization") String accessToken, @PathParam("id") int
+            moderatorId) throws ServerException {
+        moderatorCtrl.deleteModerator(accessToken, moderatorId);
         // No resource is returned.
         return Response.status(Response.Status.OK).build();
     }
