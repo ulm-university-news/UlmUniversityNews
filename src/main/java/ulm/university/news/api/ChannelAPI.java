@@ -362,13 +362,34 @@ public class ChannelAPI {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response createAnnouncement(@HeaderParam("Authorization") String accessToken, @Context UriInfo uriInfo,
-            @PathParam("id") int channelId, Announcement announcement) throws ServerException {
+                                       @PathParam("id") int channelId, Announcement announcement) throws ServerException {
         announcement = channelCtrl.createAnnouncement(accessToken, channelId, announcement);
         // Create the URI for the created announcement resource.
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel/" + channelId + "/announcement" +
                 announcement.getId());
         // Return the created announcement resource and the Location Header.
         return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(announcement).build();
+    }
+
+    /**
+     * Returns the announcements of the channel starting from a defined message number which is taken form the
+     * request URL. The method returns a list of all announcements of the channel which have a higher message
+     * number than the one defined in the request.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel from which the announcements should be retrieved.
+     * @param messageNumber The starting message number. All announcements of the channel which have a higher message
+     * number than the one defined in this parameter are returned.
+     * @return A list of announcements. The list can be empty.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{id}/announcement")
+    public List<Announcement> getAnnouncements(@HeaderParam("Authorization") String accessToken, @PathParam("id") int
+            channelId, @DefaultValue("0") @QueryParam("messageNr") int messageNumber) throws ServerException {
+        return channelCtrl.getAnnouncements(accessToken, channelId, messageNumber);
     }
 
     /**

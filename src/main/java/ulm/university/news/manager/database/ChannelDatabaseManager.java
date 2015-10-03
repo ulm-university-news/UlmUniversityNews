@@ -1265,12 +1265,64 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
+     * Returns the announcements which are identified by the channel id and a starting message number.
+     *
+     * @param channelId The channel id to which the announcements belong.
+     * @param messageNumber The starting message number. All announcements of the channel which have a higher message
+     * number than the one defined in this parameter are returned.
+     * @return The announcements with a higher message number than the given one.
+     * @throws DatabaseException If the retrieval fails due to a database failure.
+     */
+    public List<Announcement> getAnnouncements(int channelId, int messageNumber) throws
+            DatabaseException {
+        logger.debug("Start with channelId:{} and messageNumber:{}.", channelId, messageNumber);
+        List<Announcement> announcements = new ArrayList<Announcement>();
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * " +
+                            "FROM Message AS m JOIN Announcement AS a ON m.Id=a.Message_Id " +
+                            "WHERE a.Channel_Id=? AND a.MessageNumber>?;";
+
+            PreparedStatement getAnnouncementsStmt = con.prepareStatement(query);
+            getAnnouncementsStmt.setInt(1, channelId);
+            getAnnouncementsStmt.setInt(2, messageNumber);
+
+            ResultSet getAnnouncementsRs = getAnnouncementsStmt.executeQuery();
+            while (getAnnouncementsRs.next()) {
+                int messageId = getAnnouncementsRs.getInt("Id");
+                String text = getAnnouncementsRs.getString("Text");
+                ZonedDateTime creationDate = getAnnouncementsRs.getTimestamp("CreationDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
+                Priority priority = Priority.values[getAnnouncementsRs.getInt("Priority")];
+                int authorId = getAnnouncementsRs.getInt("Author_Moderator_Id");
+                String title = getAnnouncementsRs.getString("Title");
+                int messageNumberDB = getAnnouncementsRs.getInt("MessageNumber");
+
+                Announcement announcement = new Announcement(messageId, text, messageNumberDB, creationDate, priority,
+                        channelId, authorId, title);
+                announcements.add(announcement);
+            }
+            getAnnouncementsStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with announcements:{}.", announcements);
+        return announcements;
+    }
+
+    /**
      * Deletes the message (and announcement) with the given message id from the database.
      *
      * @param messageId The unique id of the message (announcement).
      * @throws DatabaseException If the deletion fails due to a database failure.
      */
-    public void deleteAnnouncement(int messageId) throws  DatabaseException{
+    public void deleteAnnouncement(int messageId) throws DatabaseException {
         logger.debug("Start with messageId:{}.", messageId);
         Connection con = null;
         try {
