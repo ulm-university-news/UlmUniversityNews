@@ -370,4 +370,24 @@ public class ChannelAPI {
         // Return the created announcement resource and the Location Header.
         return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(announcement).build();
     }
+
+    /**
+     * Deletes an announcement from a channel. This method is used in combination with create a new announcement to
+     * simulate a change of an announcement.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the user is subscribed.
+     * @param messageNumber The message number of the announcement which should be deleted from the channel.
+     * @return Response object.
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Path("/{channelId}/announcement/{messageNumber}")
+    public Response deleteAnnouncement(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
+            channelId, @PathParam("messageNumber") int messageNumber) throws ServerException {
+        channelCtrl.deleteAnnouncement(accessToken, channelId, messageNumber);
+        // Return 204 No Content
+        return Response.status(Response.Status.NO_CONTENT).build();
+    }
 }

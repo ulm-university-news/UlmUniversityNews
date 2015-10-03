@@ -88,4 +88,13 @@ public class Announcement extends Message {
     public void setTitle(String title) {
         this.title = title;
     }
+
+    @Override
+    public String toString() {
+        return "Announcement{" +
+                "channelId=" + channelId +
+                ", authorModerator=" + authorModerator +
+                ", title='" + title + '\'' +
+                "} " + super.toString();
+    }
 }

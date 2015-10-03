@@ -6,6 +6,7 @@ import ulm.university.news.data.*;
 import ulm.university.news.data.enums.ChannelType;
 import ulm.university.news.data.enums.Faculty;
 import ulm.university.news.data.enums.Platform;
+import ulm.university.news.data.enums.Priority;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
@@ -1164,7 +1165,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
 
             Statement getIdStmt = con.createStatement();
             ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
-            if(getIdRs.next()){
+            if (getIdRs.next()) {
                 // Set the id taken from the database to the announcement object.
                 announcement.setId(getIdRs.getInt(1));
             }
@@ -1173,7 +1174,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
             int messageNumber = 0;
             getMessageNumberStmt.setInt(1, announcement.getChannelId());
             ResultSet getMessageNumberRs = getMessageNumberStmt.executeQuery();
-            if(getMessageNumberRs.next()){
+            if (getMessageNumberRs.next()) {
                 messageNumber = getMessageNumberRs.getInt(1);
             }
             // Increment to get the next free message number.
@@ -1208,8 +1209,94 @@ public class ChannelDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
         }
-        finally {
+        logger.debug("End.");
+    }
+
+    /**
+     * Returns the announcement which is identified by channel id and message number.
+     *
+     * @param channelId The channel id to which the announcement belongs.
+     * @param messageNumber The message number of the announcement.
+     * @return The announcement.
+     * @throws DatabaseException If the retrieval fails due to a database failure.
+     */
+    public Announcement getAnnouncement(int channelId, int messageNumber) throws
+            DatabaseException {
+        logger.debug("Start with channelId:{} and messageNumber:{}.", channelId, messageNumber);
+        Announcement announcement = null;
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * " +
+                            "FROM Message AS m JOIN Announcement AS a ON m.Id=a.Message_Id " +
+                            "WHERE a.Channel_Id=? AND a.MessageNumber=?;";
+
+            PreparedStatement getAnnouncementStmt = con.prepareStatement(query);
+            getAnnouncementStmt.setInt(1, channelId);
+            getAnnouncementStmt.setInt(2, messageNumber);
+
+            ResultSet getAnnouncementRs = getAnnouncementStmt.executeQuery();
+            if (getAnnouncementRs.next()) {
+                int messageId = getAnnouncementRs.getInt("Id");
+                String text = getAnnouncementRs.getString("Text");
+                ZonedDateTime creationDate = getAnnouncementRs.getTimestamp("CreationDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
+                Priority priority = Priority.values[getAnnouncementRs.getInt("Priority")];
+                int authorId = getAnnouncementRs.getInt("Author_Moderator_Id");
+                String title = getAnnouncementRs.getString("Title");
+
+                announcement = new Announcement(messageId, text, messageNumber, creationDate, priority, channelId,
+                        authorId, title);
+            }
+            getAnnouncementStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with announcement:{}.", announcement);
+        return announcement;
+    }
+
+    /**
+     * Deletes the message (and announcement) with the given message id from the database.
+     *
+     * @param messageId The unique id of the message (announcement).
+     * @throws DatabaseException If the deletion fails due to a database failure.
+     */
+    public void deleteAnnouncement(int messageId) throws  DatabaseException{
+        logger.debug("Start with messageId:{}.", messageId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            // Delete entry in Message table.
+            String deleteMessageQuery =
+                    "DELETE FROM Message WHERE Id=?;";
+            PreparedStatement deleteMessageStmt = con.prepareStatement(deleteMessageQuery);
+            deleteMessageStmt.setInt(1, messageId);
+            int rowsAffected = deleteMessageStmt.executeUpdate();
+            if (rowsAffected == 1) {
+                logger.info("Removed message with id {} from database.", messageId);
+            }
+
+            /*
+            Note: MySQL will take care of deletion of the entries in the Announcement table thanks to the defined
+            foreign keys with ON DELETE CASCADE.
+            */
+
+            deleteMessageStmt.close();
+        } catch (SQLException e) {
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");

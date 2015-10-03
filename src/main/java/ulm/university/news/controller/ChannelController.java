@@ -742,4 +742,31 @@ public class ChannelController extends AccessController {
         }
         return announcement;
     }
+
+    /**
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the announcement belongs.
+     * @param messageNumber The message number of the announcement which should be deleted from the channel.
+     * @throws ServerException ServerException If the authorization of the requestor fails, the requestor isn't
+     * allowed to perform the operation or the channel or announcement couldn't be found. Furthermore, a failure of the
+     * database also causes a ServerException.
+     */
+    public void deleteAnnouncement(String accessToken, int channelId, int messageNumber) throws ServerException{
+        // Check if requestor is a valid moderator and responsible for the channel.
+        verifyResponsibleModerator(accessToken, channelId);
+
+        try {
+            Announcement announcementDB = channelDBM.getAnnouncement(channelId, messageNumber);
+            // Check if announcement exists in database.
+            if(announcementDB == null){
+                logger.error(LOG_SERVER_EXCEPTION, 404, ANNOUNCEMENT_NOT_FOUND, "Announcement not found in database.");
+                throw new ServerException(404, ANNOUNCEMENT_NOT_FOUND);
+            }
+            channelDBM.deleteAnnouncement(announcementDB.getId());
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
 }
