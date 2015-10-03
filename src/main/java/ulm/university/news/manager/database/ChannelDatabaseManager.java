@@ -1121,4 +1121,97 @@ public class ChannelDatabaseManager extends DatabaseManager {
         logger.debug("End with valid:{}.", valid);
         return valid;
     }
+
+    /**
+     * Stores a new announcement in the database. The announcement belongs to the channel with the given id. The
+     * announcement object contains all the data of the announcement, including the channel id.
+     *
+     * @param announcement The announcement which contains the data for the new announcement.
+     * @throws DatabaseException If the announcement couldn't be stored due to a database failure.
+     */
+    public void storeAnnouncement(Announcement announcement) throws DatabaseException {
+        logger.debug("Start with announcement:{}.", announcement);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            // Start transaction.
+            con.setAutoCommit(false);
+
+            String insertMsgQuery =
+                    "INSERT INTO Message (Text, CreationDate, Priority) " +
+                            "VALUES (?,?,?);";
+            String insertAnnouncementQuery =
+                    "INSERT INTO Announcement (MessageNumber, Channel_Id, Title, Author_Moderator_Id, Message_Id) " +
+                            "VALUES (?,?,?,?,?);";
+            String getMessageNumberQuery =
+                    "SELECT MAX(MessageNumber) " +
+                            "FROM Announcement " +
+                            "WHERE Channel_Id=?;";
+
+            PreparedStatement insertMsgStmt = con.prepareStatement(insertMsgQuery);
+            PreparedStatement insertAnnouncementStmt = con.prepareStatement(insertAnnouncementQuery);
+            PreparedStatement getMessageNumberStmt = con.prepareStatement(getMessageNumberQuery);
+
+            // First, insert the message relevant data fields into the Message table.
+            insertMsgStmt.setString(1, announcement.getText());
+            insertMsgStmt.setTimestamp(2, Timestamp.from(announcement.getCreationDate().toInstant()));
+            insertMsgStmt.setInt(3, announcement.getPriority().ordinal());
+            insertMsgStmt.execute();
+
+            // Second, retrieve auto incremented id of the database record for the message.
+            String getIdQuery = "SELECT LAST_INSERT_ID();";
+
+            Statement getIdStmt = con.createStatement();
+            ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
+            if(getIdRs.next()){
+                // Set the id taken from the database to the announcement object.
+                announcement.setId(getIdRs.getInt(1));
+            }
+
+            // Third, retrieve the next message number for the given channel.
+            int messageNumber = 0;
+            getMessageNumberStmt.setInt(1, announcement.getChannelId());
+            ResultSet getMessageNumberRs = getMessageNumberStmt.executeQuery();
+            if(getMessageNumberRs.next()){
+                messageNumber = getMessageNumberRs.getInt(1);
+            }
+            // Increment to get the next free message number.
+            messageNumber++;
+            // Set the message number in the object.
+            announcement.setMessageNumber(messageNumber);
+
+            // Fourth, insert the conversation message data fields into the ConversationMessage table.
+            insertAnnouncementStmt.setInt(1, messageNumber);
+            insertAnnouncementStmt.setInt(2, announcement.getChannelId());
+            insertAnnouncementStmt.setString(3, announcement.getTitle());
+            insertAnnouncementStmt.setInt(4, announcement.getAuthorModerator());
+            insertAnnouncementStmt.setInt(5, announcement.getId());
+            insertAnnouncementStmt.execute();
+
+            //End transaction.
+            con.commit();
+            logger.info("Stored the announcement with the id {} and the message number {}.",
+                    announcement.getId(), messageNumber);
+
+            insertMsgStmt.close();
+            insertAnnouncementStmt.close();
+            getMessageNumberStmt.close();
+        } catch (SQLException e) {
+            try {
+                logger.warn("SQLException occurred during announcement storage, need to rollback the transaction.");
+                con.rollback();
+            } catch (SQLException e1) {
+                logger.warn("Rollback failed.");
+                logger.error(Constants.LOG_SQL_EXCEPTION, e1.getSQLState(), e1.getErrorCode(), e1.getMessage());
+            }
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        }
+        finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
 }

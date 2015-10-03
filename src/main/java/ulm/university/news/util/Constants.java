@@ -80,6 +80,9 @@ public class Constants {
     /** The maximum length of a message. */
     public static final int MESSAGE_MAX_LENGTH = 500;
 
+    /** The maximum length of an announcement title. */
+    public static final int ANNOUNCEMENT_TITLE_MAX_LENGTH = 45;
+
     /** The location of the Email resource bundle. */
     public static final String RESOURCE_BUNDLE_EMAIL = "i18n/Email";
 
@@ -131,6 +134,11 @@ public class Constants {
     public static final int CHANNEL_INVALID_START_DATE = 3016;
     public static final int CHANNEL_INVALID_END_DATE = 3017;
     public static final int CHANNEL_NAME_ALREADY_EXISTS = 3018;
+
+    public static final int ANNOUNCEMENT_NOT_FOUND = 3100;
+    public static final int ANNOUNCEMENT_DATA_INCOMPLETE = 3102;
+    public static final int ANNOUNCEMENT_INVALID_TEXT = 3103;
+    public static final int ANNOUNCEMENT_INVALID_TITLE = 3104;
 
     // Group:
     public static final int GROUP_NOT_FOUND = 4000;

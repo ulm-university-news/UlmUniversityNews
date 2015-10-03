@@ -52,7 +52,7 @@ public class ChannelController extends AccessController {
     }
 
     /**
-     * Validates received channel data. Creates a new channel and adds the creator to its responsible moderators.
+     * Creates a new channel and adds the creator to its responsible moderators. Validates received channel data.
      *
      * @param accessToken The access token of the requestor.
      * @param channel The channel object including the data of the new channel.
@@ -699,5 +699,47 @@ public class ChannelController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+    }
+
+    /**
+     * Creates a new announcement. Validates received announcement data.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel in which the announcement should be crated.
+     * @param announcement The announcement object including the data of the new announcement.
+     * @return The newly created announcement object.
+     * @throws ServerException If the authorization of the requestor fails or the requestor isn't allowed to perform
+     * the operation. Furthermore, invalid announcement data and a failure of the database also causes a
+     * ServerException.
+     */
+    public Announcement createAnnouncement(String accessToken, int channelId, Announcement announcement) throws
+            ServerException {
+        // Perform checks on the received data. If the data isn't accurate the announcement can't be created.
+        if (announcement.getText() == null || announcement.getPriority() == null || announcement.getTitle() == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, ANNOUNCEMENT_DATA_INCOMPLETE, "Incomplete announcement data.");
+            throw new ServerException(400, ANNOUNCEMENT_DATA_INCOMPLETE);
+        } else if (announcement.getText().length() > MESSAGE_MAX_LENGTH) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, ANNOUNCEMENT_INVALID_TEXT, "Announcement text to long.");
+            throw new ServerException(400, ANNOUNCEMENT_INVALID_TEXT);
+        } else if (announcement.getTitle().length() > ANNOUNCEMENT_TITLE_MAX_LENGTH) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, ANNOUNCEMENT_INVALID_TITLE, "Announcement title to long.");
+            throw new ServerException(400, ANNOUNCEMENT_INVALID_TITLE);
+        }
+
+        // Check if requestor is a valid moderator and responsible for the channel.
+        Moderator moderatorDB = verifyResponsibleModerator(accessToken, channelId);
+
+        // Set creation date, author and channel id of the announcement.
+        announcement.computeCreationDate();
+        announcement.setAuthorModerator(moderatorDB.getId());
+        announcement.setChannelId(channelId);
+
+        try {
+            channelDBM.storeAnnouncement(announcement);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+        return announcement;
     }
 }

@@ -66,7 +66,7 @@ public class ChannelAPI {
         channel = channelCtrl.createChannel(accessToken, channel);
         // Create the URI for the created channel resource.
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel" + "/" + channel.getId());
-        // Return the created channel resource and set the Location Header.
+        // Return the created channel resource and the Location Header.
         return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(channel).build();
     }
 
@@ -152,23 +152,12 @@ public class ChannelAPI {
     @GET
     @Path("/{id}")
     @Produces(MediaType.APPLICATION_JSON)
-    public String getChannel(@HeaderParam("Authorization") String accessToken, @PathParam("id") int channelId) throws
+    public Response getChannel(@HeaderParam("Authorization") String accessToken, @PathParam("id") int channelId) throws
             ServerException {
         // Get the requested channel resource.
         Channel channel = channelCtrl.getChannel(accessToken, channelId);
-
-        // Write channel with subclass attributes as JSON String.
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
-        // Make sure that dates are formatted correctly.
-        mapper.registerModule(new JavaTimeModule());
-        mapper.configure(SerializationFeature.WRITE_DATES_WITH_ZONE_ID, true);
-        try {
-            return mapper.writeValueAsString(channel);
-        } catch (JsonProcessingException e) {
-            logger.error(LOG_SERVER_EXCEPTION, 500, PARSING_FAILURE, "Couldn't parse channels to JSON String.");
-            throw new ServerException(500, PARSING_FAILURE);
-        }
+        // Return the channel resource.
+        return Response.status(Response.Status.OK).entity(channel).build();
     }
 
     /**
@@ -355,5 +344,30 @@ public class ChannelAPI {
         }
         logger.debug("End with channel:{}.", channel);
         return channel;
+    }
+
+    /**
+     * Create a new announcement in the specified channel. The created resource will be returned including the URI
+     * which can be used to access the resource.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param announcement The announcement data contained in the body of the HTTP request.
+     * @param uriInfo Information about the URI of this request.
+     * @return Response object including the created announcement object and a set Location Header.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @POST
+    @Path("/{id}/announcement")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response createAnnouncement(@HeaderParam("Authorization") String accessToken, @Context UriInfo uriInfo,
+            @PathParam("id") int channelId, Announcement announcement) throws ServerException {
+        announcement = channelCtrl.createAnnouncement(accessToken, channelId, announcement);
+        // Create the URI for the created announcement resource.
+        URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel/" + channelId + "/announcement" +
+                announcement.getId());
+        // Return the created announcement resource and the Location Header.
+        return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(announcement).build();
     }
 }
