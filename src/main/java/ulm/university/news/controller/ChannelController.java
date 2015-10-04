@@ -1011,6 +1011,27 @@ public class ChannelController extends AccessController {
     }
 
     /**
+     * Gets all existing reminders of the specified channel.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the reminders belong.
+     * @return A list with all reminders of the specified channel.
+     * @throws ServerException If the authorization of the requestor fails, the requestor isn't allowed to perform
+     * the operation or the channel couldn't be found. Furthermore, a failure of the database also causes a
+     * ServerException.
+     */
+    public List<Reminder> getReminders(String accessToken, int channelId) throws ServerException {
+        // Check if requestor is a valid moderator and responsible for the channel.
+        verifyResponsibleModerator(accessToken, channelId);
+        try {
+            return channelDBM.getReminders(channelId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
+    /**
      * Sets the ignore field of the reminder with given id to false in the database.
      *
      * @param reminderId The id of the reminder which should be updated in the database.

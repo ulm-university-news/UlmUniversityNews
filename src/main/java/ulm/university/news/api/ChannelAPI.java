@@ -485,6 +485,25 @@ public class ChannelAPI {
     }
 
     /**
+     * Gets all existing reminders of a channel identified by id. The requested resources will be returned to the
+     * requestor.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the reminders belong.
+     * @return A list with all reminders of the specified channel.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Path("/{channelId}/reminder")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<Reminder> getReminders(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
+            channelId) throws ServerException {
+        // Return the reminder resources.
+        return channelCtrl.getReminders(accessToken, channelId);
+    }
+
+    /**
      * Creates a reminder object from a given JSON String.
      *
      * @param json The reminder data represented as JSON String.

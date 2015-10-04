@@ -14,6 +14,7 @@ import ulm.university.news.util.exceptions.ServerException;
 import java.sql.*;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import static ulm.university.news.util.Constants.*;
@@ -1455,6 +1456,63 @@ public class ChannelDatabaseManager extends DatabaseManager {
         }
         logger.debug("End with reminder:{}.", reminder);
         return reminder;
+    }
+
+    /**
+     * Gets all reminders of the specified channel from the database.
+     *
+     * @param channelId The channel id to which the reminders belong.
+     * @return The reminders of the specified channel.
+     * @throws DatabaseException If the reminders couldn't be get from the database due to a database failure.
+     */
+    public List<Reminder> getReminders(int channelId) throws DatabaseException {
+        logger.debug("Start with channelId:{}.", channelId);
+        Connection con = null;
+        List<Reminder> reminders = new LinkedList<Reminder>();
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * FROM Reminder WHERE Channel_Id=?;";
+
+            PreparedStatement getRemindersStmt = con.prepareStatement(query);
+            getRemindersStmt.setInt(1, channelId);
+            ResultSet getRemindersRs = getRemindersStmt.executeQuery();
+            Reminder reminder;
+            ZonedDateTime creationDate, modificationDate, startDate, endDate;
+            int interval, reminderId, authorModerator;
+            boolean ignore;
+            String title, text;
+            Priority priority;
+            while (getRemindersRs.next()) {
+                creationDate = getRemindersRs.getTimestamp("CreationDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
+                modificationDate = getRemindersRs.getTimestamp("ModificationDate").toLocalDateTime()
+                        .atZone(Constants.TIME_ZONE);
+                startDate = getRemindersRs.getTimestamp("StartDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
+                endDate = getRemindersRs.getTimestamp("EndDate").toLocalDateTime()
+                        .atZone(Constants.TIME_ZONE);
+                interval = getRemindersRs.getInt("Interval");
+                ignore = getRemindersRs.getBoolean("Ignore");
+                reminderId = getRemindersRs.getInt("Id");
+                authorModerator = getRemindersRs.getInt("Author_Moderator_Id");
+                title = getRemindersRs.getString("Title");
+                text = getRemindersRs.getString("Text");
+                priority = Priority.values[getRemindersRs.getInt("Priority")];
+                reminder = new Reminder(reminderId, creationDate, modificationDate, startDate, endDate, interval,
+                        ignore, channelId, authorModerator, title, text, priority);
+                reminders.add(reminder);
+            }
+            getRemindersStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with reminders:{}.", reminders);
+        return reminders;
     }
 
     /**
