@@ -35,6 +35,7 @@ public class ReminderManager {
      */
     public static synchronized void addReminder(Reminder reminder) {
         ZonedDateTime currentDate = ZonedDateTime.now(TIME_ZONE);
+        reminder.computeFirstNextDate();
 
         Future<?> timingTask;
         //Starting reminder tasks is exact to the second.

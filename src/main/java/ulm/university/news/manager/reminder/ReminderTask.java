@@ -70,7 +70,7 @@ public class ReminderTask implements Runnable {
             // interval for its next (expired) execution.
             if(reminder.isExpired()) {
                 // The reminder is expired so stop its production of announcements.
-                logger.debug("Expired. No announcement has been created. Reminder will be deactivated.");
+                logger.debug("Expired. Reminder will be deactivated.");
                 ReminderManager.removeReminder(reminder.getId());
             }
         }

@@ -419,8 +419,8 @@ public class ChannelAPI {
      *
      * @param accessToken The access token of the requestor.
      * @param uriInfo Information about the URI of this request.
-     * @param json The reminder data represented as JSON String.
      * @param channelId The id of the channel in which the reminder should be created.
+     * @param json The reminder data represented as JSON String.
      * @return Response object including the created reminder object and a set Location Header.
      * @throws ServerException If the execution of the POST request has failed. The ServerException contains
      * information about the error which has occurred.
@@ -431,9 +431,51 @@ public class ChannelAPI {
     @Produces(MediaType.APPLICATION_JSON)
     public Response createReminder(@HeaderParam("Authorization") String accessToken, @Context UriInfo uriInfo,
                                    @PathParam("id") int channelId, String json) throws ServerException {
+        Reminder reminder = getReminderFromJSON(json);
+        reminder = channelCtrl.createReminder(accessToken, channelId, reminder);
+        // Create the URI for the created reminder resource.
+        URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel/" + channelId + "/reminder" +
+                reminder.getId());
+        // Return the created reminder resource and the Location Header.
+        return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(reminder).build();
+    }
+
+    /**
+     * Changes an existing reminder in the specified channel. The updated resource will be returned to the requestor.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the reminder belongs.
+     * @param reminderId The id of the reminder which should be changed.
+     * @param json The changed reminder data represented as JSON String.
+     * @return Response object including the changed reminder object.
+     * @throws ServerException If the execution of the PATCH request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @PATCH
+    @Path("/{channelId}/reminder/{reminderId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response changeReminder(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
+            channelId, @PathParam("reminderId") int reminderId, String json) throws ServerException {
+        Reminder reminder = getReminderFromJSON(json);
+        reminder = channelCtrl.changeReminder(accessToken, channelId, reminder, reminderId);
+        // Return the updated reminder resource.
+        return Response.status(Response.Status.OK).entity(reminder).build();
+    }
+
+    /**
+     * Creates a reminder object from a given JSON String.
+     *
+     * @param json The reminder data represented as JSON String.
+     * @return The reminder object created from JSON.
+     * @throws ServerException If a parsing exception occurs.
+     */
+    private Reminder getReminderFromJSON(String json) throws ServerException {
+        logger.debug("Start with JSON String:{}", json);
         // Use JavaTimeModule for proper deserialization of ZonedDateTime values.
         ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule().addKeyDeserializer(ZonedDateTime.class, ZonedDateTimeKeyDeserializer.INSTANCE));
+        mapper.registerModule(new JavaTimeModule().addKeyDeserializer(ZonedDateTime.class,
+                ZonedDateTimeKeyDeserializer.INSTANCE));
         // Set fields and Enum values which are unknown to null and continue parsing.
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         mapper.configure(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL, true);
@@ -446,16 +488,11 @@ public class ChannelAPI {
             throw new ServerException(400, REMINDER_INVALID_DATES);
         }
         // Set proper time zone.
-        if(reminder != null && reminder.getStartDate() != null && reminder.getEndDate() != null){
+        if (reminder != null && reminder.getStartDate() != null && reminder.getEndDate() != null) {
             reminder.setStartDate(reminder.getStartDate().withZoneSameInstant(TIME_ZONE));
             reminder.setEndDate(reminder.getEndDate().withZoneSameInstant(TIME_ZONE));
         }
-
-        reminder = channelCtrl.createReminder(accessToken, channelId, reminder);
-        // Create the URI for the created reminder resource.
-        URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel/" + channelId + "/reminder" +
-                reminder.getId());
-        // Return the created reminder resource and the Location Header.
-        return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(reminder).build();
+        logger.debug("End with reminder:{}", reminder);
+        return reminder;
     }
 }

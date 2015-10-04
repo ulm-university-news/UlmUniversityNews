@@ -735,14 +735,16 @@ public class ChannelController extends AccessController {
         announcement.setAuthorModerator(moderatorDB.getId());
         announcement.setChannelId(channelId);
 
+        List<User> subscribers;
         try {
             channelDBM.storeAnnouncement(announcement);
+            subscribers = channelDBM.getSubscribers(announcement.getChannelId());
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // TODO notifySubscribers
+        // TODO notifySubscribers ANNOUNCEMENT_NEW
 
         return announcement;
     }
@@ -796,6 +798,7 @@ public class ChannelController extends AccessController {
         // Check if requestor is a valid moderator and responsible for the channel.
         verifyResponsibleModerator(accessToken, channelId);
 
+        List<User> subscribers;
         try {
             Announcement announcementDB = channelDBM.getAnnouncement(channelId, messageNumber);
             // Check if announcement exists in database.
@@ -804,21 +807,22 @@ public class ChannelController extends AccessController {
                 throw new ServerException(404, ANNOUNCEMENT_NOT_FOUND);
             }
             channelDBM.deleteAnnouncement(announcementDB.getId());
+            subscribers = channelDBM.getSubscribers(announcementDB.getChannelId());
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // TODO notifySubscribers
+        // TODO notifySubscribers ANNOUNCEMENT_DELETED
     }
 
     /**
      * Create a new reminder in the specified channel. Validates the received reminder data.
      *
      * @param accessToken The access token of the requestor.
-     * @param reminder The reminder data contained in the body of the HTTP request.
+     * @param reminder The reminder object with the new reminder data.
      * @param channelId The id of the channel in which the reminder should be created.
-     * @return Response object including the created reminder object and a set Location Header.
+     * @return The created reminder object.
      * @throws ServerException If the execution of the POST request has failed. The ServerException contains
      * information about the error which has occurred.
      * @throws ServerException If the authorization of the requestor fails, the requestor isn't allowed to perform
@@ -826,7 +830,6 @@ public class ChannelController extends AccessController {
      * ServerException.
      */
     public Reminder createReminder(String accessToken, int channelId, Reminder reminder) throws ServerException {
-        logger.debug("Start with reminder:{}", reminder);
         // Perform checks on the received data. If the data isn't accurate the reminder can't be created.
         if (reminder == null || reminder.getText() == null || reminder.getPriority() == null || reminder.getTitle() ==
                 null || reminder.getStartDate() == null || reminder.getEndDate() == null) {
@@ -868,10 +871,116 @@ public class ChannelController extends AccessController {
         }
 
         // Tell the ReminderManager to schedule the created reminder.
-        reminder.computeFirstNextDate();
         ReminderManager.addReminder(reminder);
 
         return reminder;
+    }
+
+    /**
+     * Changes an existing reminder in the specified channel. Validates the received reminder data.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param reminder The reminder object with the changed reminder data.
+     * @param channelId The id of the channel to which the reminder belongs.
+     * @param reminderId The id of the reminder which should be changed.
+     * @return The updated reminder object.
+     * @throws ServerException If the authorization of the requestor fails, the requestor isn't allowed to perform
+     * the operation or the channel or reminder couldn't be found. Furthermore, a failure of the database also causes a
+     * ServerException.
+     */
+    public Reminder changeReminder(String accessToken, int channelId, Reminder reminder, int reminderId) throws
+            ServerException {
+        // Perform checks on the received data. If there is no data provided, reminder can't be changed.
+        if (reminder.getStartDate() == null && reminder.getEndDate() == null && reminder.getInterval() == null &&
+                reminder.isIgnore() == null && reminder.getText() == null && reminder.getTitle() == null && reminder
+                .getPriority() == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, REMINDER_DATA_INCOMPLETE, "Incomplete reminder PATCH data.");
+            throw new ServerException(400, ANNOUNCEMENT_DATA_INCOMPLETE);
+        } else if (reminder.getText() != null && reminder.getText().length() > MESSAGE_MAX_LENGTH) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, REMINDER_INVALID_TEXT, "Reminder text to long.");
+            throw new ServerException(400, REMINDER_INVALID_TEXT);
+        } else if (reminder.getTitle() != null && reminder.getTitle().length() > ANNOUNCEMENT_TITLE_MAX_LENGTH) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, REMINDER_INVALID_TITLE, "Reminder title to long.");
+            throw new ServerException(400, REMINDER_INVALID_TITLE);
+        }
+
+        // Check if requestor is a valid moderator and responsible for the channel.
+        Moderator moderatorDB = verifyResponsibleModerator(accessToken, channelId);
+
+        Reminder reminderDB;
+        try {
+            reminderDB = channelDBM.getReminder(reminderId);
+            if(reminderDB == null){
+                logger.error(LOG_SERVER_EXCEPTION, 404, REMINDER_NOT_FOUND, "Reminder not found in database.");
+                throw new ServerException(404, REMINDER_NOT_FOUND);
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Update changed values.
+        reminderDB = updateReminder(reminder, reminderDB);
+
+        // Check if reminder dates and interval are still valid.
+        if (!reminderDB.isValidDates()) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, REMINDER_INVALID_DATES, "Reminder dates are invalid.");
+            throw new ServerException(400, REMINDER_INVALID_DATES);
+        } else if (!reminderDB.isValidInterval()) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, REMINDER_INVALID_INTERVAL, "Reminder interval is invalid.");
+            throw new ServerException(400, REMINDER_INVALID_INTERVAL);
+        }
+
+        // Update modification date.
+        reminderDB.computeModificationDate();
+        // TODO Change author to moderator who changed the reminder?
+        // TODO reminder.setAuthorModerator(moderatorDB.getId());
+
+        try {
+            channelDBM.updateReminder(reminderDB);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Tell the ReminderManager to schedule the changed reminder.
+        ReminderManager.changeReminder(reminderDB);
+
+        return reminderDB;
+    }
+
+    /**
+     * Updates several fields of the reminder object retrieved from the database. Only the following fields can be
+     * changed: startDate, endDate, interval, ignore, text, title and priority.
+     *
+     * @param reminder The reminder object with the changed values.
+     * @param reminderDB The reminder object from the database.
+     * @return The reminder object from the database with updated fields.
+     */
+    private Reminder updateReminder(Reminder reminder, Reminder reminderDB) {
+        // Update changed fields.
+        if (reminder.getStartDate() != null) {
+            reminderDB.setStartDate(reminder.getStartDate());
+        }
+        if (reminder.getEndDate() != null) {
+            reminderDB.setEndDate(reminder.getEndDate());
+        }
+        if (reminder.getInterval() != null) {
+            reminderDB.setInterval(reminder.getInterval());
+        }
+        if (reminder.isIgnore() != null) {
+            reminderDB.setIgnore(reminder.isIgnore());
+        }
+        if (reminder.getText() != null) {
+            reminderDB.setText(reminder.getText());
+        }
+        if (reminder.getTitle() != null) {
+            reminderDB.setTitle(reminder.getTitle());
+        }
+        if (reminder.getPriority() != null) {
+            reminderDB.setPriority(reminder.getPriority());
+        }
+        return reminderDB;
     }
 
     /**
@@ -888,14 +997,17 @@ public class ChannelController extends AccessController {
         announcement.setChannelId(reminder.getChannelId());
         announcement.setTitle(reminder.getTitle());
         announcement.setAuthorModerator(reminder.getAuthorModerator());
+
+        List<User> subscribers;
         try {
             channelDBM.storeAnnouncement(announcement);
+            subscribers = channelDBM.getSubscribers(announcement.getChannelId());
         } catch (DatabaseException e) {
             // TODO No further error handling?
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't create an " +
                     "announcement from reminder.");
         }
 
-        // TODO notifySubscribers
+        // TODO notifySubscribers ANNOUNCEMENT_NEW
     }
 }

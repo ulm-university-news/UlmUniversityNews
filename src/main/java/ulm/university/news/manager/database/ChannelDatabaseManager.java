@@ -1406,4 +1406,96 @@ public class ChannelDatabaseManager extends DatabaseManager {
         }
         logger.debug("End.");
     }
+
+    /**
+     * Gets the reminder identified by given id from the database.
+     *
+     * @param reminderId The id of the reminder
+     * @return The specified reminder.
+     * @throws DatabaseException If the reminder couldn't be get from the database due to a database failure.
+     */
+    public Reminder getReminder(int reminderId) throws DatabaseException {
+        logger.debug("Start with reminderId:{}.", reminderId);
+        Connection con = null;
+        Reminder reminder = null;
+        try {
+            con = getDatabaseConnection();
+            String query =
+                    "SELECT * FROM Reminder WHERE Id=?;";
+
+            PreparedStatement getReminderStmt = con.prepareStatement(query);
+            getReminderStmt.setInt(1, reminderId);
+            ResultSet getReminderRs = getReminderStmt.executeQuery();
+            if (getReminderRs.next()) {
+                ZonedDateTime creationDate = getReminderRs.getTimestamp("CreationDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
+                ZonedDateTime modificationDate = getReminderRs.getTimestamp("ModificationDate").toLocalDateTime()
+                        .atZone(Constants.TIME_ZONE);
+                ZonedDateTime startDate = getReminderRs.getTimestamp("StartDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
+                ZonedDateTime endDate = getReminderRs.getTimestamp("EndDate").toLocalDateTime()
+                        .atZone(Constants.TIME_ZONE);
+                int interval = getReminderRs.getInt("Interval");
+                boolean ignore = getReminderRs.getBoolean("Ignore");
+                int channelId = getReminderRs.getInt("Channel_Id");
+                int authorModerator = getReminderRs.getInt("Author_Moderator_Id");
+                String title = getReminderRs.getString("Title");
+                String text = getReminderRs.getString("Text");
+                Priority priority = Priority.values[getReminderRs.getInt("Priority")];
+                reminder = new Reminder(reminderId, creationDate, modificationDate, startDate, endDate, interval,
+                        ignore, channelId, authorModerator, title, text, priority);
+            }
+            getReminderStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with reminder:{}.", reminder);
+        return reminder;
+    }
+
+    /**
+     * Updates the given reminder in the database.
+     *
+     * @param reminder The changed reminder which should be updated in the database.
+     * @throws DatabaseException If the data could not be updated in the database due to a database failure.
+     */
+    public void updateReminder(Reminder reminder) throws DatabaseException {
+        logger.debug("Start with reminder:{}.", reminder);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            // Set the moderator as inactive for the channel.
+            String updateReminderQuery =
+                    "UPDATE Reminder " +
+                            "SET StartDate=?, EndDate=?, `Interval`=?, `Ignore`=?, Text=?, Title=?, Priority=? " +
+                            "WHERE Id=?;";
+            PreparedStatement updateReminderStmt = con.prepareStatement(updateReminderQuery);
+            updateReminderStmt.setTimestamp(1, Timestamp.from(reminder.getStartDate().toInstant()));
+            updateReminderStmt.setTimestamp(2, Timestamp.from(reminder.getEndDate().toInstant()));
+            updateReminderStmt.setInt(3, reminder.getInterval());
+            updateReminderStmt.setBoolean(4, reminder.isIgnore());
+            updateReminderStmt.setString(5, reminder.getText());
+            updateReminderStmt.setString(6, reminder.getTitle());
+            updateReminderStmt.setInt(7, reminder.getPriority().ordinal());
+            updateReminderStmt.setInt(8, reminder.getId());
+
+            int rowsAffected = updateReminderStmt.executeUpdate();
+            if (rowsAffected > 1) {
+                logger.info("Updated reminder with id {}.", reminder.getId());
+            }
+            updateReminderStmt.close();
+        } catch (SQLException e) {
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
 }
