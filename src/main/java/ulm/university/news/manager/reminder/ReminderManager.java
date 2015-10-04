@@ -1,5 +1,7 @@
 package ulm.university.news.manager.reminder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Reminder;
 
 import java.time.ZonedDateTime;
@@ -17,6 +19,9 @@ import static ulm.university.news.util.Constants.*;
  */
 public class ReminderManager {
 
+    /** The logger instance for ReminderManager. */
+    private static final Logger logger = LoggerFactory.getLogger(ReminderManager.class);
+
     /** Schedules active ReminderTasks. */
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
@@ -31,11 +36,20 @@ public class ReminderManager {
     public static synchronized void addReminder(Reminder reminder) {
         ZonedDateTime currentDate = ZonedDateTime.now(TIME_ZONE);
 
+        Future<?> timingTask;
         //Starting reminder tasks is exact to the second.
-        Future<?> timingTask = scheduler.scheduleAtFixedRate(new ReminderTask(reminder),
-                ChronoUnit.SECONDS.between(currentDate, reminder.getNextDate()), reminder.getInterval(), TimeUnit.SECONDS);
+        if(reminder.getInterval() == 0){
+            // If interval is 0, it's a one time reminder.
+            timingTask = scheduler.schedule(new ReminderTask(reminder), ChronoUnit.SECONDS.between(currentDate,
+                    reminder.getNextDate()), TimeUnit.SECONDS);
+        } else {
+            // If interval isn't 0, it's a periodic reminder.
+            timingTask = scheduler.scheduleAtFixedRate(new ReminderTask(reminder), ChronoUnit.SECONDS.between
+                    (currentDate, reminder.getNextDate()), reminder.getInterval(), TimeUnit.SECONDS);
+        }
 
         activeReminders.put(reminder.getId(), timingTask);
+        logger.info("Reminder with id {} has been activated.", reminder.getId());
     }
 
     /**
@@ -49,6 +63,7 @@ public class ReminderManager {
         if (activeReminders.containsKey(reminderId)) {
             activeReminders.get(reminderId).cancel(false);
             activeReminders.remove(reminderId);
+            logger.info("Reminder with id {} has been deactivated.", reminderId);
         }
     }
 

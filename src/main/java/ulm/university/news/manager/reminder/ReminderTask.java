@@ -1,5 +1,8 @@
 package ulm.university.news.manager.reminder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ulm.university.news.controller.ChannelController;
 import ulm.university.news.data.Reminder;
 
 /**
@@ -10,6 +13,12 @@ import ulm.university.news.data.Reminder;
  * @author Philipp Speidel
  */
 public class ReminderTask implements Runnable {
+
+    /** The logger instance for ReminderTask. */
+    private static final Logger logger = LoggerFactory.getLogger(ReminderTask.class);
+
+    /** Instance of the ChannelController class. */
+    private ChannelController channelCtrl = new ChannelController();
 
     /** The Reminder which produces an Announcement. */
     Reminder reminder;
@@ -36,27 +45,32 @@ public class ReminderTask implements Runnable {
      * should run next. An expired Reminder will be removed.
      */
     private void processReminder() {
+        logger.info("Event of reminder with id {} has been fired.", reminder.getId());
         if(reminder.isExpired()) {
-            // The Reminder is expired so stop its production of Announcements.
+            // The Reminder is expired so stop its production of announcements.
+            logger.debug("Expired. No announcement has been created. Reminder will be deactivated.");
             ReminderManager.removeReminder(reminder.getId());
         } else {
             if(reminder.isIgnore()) {
-                // Ignore the production of an Announcement this time and reset the ignore flag.
+                // Ignore the production of an announcement this time and reset the ignore flag.
                 reminder.setIgnore(false);
-                System.out.println("Reminder " + reminder.getId() + ": No announcement created.");
+                logger.debug("Ignored. No announcement has been created. Ignore flag will be reset.");
                 // TODO: Store changes in database.
                 // ChannelController.resetReminderIgnore()
             } else {
-                // TODO: Produce an Announcement.
-                // ChannelController.createAnnouncementFromReminder(reminder);
+                // Create an announcement.
+                logger.debug("Valid. Announcement has been created.");
+                channelCtrl.createAnnouncementFromReminder(reminder);
             }
-            // Compute the Reminders next execution date.
+            // Compute the reminders next execution date.
+            logger.debug("Compute reminder next date.");
             reminder.computeNextDate();
 
-            // Check again if the Reminder is expired to detect its possible expiration before waiting the whole
+            // Check again if the reminder is expired to detect its possible expiration before waiting the whole
             // interval for its next (expired) execution.
             if(reminder.isExpired()) {
-                // The Reminder is expired so stop its production of Announcements.
+                // The reminder is expired so stop its production of announcements.
+                logger.debug("Expired. No announcement has been created. Reminder will be deactivated.");
                 ReminderManager.removeReminder(reminder.getId());
             }
         }

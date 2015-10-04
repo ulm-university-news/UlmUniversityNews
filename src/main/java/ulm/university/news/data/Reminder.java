@@ -27,9 +27,9 @@ public class Reminder {
     /** The date on which the Reminder should fire for the last time. */
     ZonedDateTime endDate;
     /** The interval in seconds on which the Reminder should fire. */
-    int interval;
+    Integer interval;
     /** Defines if the next Reminder event should be ignored. */
-    boolean ignore;
+    Boolean ignore;
     /** The id of the Channel which is associated with the Reminder. */
     int channelId;
     /** The id of the Moderator which links to the author of the Reminder. */
@@ -48,36 +48,23 @@ public class Reminder {
     }
 
     /**
-     * Constructor which sets the given attributes and computes the remaining fields.
+     * Constructor which sets the given attributes.
      *
-     * @param id The unique Reminder id.
-     * @param startDate The date on which the Reminder should fire for the first time.
-     * @param endDate The date on which the Reminder should fire for the last time.
-     * @param interval The interval in seconds on which the Reminder should fire.
-     * @param channelId The id of the Channel which is associated with the Reminder.
-     * @param authorModerator The id of the Moderator which links to the author of the Reminder.
-     * @param title The title of the Announcement.
-     * @param text The text of the Announcement.
-     * @param priority The priority of the Announcement.
+     * @param id The unique reminder id.
+     * @param creationDate The date on which the reminder was created.
+     * @param modificationDate The date on which the reminder was modified.
+     * @param startDate The date on which the reminder should fire for the first time.
+     * @param endDate The date on which the reminder should fire for the last time.
+     * @param interval The interval in seconds on which the reminder should fire.
+     * @param ignore Indicates weather the next reminder event should be ignored or not.
+     * @param channelId The id of the channel which is associated with the reminder.
+     * @param authorModerator The id of the moderator which links to the author of the reminder.
+     * @param title The title of the announcement.
+     * @param text The text of the announcement.
+     * @param priority The priority of the announcement.
      */
-    public Reminder(int id, ZonedDateTime startDate, ZonedDateTime endDate, int interval, int channelId, int
-            authorModerator, String title, String text, Priority priority) {
-        this.id = id;
-        this.startDate = startDate;
-        this.nextDate = startDate;
-        this.endDate = endDate;
-        this.interval = interval;
-        this.ignore = false;
-        this.channelId = channelId;
-        this.authorModerator = authorModerator;
-        this.title = title;
-        this.text = text;
-        this.priority = priority;
-        computeFirstNextDate();
-    }
-
     public Reminder(int id, ZonedDateTime creationDate, ZonedDateTime modificationDate, ZonedDateTime startDate,
-                    ZonedDateTime endDate, int interval, boolean ignore, int channelId, int authorModerator, String
+                    ZonedDateTime endDate, Integer interval, Boolean ignore, int channelId, int authorModerator, String
                             title, String text, Priority priority) {
         this.id = id;
         this.creationDate = creationDate;
@@ -91,7 +78,25 @@ public class Reminder {
         this.title = title;
         this.text = text;
         this.priority = priority;
-        computeFirstNextDate();
+    }
+
+    @Override
+    public String toString() {
+        return "Reminder{" +
+                "id=" + id +
+                ", creationDate=" + creationDate +
+                ", modificationDate=" + modificationDate +
+                ", startDate=" + startDate +
+                ", nextDate=" + nextDate +
+                ", endDate=" + endDate +
+                ", interval=" + interval +
+                ", ignore=" + ignore +
+                ", channelId=" + channelId +
+                ", authorModerator=" + authorModerator +
+                ", title='" + title + '\'' +
+                ", text='" + text + '\'' +
+                ", priority=" + priority +
+                '}';
     }
 
     /**
@@ -107,13 +112,27 @@ public class Reminder {
      * Computes and sets the date on which the next ReminderTask should start.
      */
     public void computeNextDate() {
-        nextDate = nextDate.plusSeconds(interval);
+        // If interval is 0, it's a one time reminder, so marked reminder as expired.
+        if(interval == 0){
+            nextDate = endDate.plusSeconds(1);
+        }else{
+            nextDate = nextDate.plusSeconds(interval);
+        }
+
     }
 
     /**
      * Computes and sets the date on which the fist ReminderTask should start.
      */
     public void computeFirstNextDate() {
+        // Set first next date to start date.
+        if (nextDate == null) {
+            nextDate = startDate;
+        }
+        // If interval is 0, the first next date is the start date.
+        if (interval == 0) {
+            return;
+        }
         // The next date has to be in the future.
         while (nextDate.isBefore(ZonedDateTime.now(TIME_ZONE))) {
             nextDate = nextDate.plusSeconds(interval);
@@ -123,7 +142,7 @@ public class Reminder {
     /**
      * Computes the creation date of the Reminder. If the creation date was already set, this method does nothing.
      */
-    private void computeCreationDate() {
+    public void computeCreationDate() {
         if (creationDate == null) {
             creationDate = ZonedDateTime.now(TIME_ZONE);
         }
@@ -137,26 +156,46 @@ public class Reminder {
     }
 
     /**
-     * Checks if the interval value is one of the allowed values and if the end date is after the start date.
+     * Checks if the interval value is one of the allowed values.
      *
-     * @return true if Reminder is valid
+     * @return true if interval is valid.
      */
-    public boolean isValid() {
+    public boolean isValidInterval() {
+        // 0 is a valid interval. It means that there is no interval, it's a one time reminder.
+        if (interval == 0) {
+            return true;
+        } else
+            // If start date equals end date it's a one time reminder, so interval has to be 0.
+            if (startDate.equals(endDate) && interval != 0) {
+                return false;
+            } else
+                // Check if the interval is a multiple of a day (86400s = 24h * 60m * 60s).
+                if (interval % 86400 != 0) {
+                    return false;
+                } else {
+                    // Check if interval is at least one day and no more than 28 days (4 weeks).
+                    if (interval < 86400 || interval > 2419200) {
+                        return false;
+                    }
+                }
+        // All checks passed. Interval is valid.
+        return true;
+    }
+
+    /**
+     * Checks if the start and end date is valid.
+     *
+     * @return true if dates are valid.
+     */
+    public boolean isValidDates() {
         // Check if the start date is after the end date.
         if (startDate.isAfter(endDate)) {
             return false;
-        } else {
-            // Check if the interval is a multiple of a day (86400s = 24h * 60m * 60s).
-            if (interval % 86400 != 0) {
-                return false;
-            } else {
-                // Check if interval is at least one day and no more than 28 days (4 weeks).
-                if (interval < 86400 || interval > 2419200) {
-                    return false;
-                }
-            }
+            // The end date has to be in the future.
+        } else if (endDate.isBefore(ZonedDateTime.now(TIME_ZONE))) {
+            return false;
         }
-        // All checks passed. Reminder is valid.
+        //All checks passed. Dates are valid.
         return true;
     }
 
@@ -200,19 +239,19 @@ public class Reminder {
         this.endDate = endDate;
     }
 
-    public int getInterval() {
+    public Integer getInterval() {
         return interval;
     }
 
-    public void setInterval(int interval) {
+    public void setInterval(Integer interval) {
         this.interval = interval;
     }
 
-    public boolean isIgnore() {
+    public Boolean isIgnore() {
         return ignore;
     }
 
-    public void setIgnore(boolean ignore) {
+    public void setIgnore(Boolean ignore) {
         this.ignore = ignore;
     }
 

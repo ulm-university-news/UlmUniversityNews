@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.datatype.jsr310.deser.key.ZonedDateTimeKeyDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.controller.ChannelController;
@@ -410,5 +411,51 @@ public class ChannelAPI {
         channelCtrl.deleteAnnouncement(accessToken, channelId, messageNumber);
         // Return 204 No Content
         return Response.status(Response.Status.NO_CONTENT).build();
+    }
+
+    /**
+     * Create a new reminder in the specified channel. The created resource will be returned including the URI
+     * which can be used to access the resource.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param uriInfo Information about the URI of this request.
+     * @param json The reminder data represented as JSON String.
+     * @param channelId The id of the channel in which the reminder should be created.
+     * @return Response object including the created reminder object and a set Location Header.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @POST
+    @Path("/{id}/reminder")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response createReminder(@HeaderParam("Authorization") String accessToken, @Context UriInfo uriInfo,
+                                   @PathParam("id") int channelId, String json) throws ServerException {
+        // Use JavaTimeModule for proper deserialization of ZonedDateTime values.
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule().addKeyDeserializer(ZonedDateTime.class, ZonedDateTimeKeyDeserializer.INSTANCE));
+        // Set fields and Enum values which are unknown to null and continue parsing.
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        mapper.configure(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL, true);
+
+        Reminder reminder;
+        try {
+            reminder = mapper.readValue(json, Reminder.class);
+        } catch (IOException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, REMINDER_INVALID_DATES, "Parsing: Reminder dates are invalid.");
+            throw new ServerException(400, REMINDER_INVALID_DATES);
+        }
+        // Set proper time zone.
+        if(reminder != null && reminder.getStartDate() != null && reminder.getEndDate() != null){
+            reminder.setStartDate(reminder.getStartDate().withZoneSameInstant(TIME_ZONE));
+            reminder.setEndDate(reminder.getEndDate().withZoneSameInstant(TIME_ZONE));
+        }
+
+        reminder = channelCtrl.createReminder(accessToken, channelId, reminder);
+        // Create the URI for the created reminder resource.
+        URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel/" + channelId + "/reminder" +
+                reminder.getId());
+        // Return the created reminder resource and the Location Header.
+        return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(reminder).build();
     }
 }

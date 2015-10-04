@@ -6,6 +6,7 @@ import ulm.university.news.data.*;
 import ulm.university.news.data.enums.ChannelType;
 import ulm.university.news.data.enums.TokenType;
 import ulm.university.news.manager.database.ChannelDatabaseManager;
+import ulm.university.news.manager.reminder.ReminderManager;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
 
@@ -740,6 +741,9 @@ public class ChannelController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+
+        // TODO notifySubscribers
+
         return announcement;
     }
 
@@ -784,7 +788,7 @@ public class ChannelController extends AccessController {
      * @param accessToken The access token of the requestor.
      * @param channelId The id of the channel to which the announcement belongs.
      * @param messageNumber The message number of the announcement which should be deleted from the channel.
-     * @throws ServerException ServerException If the authorization of the requestor fails, the requestor isn't
+     * @throws ServerException If the authorization of the requestor fails, the requestor isn't
      * allowed to perform the operation or the channel or announcement couldn't be found. Furthermore, a failure of the
      * database also causes a ServerException.
      */
@@ -804,5 +808,94 @@ public class ChannelController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+
+        // TODO notifySubscribers
+    }
+
+    /**
+     * Create a new reminder in the specified channel. Validates the received reminder data.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param reminder The reminder data contained in the body of the HTTP request.
+     * @param channelId The id of the channel in which the reminder should be created.
+     * @return Response object including the created reminder object and a set Location Header.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     * @throws ServerException If the authorization of the requestor fails, the requestor isn't allowed to perform
+     * the operation or the channel couldn't be found. Furthermore, a failure of the database also causes a
+     * ServerException.
+     */
+    public Reminder createReminder(String accessToken, int channelId, Reminder reminder) throws ServerException {
+        logger.debug("Start with reminder:{}", reminder);
+        // Perform checks on the received data. If the data isn't accurate the reminder can't be created.
+        if (reminder == null || reminder.getText() == null || reminder.getPriority() == null || reminder.getTitle() ==
+                null || reminder.getStartDate() == null || reminder.getEndDate() == null) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, REMINDER_DATA_INCOMPLETE, "Incomplete reminder data.");
+            throw new ServerException(400, ANNOUNCEMENT_DATA_INCOMPLETE);
+        } else if (reminder.getText().length() > MESSAGE_MAX_LENGTH) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, REMINDER_INVALID_TEXT, "Reminder text to long.");
+            throw new ServerException(400, REMINDER_INVALID_TEXT);
+        } else if (reminder.getTitle().length() > ANNOUNCEMENT_TITLE_MAX_LENGTH) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, REMINDER_INVALID_TITLE, "Reminder title to long.");
+            throw new ServerException(400, REMINDER_INVALID_TITLE);
+        } else if (!reminder.isValidDates()) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, REMINDER_INVALID_DATES, "Reminder dates are invalid.");
+            throw new ServerException(400, REMINDER_INVALID_DATES);
+        } else if (reminder.getInterval() == null) {
+            reminder.setInterval(0);
+        } else if (!reminder.isValidInterval()) {
+            logger.error(LOG_SERVER_EXCEPTION, 400, REMINDER_INVALID_INTERVAL, "Reminder interval is invalid.");
+            throw new ServerException(400, REMINDER_INVALID_INTERVAL);
+        }
+
+        // Check if requestor is a valid moderator and responsible for the channel.
+        Moderator moderatorDB = verifyResponsibleModerator(accessToken, channelId);
+
+        // Initialise remaining reminder fields.
+        reminder.computeCreationDate();
+        reminder.setModificationDate(reminder.getCreationDate());
+        reminder.setAuthorModerator(moderatorDB.getId());
+        reminder.setChannelId(channelId);
+        if (reminder.isIgnore() == null) {
+            reminder.setIgnore(false);
+        }
+
+        try {
+            channelDBM.storeReminder(reminder);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Tell the ReminderManager to schedule the created reminder.
+        reminder.computeFirstNextDate();
+        ReminderManager.addReminder(reminder);
+
+        return reminder;
+    }
+
+    /**
+     * Creates an announcement object from the data provided in the given reminder object. The announcement will be
+     * stored in the database and the subscribers of the channel will be notified.
+     *
+     * @param reminder The reminder which fired the reminder event.
+     */
+    public void createAnnouncementFromReminder(Reminder reminder) {
+        Announcement announcement = new Announcement();
+        announcement.setText(reminder.getText());
+        announcement.computeCreationDate();
+        announcement.setPriority(reminder.getPriority());
+        announcement.setChannelId(reminder.getChannelId());
+        announcement.setTitle(reminder.getTitle());
+        announcement.setAuthorModerator(reminder.getAuthorModerator());
+        try {
+            channelDBM.storeAnnouncement(announcement);
+        } catch (DatabaseException e) {
+            // TODO No further error handling?
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't create an " +
+                    "announcement from reminder.");
+        }
+
+        // TODO notifySubscribers
     }
 }

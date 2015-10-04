@@ -140,6 +140,13 @@ public class Constants {
     public static final int ANNOUNCEMENT_INVALID_TEXT = 3103;
     public static final int ANNOUNCEMENT_INVALID_TITLE = 3104;
 
+    public static final int REMINDER_NOT_FOUND = 3200;
+    public static final int REMINDER_DATA_INCOMPLETE = 3202;
+    public static final int REMINDER_INVALID_TEXT = 3203;
+    public static final int REMINDER_INVALID_TITLE = 3204;
+    public static final int REMINDER_INVALID_DATES = 3205;
+    public static final int REMINDER_INVALID_INTERVAL = 3206;
+
     // Group:
     public static final int GROUP_NOT_FOUND = 4000;
     public static final int GROUP_DATA_INCOMPLETE = 4002;

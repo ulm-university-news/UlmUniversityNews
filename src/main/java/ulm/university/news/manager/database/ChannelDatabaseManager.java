@@ -1127,7 +1127,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
      * Stores a new announcement in the database. The announcement belongs to the channel with the given id. The
      * announcement object contains all the data of the announcement, including the channel id.
      *
-     * @param announcement The announcement which contains the data for the new announcement.
+     * @param announcement The announcement object which contains the data for the new announcement.
      * @throws DatabaseException If the announcement couldn't be stored due to a database failure.
      */
     public void storeAnnouncement(Announcement announcement) throws DatabaseException {
@@ -1346,6 +1346,59 @@ public class ChannelDatabaseManager extends DatabaseManager {
             deleteMessageStmt.close();
         } catch (SQLException e) {
             logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Stores a new reminder in the database. The reminder belongs to the channel with the given id. The reminder
+     * object contains all the data of the reminder, including the channel id.
+     *
+     * @param reminder The reminder object which contains the data for the new reminder.
+     * @throws DatabaseException If the reminder couldn't be stored due to a database failure.
+     */
+    public void storeReminder(Reminder reminder) throws DatabaseException {
+        logger.debug("Start with reminder:{}.", reminder);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            String storeReminderQuery =
+                    "INSERT INTO Reminder (Channel_Id, Author_Moderator_Id, StartDate, ModificationDate, EndDate, " +
+                            "`Interval`, `Ignore`, Title, Text, CreationDate, Priority) " +
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?);";
+
+            PreparedStatement storeReminderStmt = con.prepareStatement(storeReminderQuery);
+            storeReminderStmt.setInt(1, reminder.getChannelId());
+            storeReminderStmt.setInt(2, reminder.getAuthorModerator());
+            storeReminderStmt.setTimestamp(3, Timestamp.from(reminder.getStartDate().toInstant()));
+            storeReminderStmt.setTimestamp(4, Timestamp.from(reminder.getModificationDate().toInstant()));
+            storeReminderStmt.setTimestamp(5, Timestamp.from(reminder.getEndDate().toInstant()));
+            storeReminderStmt.setInt(6, reminder.getInterval());
+            storeReminderStmt.setBoolean(7, reminder.isIgnore());
+            storeReminderStmt.setString(8, reminder.getTitle());
+            storeReminderStmt.setString(9, reminder.getText());
+            storeReminderStmt.setTimestamp(10, Timestamp.from(reminder.getCreationDate().toInstant()));
+            storeReminderStmt.setInt(11, reminder.getPriority().ordinal());
+            storeReminderStmt.execute();
+
+            // Retrieve auto incremented id of the database record for the reminder.
+            String getIdQuery = "SELECT LAST_INSERT_ID();";
+
+            Statement getIdStmt = con.createStatement();
+            ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
+            if (getIdRs.next()) {
+                // Set the id taken from the database to the announcement object.
+                reminder.setId(getIdRs.getInt(1));
+            }
+            logger.info("Stored reminder with id {}.", reminder.getId());
+            storeReminderStmt.close();
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
         } finally {
