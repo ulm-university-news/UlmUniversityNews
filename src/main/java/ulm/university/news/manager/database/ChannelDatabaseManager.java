@@ -1469,11 +1469,11 @@ public class ChannelDatabaseManager extends DatabaseManager {
         try {
             con = getDatabaseConnection();
 
-            // Set the moderator as inactive for the channel.
+            // Update reminder values in the database.
             String updateReminderQuery =
                     "UPDATE Reminder " +
-                            "SET StartDate=?, EndDate=?, `Interval`=?, `Ignore`=?, Text=?, Title=?, Priority=? " +
-                            "WHERE Id=?;";
+                            "SET StartDate=?, EndDate=?, `Interval`=?, `Ignore`=?, Text=?, Title=?, Priority=?, " +
+                            "ModificationDate=? WHERE Id=?;";
             PreparedStatement updateReminderStmt = con.prepareStatement(updateReminderQuery);
             updateReminderStmt.setTimestamp(1, Timestamp.from(reminder.getStartDate().toInstant()));
             updateReminderStmt.setTimestamp(2, Timestamp.from(reminder.getEndDate().toInstant()));
@@ -1482,11 +1482,46 @@ public class ChannelDatabaseManager extends DatabaseManager {
             updateReminderStmt.setString(5, reminder.getText());
             updateReminderStmt.setString(6, reminder.getTitle());
             updateReminderStmt.setInt(7, reminder.getPriority().ordinal());
-            updateReminderStmt.setInt(8, reminder.getId());
+            updateReminderStmt.setTimestamp(8, Timestamp.from(reminder.getModificationDate().toInstant()));
+            updateReminderStmt.setInt(9, reminder.getId());
 
             int rowsAffected = updateReminderStmt.executeUpdate();
             if (rowsAffected > 1) {
                 logger.info("Updated reminder with id {}.", reminder.getId());
+            }
+            updateReminderStmt.close();
+        } catch (SQLException e) {
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Sets the ignore field of the reminder with given id to false in the database.
+     *
+     * @param reminderId The id of the reminder which should be updated in the database.
+     * @throws DatabaseException If the data could not be updated in the database due to a database failure.
+     */
+    public void resetReminderIgnore(int reminderId) throws DatabaseException {
+        logger.debug("Start with reminderId:{}.", reminderId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            // Set reminder ignore field to false.
+            String updateReminderQuery =
+                    "UPDATE Reminder SET `Ignore`=? WHERE Id=?;";
+            PreparedStatement updateReminderStmt = con.prepareStatement(updateReminderQuery);
+            updateReminderStmt.setBoolean(1, false);
+            updateReminderStmt.setInt(2, reminderId);
+
+            int rowsAffected = updateReminderStmt.executeUpdate();
+            if (rowsAffected > 1) {
+                logger.info("Reset ignore field of reminder with id {}.", reminderId);
             }
             updateReminderStmt.close();
         } catch (SQLException e) {

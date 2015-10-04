@@ -55,8 +55,7 @@ public class ReminderTask implements Runnable {
                 // Ignore the production of an announcement this time and reset the ignore flag.
                 reminder.setIgnore(false);
                 logger.debug("Ignored. No announcement has been created. Ignore flag will be reset.");
-                // TODO: Store changes in database.
-                // ChannelController.resetReminderIgnore()
+                channelCtrl.resetReminderIgnore(reminder.getId());
             } else {
                 // Create an announcement.
                 logger.debug("Valid. Announcement has been created.");

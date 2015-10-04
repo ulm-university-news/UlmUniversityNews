@@ -984,6 +984,21 @@ public class ChannelController extends AccessController {
     }
 
     /**
+     * Sets the ignore field of the reminder with given id to false in the database.
+     *
+     * @param reminderId The id of the reminder which should be updated in the database.
+     */
+    public void resetReminderIgnore(int reminderId){
+        try {
+            channelDBM.resetReminderIgnore(reminderId);
+        } catch (DatabaseException e) {
+            // TODO No further error handling?
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't reset reminder " +
+                    "ignore field.");
+        }
+    }
+
+    /**
      * Creates an announcement object from the data provided in the given reminder object. The announcement will be
      * stored in the database and the subscribers of the channel will be notified.
      *
