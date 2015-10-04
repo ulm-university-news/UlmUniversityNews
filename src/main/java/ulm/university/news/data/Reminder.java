@@ -211,6 +211,10 @@ public class Reminder {
         return creationDate;
     }
 
+    public void setCreationDate(ZonedDateTime creationDate) {
+        this.creationDate = creationDate;
+    }
+
     public ZonedDateTime getModificationDate() {
         return modificationDate;
     }
