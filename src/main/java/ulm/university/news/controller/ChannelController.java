@@ -909,7 +909,7 @@ public class ChannelController extends AccessController {
 
         Reminder reminderDB;
         try {
-            reminderDB = channelDBM.getReminder(reminderId);
+            reminderDB = channelDBM.getReminder(channelId, reminderId);
             if(reminderDB == null){
                 logger.error(LOG_SERVER_EXCEPTION, 404, REMINDER_NOT_FOUND, "Reminder not found in database.");
                 throw new ServerException(404, REMINDER_NOT_FOUND);
@@ -998,8 +998,9 @@ public class ChannelController extends AccessController {
         // Check if requestor is a valid moderator and responsible for the channel.
         verifyResponsibleModerator(accessToken, channelId);
         try {
-            Reminder reminder = channelDBM.getReminder(reminderId);
-            if(reminder == null || reminder.getChannelId() != channelId){
+            // Check if reminder exists in database.
+            Reminder reminder = channelDBM.getReminder(channelId, reminderId);
+            if(reminder == null){
                 logger.error(LOG_SERVER_EXCEPTION, 404, REMINDER_NOT_FOUND, "Reminder not found in database.");
                 throw new ServerException(404, REMINDER_NOT_FOUND);
             }
@@ -1029,6 +1030,36 @@ public class ChannelController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+    }
+
+    /**
+     * Deletes an existing reminder identified by id in the specified channel. The reminder will be removed from
+     * active reminders in the ReminderManager.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the reminder belongs.
+     * @param reminderId The id of the reminder which should be deleted.
+     * @throws ServerException If the authorization of the requestor fails, the requestor isn't allowed to perform
+     * the operation or the channel or reminder couldn't be found. Furthermore, a failure of the database also causes a
+     * ServerException.
+     */
+    public void deleteReminder(String accessToken, int channelId, int reminderId) throws ServerException {
+        // Check if requestor is a valid moderator and responsible for the channel.
+        verifyResponsibleModerator(accessToken, channelId);
+        try {
+            // Check if reminder exists in database.
+            Reminder reminder = channelDBM.getReminder(channelId, reminderId);
+            if(reminder == null){
+                logger.error(LOG_SERVER_EXCEPTION, 404, REMINDER_NOT_FOUND, "Reminder not found in database.");
+                throw new ServerException(404, REMINDER_NOT_FOUND);
+            }
+            channelDBM.deleteReminder(channelId, reminderId);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+        // Tell the ReminderManager to deactivate the deleted reminder.
+        ReminderManager.removeReminder(reminderId);
     }
 
     /**

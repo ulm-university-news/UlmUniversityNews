@@ -1411,21 +1411,23 @@ public class ChannelDatabaseManager extends DatabaseManager {
     /**
      * Gets the reminder identified by given id from the database.
      *
-     * @param reminderId The id of the reminder
+     * @param channelId The id of the channel to which the reminder belongs.
+     * @param reminderId The id of the reminder.
      * @return The specified reminder.
      * @throws DatabaseException If the reminder couldn't be get from the database due to a database failure.
      */
-    public Reminder getReminder(int reminderId) throws DatabaseException {
-        logger.debug("Start with reminderId:{}.", reminderId);
+    public Reminder getReminder(int channelId, int reminderId) throws DatabaseException {
+        logger.debug("Start with channelId:{} and reminderId:{}.", channelId, reminderId);
         Connection con = null;
         Reminder reminder = null;
         try {
             con = getDatabaseConnection();
             String query =
-                    "SELECT * FROM Reminder WHERE Id=?;";
+                    "SELECT * FROM Reminder WHERE Id=? AND Channel_Id=?;";
 
             PreparedStatement getReminderStmt = con.prepareStatement(query);
             getReminderStmt.setInt(1, reminderId);
+            getReminderStmt.setInt(2, channelId);
             ResultSet getReminderRs = getReminderStmt.executeQuery();
             if (getReminderRs.next()) {
                 ZonedDateTime creationDate = getReminderRs.getTimestamp("CreationDate").toLocalDateTime().atZone
@@ -1438,7 +1440,6 @@ public class ChannelDatabaseManager extends DatabaseManager {
                         .atZone(Constants.TIME_ZONE);
                 int interval = getReminderRs.getInt("Interval");
                 boolean ignore = getReminderRs.getBoolean("Ignore");
-                int channelId = getReminderRs.getInt("Channel_Id");
                 int authorModerator = getReminderRs.getInt("Author_Moderator_Id");
                 String title = getReminderRs.getString("Title");
                 String text = getReminderRs.getString("Text");
@@ -1582,6 +1583,40 @@ public class ChannelDatabaseManager extends DatabaseManager {
                 logger.info("Reset ignore field of reminder with id {}.", reminderId);
             }
             updateReminderStmt.close();
+        } catch (SQLException e) {
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Deletes the reminder with given reminder id and channel id from the database.
+     *
+     * @param channelId The id of the channel to which the reminder belongs.
+     * @param reminderId The id of the reminder which should be deleted.
+     * @throws DatabaseException If the deletion fails due to a database failure.
+     */
+    public void deleteReminder(int channelId, int reminderId) throws DatabaseException {
+        logger.debug("Start with channelId:{} and reminderId:{}.", channelId, reminderId);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            // Delete entry in Message table.
+            String deleteReminderQuery = "DELETE FROM Reminder WHERE Id=? AND Channel_Id=?;";
+            PreparedStatement deleteReminderStmt = con.prepareStatement(deleteReminderQuery);
+            deleteReminderStmt.setInt(1, reminderId);
+            deleteReminderStmt.setInt(2, channelId);
+            int rowsAffected = deleteReminderStmt.executeUpdate();
+            if (rowsAffected == 1) {
+                logger.info("Removed reminder with id {} from database.", reminderId);
+            }
+
+            deleteReminderStmt.close();
         } catch (SQLException e) {
             logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.

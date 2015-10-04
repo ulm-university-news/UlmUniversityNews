@@ -504,6 +504,26 @@ public class ChannelAPI {
     }
 
     /**
+     * Deletes an existing reminder identified by id in the specified channel. The reminder will be removed from
+     * active reminders in the ReminderManager.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the reminder belongs.
+     * @param reminderId The id of the reminder which should be deleted.
+     * @return Response object.
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Path("/{channelId}/reminder/{reminderId}")
+    public Response deleteReminder(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
+            channelId, @PathParam("reminderId") int reminderId) throws ServerException {
+        channelCtrl.deleteReminder(accessToken, channelId, reminderId);
+        // Return 204 No Content
+        return Response.status(Response.Status.NO_CONTENT).build();
+    }
+
+    /**
      * Creates a reminder object from a given JSON String.
      *
      * @param json The reminder data represented as JSON String.
