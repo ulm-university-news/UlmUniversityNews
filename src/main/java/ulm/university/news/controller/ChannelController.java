@@ -4,8 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.*;
 import ulm.university.news.data.enums.ChannelType;
+import ulm.university.news.data.enums.PushType;
 import ulm.university.news.data.enums.TokenType;
 import ulm.university.news.manager.database.ChannelDatabaseManager;
+import ulm.university.news.manager.push.PushManager;
 import ulm.university.news.manager.reminder.ReminderManager;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
@@ -1092,7 +1094,7 @@ public class ChannelController extends AccessController {
         announcement.setTitle(reminder.getTitle());
         announcement.setAuthorModerator(reminder.getAuthorModerator());
 
-        List<User> subscribers;
+        List<User> subscribers = null;
         try {
             channelDBM.storeAnnouncement(announcement);
             subscribers = channelDBM.getSubscribers(announcement.getChannelId());
@@ -1103,5 +1105,6 @@ public class ChannelController extends AccessController {
         }
 
         // TODO notifySubscribers ANNOUNCEMENT_NEW
+        PushManager.notifySubscribers(announcement.getChannelId(), subscribers, PushType.ANNOUNCEMENT_NEW);
     }
 }
