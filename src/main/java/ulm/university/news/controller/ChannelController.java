@@ -390,7 +390,6 @@ public class ChannelController extends AccessController {
         } else if (tokenType == TokenType.MODERATOR) {
             // The requestor is a valid moderator.
             try {
-                Moderator moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
                 return channelDBM.getChannels(moderatorId, lastUpdated);
             } catch (DatabaseException e) {
                 logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
@@ -455,8 +454,8 @@ public class ChannelController extends AccessController {
         // Check if requestor is a valid moderator and responsible for the given channel.
         verifyResponsibleModerator(accessToken, channelId);
 
-        List<Moderator> deletedModerators = null;
-        List<User> subscribers = null;
+        List<Moderator> deletedModerators;
+        List<User> subscribers;
         try {
             // Get all deleted moderators of the specified channel for later deletion.
             deletedModerators = channelDBM.getDeletedModeratorsByChannel(channelId);
@@ -469,7 +468,8 @@ public class ChannelController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // TODO notifySubscribers(channelId, subscribers, CHANNEL_DELETED)
+        // Notify all subscribers of the channel.
+        PushManager.getInstance().notifyUsers(PushType.CHANNEL_DELETED, subscribers, channelId, null, null);
 
         // Attempt to delete moderators who are marked as deleted but are still in the database.
         if (deletedModerators != null) {
@@ -881,7 +881,9 @@ public class ChannelController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // TODO notifySubscribers ANNOUNCEMENT_DELETED
+        // Notify all subscribers of the channel.
+        PushManager.getInstance().notifyUsers(PushType.ANNOUNCEMENT_DELETED, subscribers, channelId, messageNumber,
+                null);
     }
 
     /**
@@ -940,7 +942,6 @@ public class ChannelController extends AccessController {
 
         // Tell the ReminderManager to schedule the created reminder.
         ReminderManager.addReminder(reminder);
-
         return reminder;
     }
 
