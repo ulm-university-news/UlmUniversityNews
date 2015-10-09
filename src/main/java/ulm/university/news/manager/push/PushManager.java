@@ -125,9 +125,9 @@ public class PushManager {
         }
 
         // Split users by platform.
-        List<String> userPushTokensAndroid = new ArrayList<String>();
-        List<String> userPushTokensWindows = new ArrayList<String>();
-        List<String> userPushTokensIOS = new ArrayList<String>();
+        List<String> userPushTokensAndroid = new ArrayList<>();
+        List<String> userPushTokensWindows = new ArrayList<>();
+        List<String> userPushTokensIOS = new ArrayList<>();
         assignPushTokens(users, userPushTokensAndroid, userPushTokensWindows, userPushTokensIOS);
 
         // Give push tokens to corresponding notification method.
@@ -155,9 +155,9 @@ public class PushManager {
         cachedPushMessages.remove(pushMessageMap);
 
         // Split users by platform.
-        List<String> userPushTokensAndroid = new ArrayList<String>();
-        List<String> userPushTokensWindows = new ArrayList<String>();
-        List<String> userPushTokensIOS = new ArrayList<String>();
+        List<String> userPushTokensAndroid = new ArrayList<>();
+        List<String> userPushTokensWindows = new ArrayList<>();
+        List<String> userPushTokensIOS = new ArrayList<>();
         assignPushTokens(users, userPushTokensAndroid, userPushTokensWindows, userPushTokensIOS);
 
         // Give push tokens to corresponding notification method.
@@ -276,22 +276,15 @@ public class PushManager {
      */
     private void notifyAndroid(List<String> pushTokens, String jsonPushMessage) {
         // TODO
-        String[] args = new String[2];
-        args[0] = jsonPushMessage;
-        args[1] = pushTokens.get(0);
-        System.out.println("length: " + args[1].length());
-        // Prepare JSON containing the GCM message content. What to send and where to send.
+        // Prepare JSON containing the GCM message content.
         JSONObject jGcmData = new JSONObject();
         JSONObject jData = new JSONObject();
-        jData.put("message", args[0].trim());
-        // Where to send GCM message.
-        if (args.length > 1 && args[1] != null) {
-            jGcmData.put("to", args[1].trim());
-        } else {
-            jGcmData.put("to", "/topics/global");
-        }
-        // What to send in GCM message.
+        // Define what to send.
+        jData.put("message", jsonPushMessage.trim());
+        // Set GCM message content.
         jGcmData.put("data", jData);
+        // Define where to send GCM message.
+        jGcmData.put("to", pushTokens.get(0).trim());
 
         try {
             // Create connection to send GCM Message request.
