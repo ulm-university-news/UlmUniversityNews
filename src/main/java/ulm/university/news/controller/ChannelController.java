@@ -769,7 +769,9 @@ public class ChannelController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // TODO notifySubscribers ANNOUNCEMENT_NEW
+        // Notify all subscribers of the channel.
+        PushManager.getInstance().notifyUsers(PushType.ANNOUNCEMENT_NEW, subscribers, announcement.getChannelId(),
+                null, null);
 
         return announcement;
     }
@@ -1169,7 +1171,8 @@ public class ChannelController extends AccessController {
                     "announcement from reminder due to storage failure.");
         }
 
-        // TODO notifySubscribers ANNOUNCEMENT_NEW
-        PushManager.notifySubscribers(announcement.getChannelId(), subscribers, PushType.ANNOUNCEMENT_NEW);
+        // Notify all subscribers of the channel.
+        PushManager.getInstance().notifyUsers(PushType.ANNOUNCEMENT_NEW, subscribers, announcement.getChannelId(),
+                null, null);
     }
 }
