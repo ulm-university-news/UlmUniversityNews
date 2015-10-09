@@ -375,9 +375,11 @@ public class GroupDatabaseManager extends DatabaseManager {
             updateGroupStmt.setTimestamp(6, Timestamp.from(updatedGroup.getModificationDate().toInstant()));
             updateGroupStmt.setInt(7, updatedGroup.getId());
 
-            updateGroupStmt.executeUpdate();
+            int rowsAffected = updateGroupStmt.executeUpdate();
+            if(rowsAffected == 1){
+                logger.info("Updated group with id:{}.", updatedGroup.getId());
+            }
             updateGroupStmt.close();
-            logger.info("Updated group with id:{}.", updatedGroup.getId());
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
@@ -408,9 +410,11 @@ public class GroupDatabaseManager extends DatabaseManager {
             PreparedStatement deleteGroupStmt = con.prepareStatement(query);
             deleteGroupStmt.setInt(1, groupId);
 
-            deleteGroupStmt.execute();
+            int rowsAffected = deleteGroupStmt.executeUpdate();
+            if (rowsAffected == 1) {
+                logger.info("Deleted group with id:{}.", groupId);
+            }
             deleteGroupStmt.close();
-            logger.info("Deleted group with id:{}.", groupId);
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
@@ -544,9 +548,11 @@ public class GroupDatabaseManager extends DatabaseManager {
                     updateParticipantStmt.setInt(2, userId);
                     updateParticipantStmt.setInt(3, groupId);
 
-                    updateParticipantStmt.executeUpdate();
-                    logger.info("Set the active field for the user with id {} to true again. The user is an active " +
-                            "participant of the group with id {} again.", userId, groupId);
+                    int rowsAffected = updateParticipantStmt.executeUpdate();
+                    if(rowsAffected == 1){
+                        logger.info("Set the active field for the user with id {} to true again. The user is an " +
+                                "active participant of the group with id {} again.", userId, groupId);
+                    }
                     updateParticipantStmt.close();
                 }
                 else{
@@ -668,9 +674,11 @@ public class GroupDatabaseManager extends DatabaseManager {
             removeParticipantStmt.setInt(2, userId);
             removeParticipantStmt.setInt(3, groupId);
 
-            removeParticipantStmt.executeUpdate();
-            logger.info("Remove user with id {} from the group with id {}. The user is not an active participant of " +
-                    "the group anymore.", userId, groupId);
+            int rowsAffected = removeParticipantStmt.executeUpdate();
+            if(rowsAffected == 1){
+                logger.info("Remove user with id {} from the group with id {}. The user is not an active participant " +
+                        "of the group anymore.", userId, groupId);
+            }
             removeParticipantStmt.close();
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
@@ -971,9 +979,10 @@ public class GroupDatabaseManager extends DatabaseManager {
             updateBallotStmt.setInt(4, ballot.getAdmin());
             updateBallotStmt.setInt(5, ballot.getId());
 
-            updateBallotStmt.executeUpdate();
-
-            logger.info("Updated the ballot with id {}.", ballot.getId());
+            int rowsAffected = updateBallotStmt.executeUpdate();
+            if(rowsAffected == 1){
+                logger.info("Updated the ballot with id {}.", ballot.getId());
+            }
             updateBallotStmt.close();
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
@@ -1006,9 +1015,10 @@ public class GroupDatabaseManager extends DatabaseManager {
             deleteBallotStmt.setInt(1, ballotId);
             deleteBallotStmt.setInt(2, groupId);
 
-            deleteBallotStmt.execute();
-
-            logger.info("Deleted the ballot with id {} from the group with id {}.", ballotId, groupId);
+            int rowsAffected = deleteBallotStmt.executeUpdate();
+            if(rowsAffected == 1){
+                logger.info("Deleted the ballot with id {} from the group with id {}.", ballotId, groupId);
+            }
             deleteBallotStmt.close();
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
@@ -1213,9 +1223,10 @@ public class GroupDatabaseManager extends DatabaseManager {
             deleteOptionStmt.setInt(1, optionId);
             deleteOptionStmt.setInt(2, ballotId);
 
-            deleteOptionStmt.execute();
-
-            logger.info("Deleted the option with id {} from ballot with id {}.", optionId, ballotId);
+            int rowsAffected = deleteOptionStmt.executeUpdate();
+            if(rowsAffected == 1){
+                logger.info("Deleted the option with id {} from ballot with id {}.", optionId, ballotId);
+            }
             deleteOptionStmt.close();
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
@@ -1456,9 +1467,10 @@ public class GroupDatabaseManager extends DatabaseManager {
             deleteVoteStmt.setInt(1, optionId);
             deleteVoteStmt.setInt(2, userId);
 
-            deleteVoteStmt.execute();
-
-            logger.info("Deleted the vote from user with id {} for option with id {}.", userId, optionId);
+            int rowsAffected = deleteVoteStmt.executeUpdate();
+            if(rowsAffected == 1){
+                logger.info("Deleted the vote from user with id {} for option with id {}.", userId, optionId);
+            }
             deleteVoteStmt.close();
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
@@ -1731,9 +1743,10 @@ public class GroupDatabaseManager extends DatabaseManager {
             updateConversationStmt.setBoolean(3, conversation.getClosed());
             updateConversationStmt.setInt(4, conversation.getId());
 
-            updateConversationStmt.executeUpdate();
-
-            logger.info("Updated the conversation data for the conversation with id {}.", conversation.getId());
+            int rowsAffected = updateConversationStmt.executeUpdate();
+            if(rowsAffected == 1){
+                logger.info("Updated the conversation data for the conversation with id {}.", conversation.getId());
+            }
             updateConversationStmt.close();
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
@@ -1766,9 +1779,10 @@ public class GroupDatabaseManager extends DatabaseManager {
             deleteConversationStmt.setInt(1, conversationId);
             deleteConversationStmt.setInt(2, groupId);
 
-            deleteConversationStmt.execute();
-
-            logger.info("Deleted the conversation with id {} from the group with id {}.", conversationId, groupId);
+            int rowsAffected = deleteConversationStmt.executeUpdate();
+            if(rowsAffected == 1){
+                logger.info("Deleted the conversation with id {} from the group with id {}.", conversationId, groupId);
+            }
             deleteConversationStmt.close();
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());

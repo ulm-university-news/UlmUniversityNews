@@ -72,11 +72,9 @@ public class GroupController extends AccessController {
             String errMsg = "Invalid group password.";
             logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_PASSWORD, errMsg);
             throw new ServerException(400, GROUP_INVALID_PASSWORD);
-        } else if (group.getDescription() != null && !group.getDescription().matches(DESCRIPTION_PATTERN)) {
-            String errMsg = "Invalid description for group. Probably the description exceeded the size or the " +
-                    "description contains any special chars which are not supported. The size of the description " +
-                    "is: " + group.getDescription().length() + ". The description is: " + group.getDescription()
-                    + ".";
+        } else if (group.getDescription() != null && group.getDescription().length() > DESCRIPTION_MAX_LENGTH) {
+            String errMsg = "Invalid description for group. The description exceeded the size. The size of the " +
+                    "description is: " + group.getDescription().length() + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_DESCRIPTION, errMsg);
             throw new ServerException(400, GROUP_INVALID_DESCRIPTION);
         } else if (group.getTerm() != null && !group.getTerm().matches(TERM_PATTERN)) {
@@ -237,7 +235,7 @@ public class GroupController extends AccessController {
         }
 
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification to participants
+        // TODO send notification to participants, also notify requestor -> don't notify requestor, delete him from list
 
         // Don't return the list of participants in the response.
         groupDB.setParticipants(null);
@@ -275,13 +273,12 @@ public class GroupController extends AccessController {
         String newDescription = group.getDescription();
         if(newDescription != null){
             // Update the description if conditions are met.
-            if(newDescription.matches(DESCRIPTION_PATTERN)){
+            if(newDescription.length() <= DESCRIPTION_MAX_LENGTH){
                 groupDB.setDescription(newDescription);
             }
             else{
-                String errMsg = "Invalid description for group. Probably the description exceeded the size or the " +
-                        "description contains any special chars which are not supported. The size of the description " +
-                        "is: " +group.getDescription().length()+ ". The description is: " +group.getDescription()+ ".";
+                String errMsg = "Invalid description for group. The description exceeded the size. The size of the " +
+                        "description is: " +group.getDescription().length()+ ".";
                 logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_DESCRIPTION, errMsg);
                 throw new ServerException(400, GROUP_INVALID_DESCRIPTION);
             }
@@ -392,7 +389,7 @@ public class GroupController extends AccessController {
 
         // Get all participants of the group. Notify also the requestor?
         List<User> participants = groupDB.getParticipants();
-        // TODO notify participants about deleted group
+        // TODO notify participants about deleted group, delete requestor from list before sending
     }
 
     /**
@@ -435,7 +432,7 @@ public class GroupController extends AccessController {
         // Get the participants of the group. Note that in this list the new participant is not contained.
         List<User> participants = groupDB.getParticipants();
 
-        // TODO Send a notification to the participants to notify them about the new user.
+        // TODO Send a notification to the participants to notify them about the new user. Delete requestor from list.
     }
 
     /**
@@ -546,7 +543,7 @@ public class GroupController extends AccessController {
         else{
             logger.info("The user with id {} has been removed from the group with id {} by the group " +
                     "administrator", participantId, groupId);
-            // TODO send notification with type GROUP_PARTICIPANT_REMOVED
+            // TODO send notification with type GROUP_PARTICIPANT_REMOVED, remove requestor
         }
 
         // Update all ballots and conversations for which the participant is the administrator.
@@ -630,11 +627,9 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_TITLE, errMsg);
             throw new ServerException(400, BALLOT_INVALID_TITLE);
         }
-        else if(ballot.getDescription() != null && !ballot.getDescription().matches(DESCRIPTION_PATTERN)){
-            String errMsg = "Invalid description for ballot. Probably the description exceeded the size or the " +
-                    "description contains any special chars which are not supported. The size of the description " +
-                    "is: " + ballot.getDescription().length() + ". The description is: '" + ballot.getDescription()
-                    + "'.";
+        else if(ballot.getDescription() != null && ballot.getDescription().length() > DESCRIPTION_MAX_LENGTH){
+            String errMsg = "Invalid description for ballot. The description exceeded the max size. The size of the " +
+                    "description is: " + ballot.getDescription().length() + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_DESCRIPTION, errMsg);
             throw new ServerException(400, BALLOT_INVALID_DESCRIPTION);
         }
@@ -809,7 +804,7 @@ public class GroupController extends AccessController {
 
         // Notify the participants of the group about the changed ballot. Also the requestor?
         List<User> participants = groupDB.getParticipants();
-        // TODO notify participants.
+        // TODO notify participants, delete the requestor from the list before sending.
 
         return ballotDB;
     }
@@ -841,14 +836,12 @@ public class GroupController extends AccessController {
         String newDescription = ballot.getDescription();
         if(newDescription != null){
             // Update the description if conditions are met.
-            if(newDescription.matches(DESCRIPTION_PATTERN)){
+            if(newDescription.length() <= DESCRIPTION_MAX_LENGTH){
                 ballotDB.setDescription(newDescription);
             }
             else{
-                String errMsg = "Invalid description for ballot. Probably the description exceeded the size or the " +
-                        "description contains any special chars which are not supported. The size of the description " +
-                        "is: " +ballot.getDescription().length()+ ". The description is: '" +ballot.getDescription()+
-                        "'.";
+                String errMsg = "Invalid description for ballot. The description exceeded the size. The size of the " +
+                        "description is: " + ballot.getDescription().length() + ".";
                 logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_DESCRIPTION, errMsg);
                 throw new ServerException(400, BALLOT_INVALID_DESCRIPTION);
             }
@@ -983,7 +976,7 @@ public class GroupController extends AccessController {
 
         // Notify the participants of the group about the new ballot option.
         List<User> partcipants = groupDB.getParticipants();
-        // TODO send notficiation with OPTION_NEW status.
+        // TODO send notficiation with OPTION_NEW status. Delete the requestor from the list.
 
         return option;
     }
@@ -1176,13 +1169,7 @@ public class GroupController extends AccessController {
                 // Store the vote in the database.
                 groupDBM.storeVote(optionId, requestor.getId());
             }
-            else{
-                // TODO are we sending this error message?
-                String errMsg = "The user with id " + requestor.getId() + " has already voted for option with id " +
-                        optionId;
-                logger.error(LOG_SERVER_EXCEPTION, 409, OPTION_USER_HAS_ALREADY_VOTED, errMsg);
-                throw new ServerException(409, OPTION_USER_HAS_ALREADY_VOTED);
-            }
+
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
@@ -1190,7 +1177,7 @@ public class GroupController extends AccessController {
 
         // Notify the participants of the group about the new vote. Also the requestor?
         List<User> participants = groupDB.getParticipants();
-        // TODO notify participants with type BALLOT_OPTION_VOTE
+        // TODO notify participants with type BALLOT_OPTION_VOTE, delete requestor from list
     }
 
     /**
@@ -1293,7 +1280,7 @@ public class GroupController extends AccessController {
         verifyOptionExistenceViaDB(ballotId, optionId);
 
         try {
-            // TODO check if the user has voted for the option?
+            // Delete the vote for this option.
             groupDBM.deleteVote(optionId, userId);
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
@@ -1302,7 +1289,7 @@ public class GroupController extends AccessController {
 
         // Notify participants about the deleted vote. Also the requestor?
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification with type BALLOT_OPTION_VOTE_REMOVED? Needs to be defined
+        // TODO send notification with type BALLOT_OPTION_VOTE? Needs to be defined
     }
 
     /**
@@ -1359,7 +1346,7 @@ public class GroupController extends AccessController {
 
         // Notify the participants about the new conversation. Also the requestor?
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification with status CONVERSATION_NEW.
+        // TODO send notification with status CONVERSATION_NEW. Delete requestor from the list
 
         return conversation;
     }
@@ -1489,7 +1476,7 @@ public class GroupController extends AccessController {
 
         // Notify participants about changed conversation.
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification
+        // TODO send notification, delete requestor from list
 
         return conversationDB;
     }
@@ -1581,7 +1568,7 @@ public class GroupController extends AccessController {
 
         // Send notification about the deleted conversation to the participants.
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification
+        // TODO send notification, delete requestor from the list
     }
 
     /**
@@ -1684,7 +1671,7 @@ public class GroupController extends AccessController {
 
         // Send notification about the new conversation message to the participants.
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification CONVERSATION_MESSAGE_NEW
+        // TODO send notification CONVERSATION_MESSAGE_NEW, not to the requestor
 
         return conversationMessage;
     }
