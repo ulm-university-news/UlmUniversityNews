@@ -30,7 +30,7 @@ public class GroupController extends AccessController {
     private static final Logger logger = LoggerFactory.getLogger(GroupController.class);
 
     // Error messages:
-    /** A standard error message which can be used if the reuqest is rejected due to an invalid token. */
+    /** A standard error message which can be used if the request is rejected due to an invalid token. */
     private static final String INVALID_TOKEN_ERROR_MSG =
             "To perform this operation a valid access token needs to be provided.";
     /** A standard error message which can be used if the requestor is a moderator and not a user and the operation
@@ -1651,7 +1651,7 @@ public class GroupController extends AccessController {
         conversationMessage.setAuthorUser(requestor.getId());
         conversationMessage.computeCreationDate();
 
-        int maxAttempts = 3;
+        int maxAttempts = 5;
         int attempts = 0;
         boolean successful = false;
         // Try to store the conversation message into the database. After a maximum of attempts, abort the method.
@@ -1668,7 +1668,7 @@ public class GroupController extends AccessController {
                 attempts++;
                 // Sleep a random backoff time.
                 Random random = new Random();
-                int backOff = random.nextInt(200);
+                int backOff = random.nextInt(500);
                 try {
                     Thread.sleep(backOff);
                 } catch (InterruptedException e1) {

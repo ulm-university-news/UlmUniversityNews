@@ -762,7 +762,7 @@ public class ChannelController extends AccessController {
      * occurred.
      */
     private void storeAnnouncement(Announcement announcement) throws ServerException {
-        int maxAttempts = 3;
+        int maxAttempts = 5;
         int attempts = 0;
         boolean successful = false;
         // Try to store the conversation message into the database. After a maximum of attempts, abort the method.
@@ -779,7 +779,7 @@ public class ChannelController extends AccessController {
                 attempts++;
                 // Sleep a random backoff time.
                 Random random = new Random();
-                int backOff = random.nextInt(200);
+                int backOff = random.nextInt(500);
                 try {
                     Thread.sleep(backOff);
                 } catch (InterruptedException e1) {
