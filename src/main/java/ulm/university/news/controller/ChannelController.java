@@ -605,18 +605,39 @@ public class ChannelController extends AccessController {
      *
      * @param accessToken The access token of the requestor.
      * @param channelId The id of the channel for which the moderators are responsible.
-     * @throws ServerException If the authorization of the requestor fails or the requestor isn't allowed to perform
-     * the operation. Furthermore, a failure of the database also causes a ServerException.
+     * @throws ServerException If the authorization of the requestor fails. Furthermore, a failure of the database
+     * also causes a ServerException.
      */
     public List<Moderator> getResponsibleModerators(String accessToken, int channelId) throws ServerException {
-        // Check if requestor is a valid responsible moderator of the channel.
-        verifyResponsibleModerator(accessToken, channelId);
+        // Check if there is a valid access token provided.
+        TokenType tokenType = verifyAccessToken(accessToken);
+        if (tokenType == TokenType.INVALID) {
+            String errMsg = "To perform this operation a valid access token needs to be provided.";
+            logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
+            throw new ServerException(401, TOKEN_INVALID);
+        }
+        List<Moderator> moderators;
         try {
-            return channelDBM.getResponsibleModerators(channelId);
+            // Requestor is a valid user or a moderator. Both are allowed to perform this operation.
+            if (!channelDBM.isValidChannelId(channelId)) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, CHANNEL_NOT_FOUND, "Channel id not found in database.");
+                throw new ServerException(404, CHANNEL_NOT_FOUND);
+            } else {
+                moderators = channelDBM.getResponsibleModerators(channelId);
+            }
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+
+        // If requestor is a user, don't return the moderator names.
+        if (tokenType == TokenType.USER) {
+            for (Moderator moderator : moderators) {
+                moderator.setName(null);
+            }
+        }
+
+        return moderators;
     }
 
     /**
