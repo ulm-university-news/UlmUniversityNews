@@ -28,7 +28,7 @@ public class PushManager {
     /** The logger instance for PushManager. */
     private static final Logger logger = LoggerFactory.getLogger(PushManager.class);
 
-    public static final String API_KEY = "AIzaSyCiSqMqBeyOXgiro8uWleNMzEaw2AsZ2SQ";
+    public static final String API_KEY = "AIzaSyCqoLiA9IoKLJd6UDIYvK6O-7lmGcZ-owA";
 
     public static void notifySubscribers(int channelId, List<User> subscribers, PushType pushType) {
         // TODO Do this check here or in other classes before invoking this method?
@@ -68,7 +68,7 @@ public class PushManager {
         String[] args = new String[2];
         // TODO Structure of JSON message? PushType, Ids
         args[0] = "Announcement Created";
-        // args[1] = pushTokens.get(0);
+        args[1] = pushTokens.get(0);
         System.out.println("length: " + args[1].length());
         // Prepare JSON containing the GCM message content. What to send and where to send.
         JSONObject jGcmData = new JSONObject();

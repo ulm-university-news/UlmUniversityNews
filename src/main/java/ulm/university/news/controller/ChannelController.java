@@ -10,10 +10,12 @@ import ulm.university.news.manager.database.ChannelDatabaseManager;
 import ulm.university.news.manager.push.PushManager;
 import ulm.university.news.manager.reminder.ReminderManager;
 import ulm.university.news.util.exceptions.DatabaseException;
+import ulm.university.news.util.exceptions.MessageNumberAlreadyExistsException;
 import ulm.university.news.util.exceptions.ServerException;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Random;
 
 import static ulm.university.news.util.Constants.*;
 
@@ -739,7 +741,7 @@ public class ChannelController extends AccessController {
 
         List<User> subscribers;
         try {
-            channelDBM.storeAnnouncement(announcement);
+            storeAnnouncement(announcement);
             subscribers = channelDBM.getSubscribers(announcement.getChannelId());
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
@@ -749,6 +751,47 @@ public class ChannelController extends AccessController {
         // TODO notifySubscribers ANNOUNCEMENT_NEW
 
         return announcement;
+    }
+
+    /**
+     * Uses the database manager to store the announcement in the database. The storage may cause conflicts. Hence,
+     * there is a maximum number of attempts and a collision avoidance technique (random backoff time) is used.
+     *
+     * @param announcement The announcement object which should be stored in the database.
+     * @throws ServerException If all attempts to store the announcement has failed or another database failure has
+     * occurred.
+     */
+    private void storeAnnouncement(Announcement announcement) throws ServerException {
+        int maxAttempts = 3;
+        int attempts = 0;
+        boolean successful = false;
+        // Try to store the conversation message into the database. After a maximum of attempts, abort the method.
+        while (!successful && attempts < maxAttempts) {
+            try {
+                // Store announcement message in the database.
+                channelDBM.storeAnnouncement(announcement);
+                successful = true;
+            } catch (DatabaseException e) {
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+                throw new ServerException(500, DATABASE_FAILURE);
+            } catch (MessageNumberAlreadyExistsException e) {
+                // Try again if the storage has failed due to a duplicate message number.
+                attempts++;
+                // Sleep a random backoff time.
+                Random random = new Random();
+                int backOff = random.nextInt(200);
+                try {
+                    Thread.sleep(backOff);
+                } catch (InterruptedException e1) {
+                    logger.error("Interrupted Exception: {}.", e1.getMessage());
+                }
+            }
+        }
+        if (!successful) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Storing of announcement has failed due to " +
+                    "duplicate message numbers.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
     }
 
     /**
@@ -912,7 +955,7 @@ public class ChannelController extends AccessController {
         Reminder reminderDB;
         try {
             reminderDB = channelDBM.getReminder(channelId, reminderId);
-            if(reminderDB == null){
+            if (reminderDB == null) {
                 logger.error(LOG_SERVER_EXCEPTION, 404, REMINDER_NOT_FOUND, "Reminder not found in database.");
                 throw new ServerException(404, REMINDER_NOT_FOUND);
             }
@@ -1002,7 +1045,7 @@ public class ChannelController extends AccessController {
         try {
             // Check if reminder exists in database.
             Reminder reminder = channelDBM.getReminder(channelId, reminderId);
-            if(reminder == null){
+            if (reminder == null) {
                 logger.error(LOG_SERVER_EXCEPTION, 404, REMINDER_NOT_FOUND, "Reminder not found in database.");
                 throw new ServerException(404, REMINDER_NOT_FOUND);
             }
@@ -1051,7 +1094,7 @@ public class ChannelController extends AccessController {
         try {
             // Check if reminder exists in database.
             Reminder reminder = channelDBM.getReminder(channelId, reminderId);
-            if(reminder == null){
+            if (reminder == null) {
                 logger.error(LOG_SERVER_EXCEPTION, 404, REMINDER_NOT_FOUND, "Reminder not found in database.");
                 throw new ServerException(404, REMINDER_NOT_FOUND);
             }
@@ -1069,7 +1112,7 @@ public class ChannelController extends AccessController {
      *
      * @param reminderId The id of the reminder which should be updated in the database.
      */
-    public void resetReminderIgnore(int reminderId){
+    public void resetReminderIgnore(int reminderId) {
         try {
             channelDBM.resetReminderIgnore(reminderId);
         } catch (DatabaseException e) {
@@ -1096,12 +1139,16 @@ public class ChannelController extends AccessController {
 
         List<User> subscribers = null;
         try {
-            channelDBM.storeAnnouncement(announcement);
+            storeAnnouncement(announcement);
             subscribers = channelDBM.getSubscribers(announcement.getChannelId());
         } catch (DatabaseException e) {
             // TODO No further error handling?
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't create an " +
                     "announcement from reminder.");
+        } catch (ServerException e) {
+            // TODO No further error handling?
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't create an " +
+                    "announcement from reminder due to storage failure.");
         }
 
         // TODO notifySubscribers ANNOUNCEMENT_NEW

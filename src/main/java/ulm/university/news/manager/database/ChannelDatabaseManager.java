@@ -9,6 +9,7 @@ import ulm.university.news.data.enums.Platform;
 import ulm.university.news.data.enums.Priority;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
+import ulm.university.news.util.exceptions.MessageNumberAlreadyExistsException;
 import ulm.university.news.util.exceptions.ServerException;
 
 import java.sql.*;
@@ -1129,9 +1130,11 @@ public class ChannelDatabaseManager extends DatabaseManager {
      * announcement object contains all the data of the announcement, including the channel id.
      *
      * @param announcement The announcement object which contains the data for the new announcement.
+     * @throws MessageNumberAlreadyExistsException If database storage has failed due to a duplicate primary key.
      * @throws DatabaseException If the announcement couldn't be stored due to a database failure.
      */
-    public void storeAnnouncement(Announcement announcement) throws DatabaseException {
+    public void storeAnnouncement(Announcement announcement) throws MessageNumberAlreadyExistsException,
+            DatabaseException {
         logger.debug("Start with announcement:{}.", announcement);
         Connection con = null;
         try {
@@ -1207,6 +1210,12 @@ public class ChannelDatabaseManager extends DatabaseManager {
                 logger.warn("Rollback failed.");
                 logger.error(Constants.LOG_SQL_EXCEPTION, e1.getSQLState(), e1.getErrorCode(), e1.getMessage());
             }
+
+            // Abort if the execution has failed due to a duplicate primary key.
+            if(e.getErrorCode() == 1062 && e.getMessage().contains("PRIMARY")){
+                throw new MessageNumberAlreadyExistsException("Message Number already exists.");
+            }
+
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
