@@ -8,6 +8,7 @@ import ulm.university.news.data.enums.Platform;
 import ulm.university.news.data.enums.Priority;
 import ulm.university.news.util.Constants;
 import ulm.university.news.util.exceptions.DatabaseException;
+import ulm.university.news.util.exceptions.MessageNumberAlreadyExistsException;
 
 import java.sql.*;
 import java.time.ZonedDateTime;
@@ -1786,78 +1787,79 @@ public class GroupDatabaseManager extends DatabaseManager {
      *
      * @param conversationId The id of the conversation to which the message belongs.
      * @param conversationMessage Contains the data of the message.
+     * @return  Returns true if the message has been stored successfully, false otherwise.
      * @throws DatabaseException If the message could not be stored due to a database failure.
      */
     public void storeConversationMessage(int conversationId, ConversationMessage conversationMessage) throws
-            DatabaseException {
+            DatabaseException, MessageNumberAlreadyExistsException {
         logger.debug("Start with conversationId:{} and conversationMessage:{}.", conversationId, conversationMessage);
         Connection con = null;
         try {
             con = getDatabaseConnection();
 
-            // Set auto commit to false for the following queries.
+            // Set auto commit to false for the following queries, i.e. start a transaction.
             con.setAutoCommit(false);
 
             String insertMsgQuery =
                     "INSERT INTO Message (Text, CreationDate, Priority) " +
-                    "VALUES (?,?,?);";
+                            "VALUES (?,?,?);";
             String insertConversationMsgQuery =
                     "INSERT INTO ConversationMessage (MessageNumber, Conversation_Id, Author_User_Id, Message_Id) " +
-                    "VALUES (?,?,?,?);";
-            String getMessageNumberQuery =
+                            "VALUES (?,?,?,?);";
+              String getMessageNumberQuery =
                     "SELECT MAX(MessageNumber) " +
                     "FROM ConversationMessage " +
                     "WHERE Conversation_Id=?;";
 
+            // Already prepare the statements.
             PreparedStatement insertMsgStmt = con.prepareStatement(insertMsgQuery);
             PreparedStatement insertConversationMsgStmt = con.prepareStatement(insertConversationMsgQuery);
             PreparedStatement getMessageNumberStmt = con.prepareStatement(getMessageNumberQuery);
 
-            // First, insert the message relevant data fields into the Message table.
-            insertMsgStmt.setString(1, conversationMessage.getText());
-            insertMsgStmt.setTimestamp(2, Timestamp.from(conversationMessage.getCreationDate().toInstant()));
-            insertMsgStmt.setInt(3, conversationMessage.getPriority().ordinal());
-
-            insertMsgStmt.execute();
-
-            // Second, retrieve auto incremented id of the database record for the message.
-            String getIdQuery = "SELECT LAST_INSERT_ID();";
-
-            Statement getIdStmt = con.createStatement();
-            ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
-            if(getIdRs.next()){
-                // Set the id taken from the database to the conversationMessage object.
-                conversationMessage.setId(getIdRs.getInt(1));
-            }
-
             // The message number for the new message.
             int messageNumber = 0;
-            // Third, retrieve the next message number for the given conversation.
+
+            // First, retrieve the next message number for the given conversation.
             getMessageNumberStmt.setInt(1, conversationId);
             ResultSet getMessageNumberRs = getMessageNumberStmt.executeQuery();
-            if(getMessageNumberRs.next()){
+            if (getMessageNumberRs.next()) {
                 messageNumber = getMessageNumberRs.getInt(1);
             }
             messageNumber++; // Increment to get the next free message number.
             // Set the message number in the object.
             conversationMessage.setMessageNumber(messageNumber);
 
+            // Second, insert the message relevant data fields into the Message table.
+            insertMsgStmt.setString(1, conversationMessage.getText());
+            insertMsgStmt.setTimestamp(2, Timestamp.from(conversationMessage.getCreationDate().toInstant()));
+            insertMsgStmt.setInt(3, conversationMessage.getPriority().ordinal());
+            insertMsgStmt.execute();
+
+            // Third, retrieve auto incremented id of the database record for the message.
+            String getIdQuery = "SELECT LAST_INSERT_ID();";
+            Statement getIdStmt = con.createStatement();
+            ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
+            if (getIdRs.next()) {
+                // Set the id taken from the database to the conversationMessage object.
+                conversationMessage.setId(getIdRs.getInt(1));
+            }
+
             // Fourth, insert the conversation message data fields into the ConversationMessage table.
             insertConversationMsgStmt.setInt(1, messageNumber);
             insertConversationMsgStmt.setInt(2, conversationId);
             insertConversationMsgStmt.setInt(3, conversationMessage.getAuthorUser());
             insertConversationMsgStmt.setInt(4, conversationMessage.getId());
-
             insertConversationMsgStmt.execute();
 
             //End transaction.
             con.commit();
-            logger.info("Stored the conversation message with the id {} and the message number {}.",
-                    conversationMessage.getId(), messageNumber);
 
             insertMsgStmt.close();
             insertConversationMsgStmt.close();
             getMessageNumberStmt.close();
+
+            logger.info("Stored the conversation message with the id {} and the message number {}.",
+                     conversationMessage.getId(), messageNumber);
         } catch (SQLException e) {
             try {
                 logger.warn("SQLException occurred during conversationMsg storage, need to rollback the transaction.");
@@ -1866,16 +1868,21 @@ public class GroupDatabaseManager extends DatabaseManager {
                 logger.warn("Rollback failed.");
                 logger.error(Constants.LOG_SQL_EXCEPTION, e1.getSQLState(), e1.getErrorCode(), e1.getMessage());
             }
+
+            // Abort if the execution has failed due to a duplicate primary key.
+            if(e.getErrorCode() == 1062 && e.getMessage().contains("PRIMARY")){
+                throw new MessageNumberAlreadyExistsException("Message Number already exists.");
+            }
+
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
         }
         finally {
             try {
-                assert con != null;
                 con.setAutoCommit(true);
             } catch (SQLException e) {
-                logger.warn("Set auto commit to true has failed.");
+                logger.warn("Setting auto commit to true has failed.");
                 logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             }
             returnConnection(con);

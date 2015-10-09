@@ -8,9 +8,11 @@ import ulm.university.news.data.enums.Priority;
 import ulm.university.news.data.enums.TokenType;
 import ulm.university.news.manager.database.GroupDatabaseManager;
 import ulm.university.news.util.exceptions.DatabaseException;
+import ulm.university.news.util.exceptions.MessageNumberAlreadyExistsException;
 import ulm.university.news.util.exceptions.ServerException;
 
 import java.util.List;
+import java.util.Random;
 
 import static ulm.university.news.util.Constants.*;
 
@@ -89,9 +91,9 @@ public class GroupController extends AccessController {
 
         // Check if the group admin is set correctly.
         if (group.getGroupAdmin() != requestor.getId()) {
-            logger.warn("The Id of the groupAdmin and the requestor don't match. The user who makes the creation " +
-                    "request for the group should be entered as the group admin. The group admin is set to the " +
-                    "id of the requestor.");
+            logger.warn("The Id of the groupAdmin ({}) and the requestor don't match. The user who makes the creation" +
+                    " request for the group should be entered as the group admin. The group admin is set to the " +
+                    "id of the requestor: {}.", group.getGroupAdmin(), requestor.getId());
             group.setGroupAdmin(requestor.getId());
         }
 
@@ -1075,7 +1077,7 @@ public class GroupController extends AccessController {
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
         logger.info("The requestor, i.e. the user with id {}, requests to delete the option with id {} from the " +
-                "ballot with id {} which belongs to the group with id:{}.", requestor.getId(), optionId, ballotId,
+                        "ballot with id {} which belongs to the group with id:{}.", requestor.getId(), optionId, ballotId,
                 groupId);
 
         // Get the group object from the database including a list of its participants. Reject if group not found.
@@ -1649,12 +1651,35 @@ public class GroupController extends AccessController {
         conversationMessage.setAuthorUser(requestor.getId());
         conversationMessage.computeCreationDate();
 
-        try {
-            // Store the conversation message in the database.
-            groupDBM.storeConversationMessage(conversationId, conversationMessage);
-        } catch (DatabaseException e) {
-            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
-            throw new ServerException(500, DATABASE_FAILURE);
+        int maxAttempts = 3;
+        int attempts = 0;
+        boolean successful = false;
+        // Try to store the conversation message into the database. After a maximum of attempts, abort the method.
+        while(!successful && attempts < maxAttempts){
+            try {
+                // Store the conversation message in the database.
+                groupDBM.storeConversationMessage(conversationId, conversationMessage);
+                successful = true;
+            } catch (DatabaseException e) {
+                logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+                throw new ServerException(500, DATABASE_FAILURE);
+            } catch (MessageNumberAlreadyExistsException e) {
+                // Try again if the storage has failed due to a duplicate message number.
+                attempts++;
+                // Sleep a random backoff time.
+                Random random = new Random();
+                int backOff = random.nextInt(200);
+                try {
+                    Thread.sleep(backOff);
+                } catch (InterruptedException e1) {
+                    logger.error("Interrupted Exception: {}.", e1.getMessage());
+                }
+            }
+        }
+        if(!successful){
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Storing of conversation message has failed due" +
+                    " to duplicate message numbers.");
+            throw  new ServerException(500, DATABASE_FAILURE);
         }
 
         // Send notification about the new conversation message to the participants.
