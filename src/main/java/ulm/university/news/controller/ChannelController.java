@@ -978,8 +978,8 @@ public class ChannelController extends AccessController {
 
         // Update modification date.
         reminderDB.computeModificationDate();
-        // TODO Change author to moderator who changed the reminder?
-        // TODO reminder.setAuthorModerator(moderatorDB.getId());
+        //  Change author to moderator who changed the reminder.
+        reminder.setAuthorModerator(moderatorDB.getId());
 
         try {
             channelDBM.updateReminder(reminderDB);
@@ -1116,7 +1116,6 @@ public class ChannelController extends AccessController {
         try {
             channelDBM.resetReminderIgnore(reminderId);
         } catch (DatabaseException e) {
-            // TODO No further error handling?
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't reset reminder " +
                     "ignore field.");
         }
@@ -1142,11 +1141,9 @@ public class ChannelController extends AccessController {
             storeAnnouncement(announcement);
             subscribers = channelDBM.getSubscribers(announcement.getChannelId());
         } catch (DatabaseException e) {
-            // TODO No further error handling?
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't create an " +
                     "announcement from reminder.");
         } catch (ServerException e) {
-            // TODO No further error handling?
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't create an " +
                     "announcement from reminder due to storage failure.");
         }

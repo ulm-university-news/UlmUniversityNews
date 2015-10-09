@@ -28,6 +28,7 @@ public class PushManager {
     /** The logger instance for PushManager. */
     private static final Logger logger = LoggerFactory.getLogger(PushManager.class);
 
+    // TODO Get key from properties file.
     public static final String API_KEY = "AIzaSyCqoLiA9IoKLJd6UDIYvK6O-7lmGcZ-owA";
 
     public static void notifySubscribers(int channelId, List<User> subscribers, PushType pushType) {

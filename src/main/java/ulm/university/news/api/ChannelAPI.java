@@ -112,8 +112,6 @@ public class ChannelAPI {
     @Produces(MediaType.APPLICATION_JSON)
     public String getChannels(@HeaderParam("Authorization") String accessToken, @QueryParam("moderatorId")
     Integer moderatorId, @QueryParam("lastUpdated") String lastUpdated) throws ServerException {
-        // TODO Note: On client site replace + in date String with %2B
-        // TODO Replace other reserved characters too? https://de.wikipedia.org/wiki/URL-Encoding
         ZonedDateTime lastUpdatedDate = null;
         try {
             // Verify correct date format.

@@ -15,6 +15,9 @@ public class Constants {
     /** The time zone where the server is located. */
     public static final ZoneId TIME_ZONE = ZoneId.of("Europe/Berlin");
 
+    /** The location of the Email resource bundle. */
+    public static final String RESOURCE_BUNDLE_EMAIL = "i18n/Email";
+
     /** A pattern which describes the valid form of a user or moderator name. */
     public static final String ACCOUNT_NAME_PATTERN = "^[-_a-zA-Z0-9]{3,35}$";
 
@@ -34,7 +37,7 @@ public class Constants {
      *  the year yyyy. In WS, the year can also be given as yyyy/yy, e.g. 2015/16.*/
     public static final String TERM_PATTERN = "^[W,S][S][0-9]{4}[/]?[0-9]{0,2}$";
 
-    // TODO Replace with length only?
+    // TODO Replace with length only!
     /** A pattern which describes a valid resource description. A resource description can contain any ASCII characters,
      *  but is limited to 500 characters. */
     public static final String DESCRIPTION_PATTERN = "^[öÖäÄüÜßa.\\p{Print}\\p{Blank}]{1,500}$";
@@ -57,11 +60,9 @@ public class Constants {
     /** The maximum length of the contacts text of a channel. */
     public static final int CHANNEL_CONTACTS_MAX_LENGTH = 120;
 
-    // TODO Increase max length in database to about 120!
     /** The maximum length of the locations text of a channel. */
-    public static final int CHANNEL_LOCATIONS_MAX_LENGTH = 65;
+    public static final int CHANNEL_LOCATIONS_MAX_LENGTH = 120;
 
-    // TODO One constant field for same length!?
     /** The maximum length of the dates text of a channel. */
     public static final int CHANNEL_DATES_MAX_LENGTH = 150;
 
@@ -69,7 +70,7 @@ public class Constants {
     public static final int CHANNEL_COST_MAX_LENGTH = 150;
 
     /** The maximum length of the website text of a channel. */
-    public static final int CHANNEL_WEBSITE_MAX_LENGTH = 150;
+    public static final int CHANNEL_WEBSITE_MAX_LENGTH = 500;
 
     /** The maximum length of the participants text of a channel. */
     public static final int CHANNEL_PARTICIPANTS_MAX_LENGTH = 150;
@@ -82,9 +83,6 @@ public class Constants {
 
     /** The maximum length of an announcement title. */
     public static final int ANNOUNCEMENT_TITLE_MAX_LENGTH = 45;
-
-    /** The location of the Email resource bundle. */
-    public static final String RESOURCE_BUNDLE_EMAIL = "i18n/Email";
 
 
     // Logging:

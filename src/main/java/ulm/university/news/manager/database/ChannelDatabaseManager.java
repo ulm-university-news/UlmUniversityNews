@@ -21,7 +21,8 @@ import java.util.List;
 import static ulm.university.news.util.Constants.*;
 
 /**
- * TODO
+ * The ChannelDatabaseManager provides methods to access, insert or update data in the database related to channel
+ * resources and its corresponding sub-resources. The sub-resources of a channel are announcements and reminders.
  *
  * @author Matthias Mak
  * @author Philipp Speidel

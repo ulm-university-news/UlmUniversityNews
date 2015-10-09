@@ -484,6 +484,8 @@ public class ModeratorController extends AccessController {
             // Set deleted field in database to true.
             moderatorDBM.markModeratorAsDeleted(moderatorDeleteDB.getId());
 
+            // TODO Send moderator deleted email.
+
             // Set active field in database to false.
             channelCtrl.removeModeratorFromChannels(moderatorDeleteDB.getId());
         } catch (DatabaseException e) {
