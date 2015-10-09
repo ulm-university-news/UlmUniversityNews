@@ -31,16 +31,11 @@ public class Constants {
     public static final String MODERATOR_TOKEN_PATTERN = "^[a-fA-F0-9]{64}$";
 
     /** A pattern which describes the valid form of a resource name or title. */
-    public static final String NAME_PATTERN = "^[öÖäÄüÜßa-zA-Z0-9\\p{Blank}]{3,45}$";
+    public static final String NAME_PATTERN = "^[!?_-:öÖäÄüÜßa-zA-Z0-9\\p{Blank}]{3,45}$";
 
     /** A pattern which describes the valid form of a term string. The term is always noted in the form WS or SS plus
      *  the year yyyy. In WS, the year can also be given as yyyy/yy, e.g. 2015/16.*/
     public static final String TERM_PATTERN = "^[W,S][S][0-9]{4}[/]?[0-9]{0,2}$";
-
-    // TODO Replace with length only!
-    /** A pattern which describes a valid resource description. A resource description can contain any ASCII characters,
-     *  but is limited to 500 characters. */
-    public static final String DESCRIPTION_PATTERN = "^[öÖäÄüÜßa.\\p{Print}\\p{Blank}]{1,500}$";
 
     /** The maximum length of a description field. */
     public static final int DESCRIPTION_MAX_LENGTH = 500;
