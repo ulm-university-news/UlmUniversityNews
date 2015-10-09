@@ -172,6 +172,7 @@ public class UserController extends AccessController{
      */
     public User changeUser(String accessToken, int userId, User user) throws ServerException {
         User userDB = null;
+        boolean isNameChanged = false;
 
         if(user == null){
             logger.error(LOG_SERVER_EXCEPTION, 400, USER_DATA_INCOMPLETE, "No valid data sent with patch request.");
@@ -189,6 +190,11 @@ public class UserController extends AccessController{
                 throw new ServerException(403, USER_FORBIDDEN);
             }
 
+            // Check if the user tries to change his name.
+            if(user.getName() != null && !user.getName().equals(userDB.getName())){
+                isNameChanged = true;
+            }
+
             // Determine what needs to be updated and update the corresponding fields in the database.
             userDB = updateUser(user, userDB);
             userDBM.updateUser(userDB);
@@ -199,8 +205,10 @@ public class UserController extends AccessController{
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // Notify all participants of groups in which the user is participant.
-        groupController.notifyGroupParticipantsAboutUserChange(userId);
+        // Notify all participants of groups in which the user is participant if the user has changed the name.
+        if(isNameChanged){
+            groupController.notifyGroupParticipantsAboutUserChange(userId);
+        }
 
         return userDB;
     }
