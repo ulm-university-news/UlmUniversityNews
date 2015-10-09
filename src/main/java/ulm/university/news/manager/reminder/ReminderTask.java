@@ -35,8 +35,8 @@ public class ReminderTask implements Runnable {
     /**
      * This method runs when the ReminderTask has started.
      */
-    public void run()
-    {
+    @Override
+    public void run() {
         processReminder();
     }
 
@@ -46,12 +46,12 @@ public class ReminderTask implements Runnable {
      */
     private void processReminder() {
         logger.info("Event of reminder with id {} has been fired.", reminder.getId());
-        if(reminder.isExpired()) {
+        if (reminder.isExpired()) {
             // The Reminder is expired so stop its production of announcements.
             logger.debug("Expired. No announcement has been created. Reminder will be deactivated.");
             ReminderManager.removeReminder(reminder.getId());
         } else {
-            if(reminder.isIgnore()) {
+            if (reminder.isIgnore()) {
                 // Ignore the production of an announcement this time and reset the ignore flag.
                 reminder.setIgnore(false);
                 logger.debug("Ignored. No announcement has been created. Ignore flag will be reset.");
@@ -67,7 +67,7 @@ public class ReminderTask implements Runnable {
 
             // Check again if the reminder is expired to detect its possible expiration before waiting the whole
             // interval for its next (expired) execution.
-            if(reminder.isExpired()) {
+            if (reminder.isExpired()) {
                 // The reminder is expired so stop its production of announcements.
                 logger.debug("Expired. Reminder will be deactivated.");
                 ReminderManager.removeReminder(reminder.getId());
