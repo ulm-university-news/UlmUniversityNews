@@ -99,8 +99,8 @@ public class AccessController {
             // Get moderator (requestor) identified by access token from database.
             Moderator moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
             if (moderatorDB.isLocked()) {
-                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_LOCKED, "Moderator account is locked.");
-                throw new ServerException(403, MODERATOR_LOCKED);
+                logger.error(LOG_SERVER_EXCEPTION, 423, MODERATOR_LOCKED, "Moderator account is locked.");
+                throw new ServerException(423, MODERATOR_LOCKED);
             } else {
                 // All checks passed. Return valid moderator.
                 return moderatorDB;
