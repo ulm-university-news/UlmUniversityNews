@@ -36,7 +36,7 @@ public class AccessController {
     /**
      * Creates an instance of the AccessController class.
      */
-    public AccessController(){
+    public AccessController() {
 
     }
 
@@ -52,7 +52,7 @@ public class AccessController {
      */
     public TokenType verifyAccessToken(String accessToken) throws ServerException {
         TokenType tokenType = null;
-        if(accessToken == null){
+        if (accessToken == null) {
             return TokenType.INVALID;
         }
         try {
@@ -64,7 +64,7 @@ public class AccessController {
             } else {
                 tokenType = TokenType.INVALID;
             }
-        }catch(DatabaseException e){
+        } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure. Verification of access token" +
                     " failed.");
             throw new ServerException(500, DATABASE_FAILURE);
@@ -97,14 +97,20 @@ public class AccessController {
 
         try {
             // Get moderator (requestor) identified by access token from database.
-            return moderatorDBM.getModeratorByToken(accessToken);
+            Moderator moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
+            if (moderatorDB.isLocked()) {
+                logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_LOCKED, "Moderator account is locked.");
+                throw new ServerException(403, MODERATOR_LOCKED);
+            } else {
+                // All checks passed. Return valid moderator.
+                return moderatorDB;
+            }
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't get moderator " +
                     "account by access token.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
     }
-
 
 
     /**
@@ -120,12 +126,11 @@ public class AccessController {
         TokenType tokenType = verifyAccessToken(accessToken);
 
         // Check the given access token. Only an user is allowed to perform the request.
-        if(tokenType == TokenType.INVALID){
+        if (tokenType == TokenType.INVALID) {
             String errMsg = "To perform this operation a valid access token needs to be provided.";
             logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, errMsg);
             throw new ServerException(401, TOKEN_INVALID);
-        }
-        else if(tokenType == TokenType.MODERATOR){
+        } else if (tokenType == TokenType.MODERATOR) {
             String errMsg = "Moderator is not allowed to perform the requested operation.";
             logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, errMsg);
             throw new ServerException(403, MODERATOR_FORBIDDEN);
@@ -154,13 +159,13 @@ public class AccessController {
      */
     public boolean isAdministrator(String accessToken) throws ServerException {
         boolean isAdmin = false;
-        if(accessToken != null){
+        if (accessToken != null) {
             try {
                 /* Get moderator (requestor) identified by access token from database. If its not a moderator token
                 the method will return null.*/
                 Moderator moderatorDB = moderatorDBM.getModeratorByToken(accessToken);
                 // Check if moderator is a system administrator.
-                if(moderatorDB != null && moderatorDB.isAdmin()) {
+                if (moderatorDB != null && moderatorDB.isAdmin()) {
                     isAdmin = true;
                 }
             } catch (DatabaseException e) {
