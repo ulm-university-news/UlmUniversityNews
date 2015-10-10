@@ -22,7 +22,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * TODO
+ * The PushManager class is used to send push messages to app clients. So far, Android and Windows clients are
+ * supported. Caching methods are used to avoid sending unnecessary push messages.
  *
  * @author Matthias Mak
  * @author Philipp Speidel
@@ -263,19 +264,24 @@ public class PushManager {
         jData.put("id1", id1);
         jData.put("id2", id2);
         jData.put("id3", id3);
-        logger.debug("JSON push message created: {}", jData.toString());
+        logger.info("JSON push message created: {}", jData.toString());
         return jData.toString();
     }
 
     /**
-     * Sends the given JSON push message to the Android clients. Creates a GCM JSON message for each user and sends
-     * them to the Google Cloud Messaging (GCM) server. The GCM server will forward the messages to the Android app.
+     * Creates a GCM JSON message and ensures that each push access token will be included. Sends the given JSON push
+     * message to the Android clients.
      *
      * @param pushTokens A list of Android push tokens.
      * @param jsonPushMessage The push message as a JSON String.
      */
     private void notifyAndroid(List<String> pushTokens, String jsonPushMessage) {
-        // TODO
+        // Check if there is at least one recipients. Do nothing if there is non.
+        if (pushTokens.isEmpty()) {
+            logger.info("No Android push tokens given. No Android user will be notified.");
+            return;
+        }
+
         // Prepare JSON containing the GCM message content.
         JSONObject jGcmData = new JSONObject();
         JSONObject jData = new JSONObject();
@@ -283,9 +289,30 @@ public class PushManager {
         jData.put("message", jsonPushMessage.trim());
         // Set GCM message content.
         jGcmData.put("data", jData);
-        // Define where to send GCM message.
-        jGcmData.put("to", pushTokens.get(0).trim());
 
+        // Send message to a maximum of 1000 recipients per GCM message.
+        while (pushTokens.size() > 1000) {
+            // Send push messages while there are still unnotified recipients.
+            logger.debug("Recipient number > 1000.");
+            jGcmData.put("registration_ids", pushTokens.subList(0, 1000));
+            // Remove notified recipients to get remaining push tokens.
+            pushTokens = pushTokens.subList(1000, pushTokens.size());
+            // Send message to GCM server.
+            sendAndroid(jGcmData);
+        }
+        logger.debug("Recipient number < 1000");
+        jGcmData.put("registration_ids", pushTokens);
+        // Send message to GCM server.
+        sendAndroid(jGcmData);
+    }
+
+    /**
+     * Sends the given GCM JSON message data to the Android clients defined in the data object. The message will be sent
+     * to a Google Cloud Messaging (GCM) server. The GCM server will forward the messages to the Android app.
+     *
+     * @param jGcmData The GCM JSON message which contains the message data and the recipients.
+     */
+    private void sendAndroid(JSONObject jGcmData) {
         try {
             // Create connection to send GCM Message request.
             URL url = new URL("https://android.googleapis.com/gcm/send");
@@ -298,18 +325,17 @@ public class PushManager {
             // Send GCM message content.
             OutputStream outputStream = conn.getOutputStream();
             outputStream.write(jGcmData.toString().getBytes());
-
             // Read GCM response.
-            InputStream inputStream = conn.getInputStream();
 
+            InputStream inputStream = conn.getInputStream();
             String resp = IOUtils.toString(inputStream);
-            System.out.println(resp);
-            System.out.println("Check your device/emulator for notification or logcat for " +
-                    "confirmation of the receipt of the GCM message.");
+            logger.debug("GCM response: {}", resp);
+
+            // Extract number of successfully sent messages.
+            resp = resp.split("\"success\":")[1].split(",\"failure\"")[0];
+            logger.info("Push message send to {} Android client(s).", resp);
         } catch (IOException e) {
-            System.out.println("Unable to send GCM message.");
-            System.out.println("Please ensure that GCM_API_KEY has been replaced by the server " +
-                    "API key, and that the device's registration token is correct (if specified).");
+            logger.error("Unable to send GCM message.");
             e.printStackTrace();
         }
     }
