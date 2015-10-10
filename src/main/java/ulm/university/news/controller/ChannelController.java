@@ -584,16 +584,39 @@ public class ChannelController extends AccessController {
      */
     public void removeModeratorFromChannel(String accessToken, int channelId, int moderatorId) throws
             ServerException {
+        // Check if requestor is a valid moderator and responsible for the channel.
+        verifyResponsibleModerator(accessToken, channelId);
         try {
+            List<Moderator> responsibleModerators = channelDBM.getResponsibleModerators(channelId);
+            // Check if list is empty. This shouldn't happen at all.
+            if (responsibleModerators == null || responsibleModerators.size() == 0) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, MODERATOR_NOT_FOUND, "Moderator not found in channel.");
+                throw new ServerException(404, MODERATOR_NOT_FOUND);
+            }
+            // Check if moderator who should be removed from channel is responsible for the channel.
+            boolean moderatorFoundInChannel = false;
+            for (Moderator moderator : responsibleModerators) {
+                if (moderator.getId() == moderatorId) {
+                    moderatorFoundInChannel = true;
+                    break;
+                }
+            }
+            if (!moderatorFoundInChannel) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, MODERATOR_NOT_FOUND, "Moderator not found in channel.");
+                throw new ServerException(404, MODERATOR_NOT_FOUND);
+            }
             // Check if there is more than one responsible moderator for the channel.
-            List<Moderator> responsibleModerators = getResponsibleModerators(accessToken, channelId);
             if (responsibleModerators.size() == 1) {
                 logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Can't remove moderator from channel " +
                         "because there has to be at least on responsible moderator per channel.");
                 throw new ServerException(403, MODERATOR_FORBIDDEN);
             }
-            // Perform no further checks, just try to delete the specified entry. If not found, nothing happens.
+            // Finally remove moderator as responsible moderator from channel.
             channelDBM.removeModeratorFromChannel(channelId, moderatorId);
+            // Notify all subscribers of the channel.
+            List<User> subscribers = channelDBM.getSubscribers(channelId);
+            PushManager.getInstance().notifyUsers(PushType.MODERATOR_REMOVED, subscribers, channelId, moderatorId,
+                    null);
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);

@@ -707,7 +707,8 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
-     * Removes the moderator with the given id as responsible moderator from the channel with the given id.
+     * Removes the moderator with the given id as responsible moderator from the channel with the given id. The
+     * active field of the moderator will be set to false but the entry won't be deleted from database.
      *
      * @param channelId The id of the channel for which the moderators is responsible.
      * @param moderatorId The id of the moderator who should be removed from the channel.

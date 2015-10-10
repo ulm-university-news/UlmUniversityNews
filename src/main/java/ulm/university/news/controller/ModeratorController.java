@@ -6,7 +6,9 @@ import org.slf4j.LoggerFactory;
 import ulm.university.news.data.Channel;
 import ulm.university.news.data.Moderator;
 import ulm.university.news.data.enums.Language;
+import ulm.university.news.data.enums.PushType;
 import ulm.university.news.manager.email.EmailManager;
+import ulm.university.news.manager.push.PushManager;
 import ulm.university.news.util.Translator;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.ServerException;
@@ -474,7 +476,7 @@ public class ModeratorController extends AccessController {
             for (Channel channel : channels) {
                 if (channel.getModerators() != null && channel.getModerators().size() == 1) {
                     logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, "Moderator is single and " +
-                            "only responsible for channel with id " +  channel.getId() + ". Resolution required.");
+                            "only responsible for channel with id " + channel.getId() + ". Resolution required.");
                     throw new ServerException(403, MODERATOR_FORBIDDEN);
                 }
             }
@@ -483,9 +485,6 @@ public class ModeratorController extends AccessController {
         try {
             // Set deleted field in database to true.
             moderatorDBM.markModeratorAsDeleted(moderatorDeleteDB.getId());
-
-            // TODO Send moderator deleted email.
-
             // Set active field in database to false.
             channelCtrl.removeModeratorFromChannels(moderatorDeleteDB.getId());
         } catch (DatabaseException e) {
@@ -493,11 +492,25 @@ public class ModeratorController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
+        // Internationalization: Get email text from properties file.
+        Locale locale = moderatorDeleteDB.getLanguageAsLocale();
+        String key = "moderator.deleted.subject";
+        String subject = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, APPLICATION_NAME);
+        key = "moderator.deleted.message";
+        String message = Translator.getInstance().getText(RESOURCE_BUNDLE_EMAIL, locale, key, moderatorDeleteDB
+                .getFirstName(), moderatorDeleteDB.getLastName(), APPLICATION_NAME);
+
+        // Send account deleted email to moderator.
+        if (!EmailManager.getInstance().sendMail(moderatorDeleteDB.getEmail(), subject, message)) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, EMAIL_FAILURE, "Couldn't sent email to moderator.");
+            throw new ServerException(500, EMAIL_FAILURE);
+        }
+
         if (channels != null) {
             // Notify subscribers that the moderator was removed from the channel.
             for (Channel channel : channels) {
-                // TODO notifySubscribers(channel.getId(), moderatorDeleteDB.getId(), channel.getSubscribers(),
-                // TODO MODERATOR_REMOVED)
+                PushManager.getInstance().notifyUsers(PushType.MODERATOR_REMOVED, channel.getSubscribers(), channel
+                        .getId(), moderatorDeleteDB.getId(), null);
             }
         }
 
