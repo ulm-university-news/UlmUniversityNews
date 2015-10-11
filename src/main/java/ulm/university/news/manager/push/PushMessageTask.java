@@ -67,7 +67,7 @@ public class PushMessageTask implements Runnable {
                     break;
             }
         } else {
-            logger.debug("Push type of cached push message hasn't changed.");
+            logger.debug("Push type {} of cached push message hasn't changed.", pushMessage.getPushType());
         }
         PushManager.getInstance().notifyUsersAsTask(pushMessage.getPushType(), pushMessage.getUsers(), pushMessage
                 .getId1(), pushMessage.getId2(), pushMessage.getId3(), pushMessageMap);

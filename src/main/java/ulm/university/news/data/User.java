@@ -98,6 +98,35 @@ public class User {
         this.active = active;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        User user = (User) o;
+
+        if (id != user.id) return false;
+        if (name != null ? !name.equals(user.name) : user.name != null) return false;
+        if (serverAccessToken != null ? !serverAccessToken.equals(user.serverAccessToken) : user.serverAccessToken != null)
+            return false;
+        if (pushAccessToken != null ? !pushAccessToken.equals(user.pushAccessToken) : user.pushAccessToken != null)
+            return false;
+        if (platform != user.platform) return false;
+        return !(active != null ? !active.equals(user.active) : user.active != null);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = id;
+        result = 31 * result + (name != null ? name.hashCode() : 0);
+        result = 31 * result + (serverAccessToken != null ? serverAccessToken.hashCode() : 0);
+        result = 31 * result + (pushAccessToken != null ? pushAccessToken.hashCode() : 0);
+        result = 31 * result + (platform != null ? platform.hashCode() : 0);
+        result = 31 * result + (active != null ? active.hashCode() : 0);
+        return result;
+    }
+
     /**
      * Get the id of the user.
      *

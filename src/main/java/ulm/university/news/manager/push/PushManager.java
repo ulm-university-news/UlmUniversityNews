@@ -136,7 +136,6 @@ public class PushManager {
         notifyAndroid(userPushTokensAndroid, jsonPushMessage);
         notifyWindows(userPushTokensAndroid, jsonPushMessage);
         notifyIOS(userPushTokensAndroid, jsonPushMessage);
-
     }
 
     /**
@@ -194,9 +193,9 @@ public class PushManager {
                 cachedPushMessages.put(pushMessageMap, cachedPushMessages.get(pushMessageMap) + 1);
             } else {
                 // No such push message cached so far. Cache push message.
-                PushMessage pushMessage = new PushMessage(pushType, users, id1, id2, id3);
                 cachedPushMessages.put(pushMessageMap, 1);
                 // Wait for same push messages.
+                PushMessage pushMessage = new PushMessage(pushType, users, id1, id2, id3);
                 scheduler.schedule(new PushMessageTask(pushMessage, pushMessageMap), CACHING_DELAY, TimeUnit.SECONDS);
             }
             logger.debug("Push message has been cached. Waiting for same push messages.");

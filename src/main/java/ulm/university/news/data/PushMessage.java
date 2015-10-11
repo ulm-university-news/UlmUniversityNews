@@ -41,6 +41,31 @@ public class PushMessage {
         this.id3 = id3;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        PushMessage that = (PushMessage) o;
+
+        if (pushType != that.pushType) return false;
+        if (!users.equals(that.users)) return false;
+        if (id1 != null ? !id1.equals(that.id1) : that.id1 != null) return false;
+        if (id2 != null ? !id2.equals(that.id2) : that.id2 != null) return false;
+        return !(id3 != null ? !id3.equals(that.id3) : that.id3 != null);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = pushType.hashCode();
+        result = 31 * result + users.hashCode();
+        result = 31 * result + (id1 != null ? id1.hashCode() : 0);
+        result = 31 * result + (id2 != null ? id2.hashCode() : 0);
+        result = 31 * result + (id3 != null ? id3.hashCode() : 0);
+        return result;
+    }
+
     public PushType getPushType() {
         return pushType;
     }

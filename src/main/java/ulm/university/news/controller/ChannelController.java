@@ -796,6 +796,27 @@ public class ChannelController extends AccessController {
         PushManager.getInstance().notifyUsers(PushType.ANNOUNCEMENT_NEW, subscribers, announcement.getChannelId(),
                 null, null);
 
+        // PushManager caching test.
+        /*
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_OPTION_NEW, subscribers, 1, 2, 1);
+
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_OPTION_NEW, subscribers, 1, 2, 1);
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_OPTION_NEW, subscribers, 1, 2, 2);
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_OPTION_NEW, subscribers, 1, 3, 3);
+
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_OPTION_VOTE, subscribers, 1, 2, 1);
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_OPTION_VOTE, subscribers, 1, 2, 2);
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_OPTION_VOTE, subscribers, 1, 3, 3);
+
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_CHANGED, subscribers, 1, 1, null);
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_CHANGED, subscribers, 1, 2, null);
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_CHANGED, subscribers, 2, 3, null);
+
+        PushManager.getInstance().notifyUsers(PushType.CONVERSATION_CHANGED, subscribers, 1, 1, null);
+        PushManager.getInstance().notifyUsers(PushType.CONVERSATION_CHANGED, subscribers, 1, 2, null);
+        PushManager.getInstance().notifyUsers(PushType.CONVERSATION_CHANGED, subscribers, 2, 3, null);
+        */
+
         return announcement;
     }
 
