@@ -20,7 +20,7 @@ import static ulm.university.news.util.Constants.*;
 
 /**
  * The GroupController handles requests concerning the group resources and the corresponding sub-resources. The
- * sub-resources of the group resource are options and conversations. The GroupController provides methods to
+ * sub-resources of the group resource are ballots and conversations. The GroupController provides methods to
  * retrieve, create, update or delete group resources and their sub-resources.
  *
  * @author Matthias Mak
@@ -237,11 +237,10 @@ public class GroupController extends AccessController {
         }
 
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification to participants, also notify requestor -> don't notify requestor, delete him from list
-        // Start Test
-        logger.debug("Test Push with: participants: {} and group Id: {}.", participants, groupDB.getId());
+        // Remove the requestor from the participants list. The requestor should not be notified.
+        removeRequestorFromParticipantsList(participants, requestor);
+        // Send the push notification to the participants of the group.
         PushManager.getInstance().notifyUsers(PushType.GROUP_CHANGED, participants, groupDB.getId(), null, null);
-        // End Test
 
         // Don't return the list of participants in the response.
         groupDB.setParticipants(null);
@@ -359,27 +358,29 @@ public class GroupController extends AccessController {
         // Request the affected group. The group should contain a list of all its participants.
         Group groupDB = getGroup(groupId, true);
 
+        User requestor = null;
+        Moderator requestorModerator = null;
         try {
             // Check whether the requestor has the permission to delete the group.
             if(tokenType == TokenType.USER){
                 // Note that user cannot be null here as the access token has been verified.
-                User user = userDBM.getUserByToken(accessToken);
-                logger.info("User with id {} wants to delete the group with id {}.", user.getId(), groupId);
+                requestor = userDBM.getUserByToken(accessToken);
+                logger.info("User with id {} wants to delete the group with id {}.", requestor.getId(), groupId);
 
                 // Check if user is group administrator of this group.
-                if(!groupDB.isGroupAdmin(user.getId())){
-                    String errMsg = "The user with id "+ user.getId() + " is not the group administrator of this " +
-                            "group. The user is thus not allowed to delete the group.";
+                if(!groupDB.isGroupAdmin(requestor.getId())){
+                    String errMsg = "The user with id "+ requestor.getId() + " is not the group administrator of this" +
+                            " group. The user is thus not allowed to delete the group.";
                     logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
                     throw new ServerException(403, USER_FORBIDDEN);
                 }
             }
             else if (tokenType == TokenType.MODERATOR) {
-                Moderator moderator = moderatorDBM.getModeratorByToken(accessToken);
-                logger.info("Moderator with id {} wants to delete the group with id {}.", moderator.getId(),
+                requestorModerator = moderatorDBM.getModeratorByToken(accessToken);
+                logger.info("Moderator with id {} wants to delete the group with id {}.", requestorModerator.getId(),
                         groupId);
                 // Besides group administrators, only administrators have the permission to perform this operation.
-                if (!moderator.isAdmin()) {
+                if (!requestorModerator.isAdmin()) {
                     logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, MODERATOR_FORBIDDEN_ERROR_MSG);
                     throw new ServerException(403, MODERATOR_FORBIDDEN);
                 }
@@ -395,7 +396,12 @@ public class GroupController extends AccessController {
 
         // Get all participants of the group. Notify also the requestor?
         List<User> participants = groupDB.getParticipants();
-        // TODO notify participants about deleted group, delete requestor from list before sending
+        // Remove the requestor from the participants list if it is an user. The requestor should not be notified.
+        if(requestor != null){
+            removeRequestorFromParticipantsList(participants, requestor);
+        }
+        // Notify the participants of the group.
+        PushManager.getInstance().notifyUsers(PushType.GROUP_DELETED, participants, groupId, null, null);
     }
 
     /**
@@ -437,8 +443,8 @@ public class GroupController extends AccessController {
 
         // Get the participants of the group. Note that in this list the new participant is not contained.
         List<User> participants = groupDB.getParticipants();
-
-        // TODO Send a notification to the participants to notify them about the new user. Delete requestor from list.
+        // Notify the participants of the group about the new participant.
+        PushManager.getInstance().notifyUsers(PushType.PARTICIPANT_NEW, participants, groupId, requestor.getId(), null);
     }
 
     /**
@@ -541,17 +547,23 @@ public class GroupController extends AccessController {
 
         // Notify participants depending on whether the user has left or the user was removed from the group.
         List<User> participants = groupDB.getParticipants();
+        // Remove the requestor from the participants list. The requestor should not be notified.
+        removeRequestorFromParticipantsList(participants, requestor);
+        // Send the notification.
         if(participantId == requestor.getId()){
             logger.info("The user with id {} has left the group with id {}.", requestor.getId(), groupId);
-            // TODO send notification with type GROUP_PARTICIPANT_LEFT
-            // TODO remove the participant with participantId from the participants list first? -> remove him
+            PushManager.getInstance().notifyUsers(PushType.PARTICIPANT_LEFT, participants, groupId, participantId,
+                    null);
         }
         else{
             logger.info("The user with id {} has been removed from the group with id {} by the group " +
                     "administrator", participantId, groupId);
-            // TODO send notification with type GROUP_PARTICIPANT_REMOVED, remove requestor
+            PushManager.getInstance().notifyUsers(PushType.PARTICIPANT_REMOVED, participants, groupId, participantId,
+                    null);
         }
 
+        // Set the updated participants list to the group object.
+        groupDB.setParticipants(participants);
         // Update all ballots and conversations for which the participant is the administrator.
         updateConversationAndBallotAdmin(groupDB, participantId);
     }
@@ -587,7 +599,8 @@ public class GroupController extends AccessController {
                         adminId, conversation.getId());
 
                 // Send notification about conversation update.
-                // TODO send notification
+                PushManager.getInstance().notifyUsers(PushType.CONVERSATION_CHANGED, participants, groupDB.getId(),
+                        conversation.getId(), null);
             }
 
             // Request all ballots for which the participant is listed as the administrator.
@@ -602,7 +615,8 @@ public class GroupController extends AccessController {
                         ballot.getId());
 
                 // Send notification about ballot update.
-                // TODO send notification
+                PushManager.getInstance().notifyUsers(PushType.BALLOT_CHANGED, participants, groupDB.getId(), ballot
+                        .getId(), null);
             }
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
@@ -680,9 +694,11 @@ public class GroupController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // Notify participants about a new ballot.
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification
+        // Remove the requestor from the participants list. The requestor should not be notified.
+        removeRequestorFromParticipantsList(participants, requestor);
+        // Notify the participants about the new ballot.
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_NEW, participants, groupId, ballot.getId(), null);
 
         return ballot;
     }
@@ -700,7 +716,7 @@ public class GroupController extends AccessController {
      * the ballots can not be retrieved due to a database failure.
      */
     public List<Ballot> getBallots(String accessToken, int groupId, boolean subresources) throws ServerException {
-        List<Ballot> ballots = null;
+        List<Ballot> ballots;
         /* Check if requestor is a valid user. Only users (more precisely participants of the group) are allowed to
            perform this operation. */
         User requestor = verifyUserAccess(accessToken);
@@ -735,7 +751,7 @@ public class GroupController extends AccessController {
      * not found or the ballot could not be retrieved due to a database failure.
      */
     public Ballot getBallot(String accessToken, int groupId, int ballotId) throws ServerException {
-        Ballot ballot = null;
+        Ballot ballot;
         /* Check if requestor is a valid user. Only users (more precisely participants of the group) are allowed to
            perform this operation. */
         User requestor = verifyUserAccess(accessToken);
@@ -808,9 +824,11 @@ public class GroupController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // Notify the participants of the group about the changed ballot. Also the requestor?
+        // Notify the participants of the group about the changed ballot.
         List<User> participants = groupDB.getParticipants();
-        // TODO notify participants, delete the requestor from the list before sending.
+        // Remove requestor from participants list. The requestor should not be notified
+        removeRequestorFromParticipantsList(participants, requestor);
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_CHANGED, participants, groupId, ballotId, null);
 
         return ballotDB;
     }
@@ -913,9 +931,11 @@ public class GroupController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // Notify the participants of the group about the deleted ballot. Also the requestor?
+        // Notify the participants of the group about the deleted ballot.
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification
+        // Remove the requestor from the participants list. The requestor should not be notified.
+        removeRequestorFromParticipantsList(participants, requestor);
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_DELETED, participants, groupId, ballotId, null);
     }
 
     /**
@@ -981,8 +1001,11 @@ public class GroupController extends AccessController {
         }
 
         // Notify the participants of the group about the new ballot option.
-        List<User> partcipants = groupDB.getParticipants();
-        // TODO send notficiation with OPTION_NEW status. Delete the requestor from the list.
+        List<User> participants = groupDB.getParticipants();
+        // Remove requestor from the participants list. The requestor should not be notified.
+        removeRequestorFromParticipantsList(participants, requestor);
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_OPTION_NEW, participants, groupId, ballotId, option
+                .getId());
 
         return option;
     }
@@ -999,7 +1022,7 @@ public class GroupController extends AccessController {
      * not found or the retrieval of the option fails due to a database failure.
      */
     public List<Option> getOptions(String accessToken, int groupId, int ballotId) throws ServerException {
-        List<Option> options = null;
+        List<Option> options;
 
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
            execute this operation. */
@@ -1076,8 +1099,8 @@ public class GroupController extends AccessController {
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
         logger.info("The requestor, i.e. the user with id {}, requests to delete the option with id {} from the " +
-                        "ballot with id {} which belongs to the group with id:{}.", requestor.getId(), optionId, ballotId,
-                groupId);
+                        "ballot with id {} which belongs to the group with id:{}.", requestor.getId(), optionId,
+                ballotId, groupId);
 
         // Get the group object from the database including a list of its participants. Reject if group not found.
         Group groupDB = getGroup(groupId, true);
@@ -1113,7 +1136,9 @@ public class GroupController extends AccessController {
 
         // Notify participants of the group about the deleted option.
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification. Type BALLOT_OPTION_REMOVED ? -> muss noch definiert werden
+        // Remove the requestor of the participants list. The requestor should not be notified.
+        removeRequestorFromParticipantsList(participants, requestor);
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_OPTION_DELETED, participants, groupId, ballotId, optionId);
     }
 
     /**
@@ -1183,7 +1208,9 @@ public class GroupController extends AccessController {
 
         // Notify the participants of the group about the new vote. Also the requestor?
         List<User> participants = groupDB.getParticipants();
-        // TODO notify participants with type BALLOT_OPTION_VOTE, delete requestor from list
+        // Remove requestor from participants list. The requestor should not be notified.
+        removeRequestorFromParticipantsList(participants, requestor);
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_OPTION_VOTE, participants, groupId, ballotId, optionId);
     }
 
     /**
@@ -1199,7 +1226,7 @@ public class GroupController extends AccessController {
      * are not found or the retrieval of the voters fails due to a database failure.
      */
     public List<User> getVoters(String accessToken, int groupId, int ballotId, int optionId) throws ServerException {
-        List<User> users = null;
+        List<User> users;
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
@@ -1293,9 +1320,11 @@ public class GroupController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
 
-        // Notify participants about the deleted vote. Also the requestor?
+        // Notify participants about the deleted vote.
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification with type BALLOT_OPTION_VOTE? Needs to be defined
+        // Remove the requestor from the participants list. The requestor should not be notified.
+        removeRequestorFromParticipantsList(participants, requestor);
+        PushManager.getInstance().notifyUsers(PushType.BALLOT_OPTION_VOTE, participants, groupId, ballotId, optionId);
     }
 
     /**
@@ -1352,7 +1381,10 @@ public class GroupController extends AccessController {
 
         // Notify the participants about the new conversation. Also the requestor?
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification with status CONVERSATION_NEW. Delete requestor from the list
+        // Remove requestor from participants list. The requestor should not be notified.
+        removeRequestorFromParticipantsList(participants, requestor);
+        PushManager.getInstance().notifyUsers(PushType.CONVERSATION_NEW, participants, groupId, conversation.getId(),
+                null);
 
         return conversation;
     }
@@ -1371,7 +1403,7 @@ public class GroupController extends AccessController {
      */
     public List<Conversation> getConversations(String accessToken, int groupId, boolean subresources) throws
             ServerException {
-        List<Conversation> conversations = null;
+        List<Conversation> conversations;
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
@@ -1405,7 +1437,7 @@ public class GroupController extends AccessController {
      * conversation are not found or the retrieval fails due to a database failure.
      */
     public Conversation getConversation(String accessToken, int groupId, int conversationId) throws ServerException {
-        Conversation conversation = null;
+        Conversation conversation;
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
@@ -1482,7 +1514,10 @@ public class GroupController extends AccessController {
 
         // Notify participants about changed conversation.
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification, delete requestor from list
+        // Remove the requestor from the participants list. The requestor should not be notified.
+        removeRequestorFromParticipantsList(participants, requestor);
+        PushManager.getInstance().notifyUsers(PushType.CONVERSATION_CHANGED, participants, groupId, conversationId,
+                null);
 
         return conversationDB;
     }
@@ -1574,7 +1609,10 @@ public class GroupController extends AccessController {
 
         // Send notification about the deleted conversation to the participants.
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification, delete requestor from the list
+        // Remove the requestor from the participants list. The requestor should not be notified.
+        removeRequestorFromParticipantsList(participants, requestor);
+        PushManager.getInstance().notifyUsers(PushType.CONVERSATION_DELETED, participants, groupId, conversationId,
+                null);
     }
 
     /**
@@ -1632,11 +1670,13 @@ public class GroupController extends AccessController {
         if(priority == Priority.HIGH && groupDB.getGroupType() == GroupType.WORKING){
             // In a working group no messages can be sent with priority high.
             conversationMessage.setPriority(Priority.NORMAL);
+            logger.info("Message priority is reset to normal.");
         }
         else if(priority == Priority.HIGH && groupDB.getGroupType() == GroupType.TUTORIAL &&
                 !groupDB.isGroupAdmin(requestor.getId())){
             // In a tutorial group only the group administrator (tutor) can send a message with priority high.
             conversationMessage.setPriority(Priority.NORMAL);
+            logger.info("Message priority is reset to normal.");
         }
 
         // Set relevant fields in the conversationMessage object.
@@ -1677,7 +1717,9 @@ public class GroupController extends AccessController {
 
         // Send notification about the new conversation message to the participants.
         List<User> participants = groupDB.getParticipants();
-        // TODO send notification CONVERSATION_MESSAGE_NEW, not to the requestor
+        // TODO Don't remove the reqeustor from the list? Send messageNr in push notification?
+        PushManager.getInstance().notifyUsers(PushType.CONVERSATION_MESSAGE_NEW, participants, groupId,
+                conversationId, null);
 
         return conversationMessage;
     }
@@ -1698,7 +1740,7 @@ public class GroupController extends AccessController {
      */
     public List<ConversationMessage> getConversationMessages(String accessToken, int groupId, int conversationId, int
             messageNumber) throws ServerException {
-        List<ConversationMessage> messages = null;
+        List<ConversationMessage> messages;
 
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
         execute this operation. */
@@ -1743,8 +1785,15 @@ public class GroupController extends AccessController {
             for (Group group : groups) {
                 List<User> participants = groupDBM.getParticipants(group.getId());
 
-                // TODO send notification USER_CHANGE with userId and groupId
-                // Remove the changed user from the participants list before?
+                // Remove the changed user from the participants list before.
+                for(int i=0; i< participants.size(); i++){
+                    if(participants.get(i).getId() == userId){
+                        participants.remove(i);
+                        break;
+                    }
+                }
+                // TODO send notification USER_CHANGE with userId and groupId - noch nicht definiert!
+//                PushManager.getInstance().notifyUsers();
             }
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
@@ -1976,6 +2025,28 @@ public class GroupController extends AccessController {
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
+        }
+    }
+
+    /**
+     * Removes the specified user object from the list of user objects if it is contained in the list. This method
+     * can be used to remove requestors from the participants list of a group in order to skip them in the
+     * notification process.
+     *
+     * @param userList The list of user objects.
+     * @param requestor The user object which should be removed from the list.
+     */
+    private void removeRequestorFromParticipantsList(List<User> userList, User requestor){
+        int requestorObjectIndex = -1;
+        for (int i=0; i < userList.size(); i++) {
+            if (requestor.getId() == userList.get(i).getId()){
+                requestorObjectIndex = i;
+                break;
+            }
+        }
+        if (requestorObjectIndex != -1){
+            userList.remove(requestorObjectIndex);
+            logger.debug("Removed the user with id {} from the participants list.", requestor.getId());
         }
     }
 
