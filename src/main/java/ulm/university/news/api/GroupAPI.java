@@ -16,7 +16,11 @@ import java.net.URI;
 import java.util.List;
 
 /**
- * TODO
+ * The GroupAPI is responsible for accepting incoming group requests and requests for the corresponding sub-resources
+ * . Sub-resources of groups are ballots and conversations. The class takes incoming requests, reads the content and
+ * parameters and hands it over to the appropriate controller methods. After the request has been executed
+ * successfully, the GroupAPI generates the response message. If the execution of the request has failed for whatever
+ * reasons, the ServerException is handed over to the ErrorHandler class.
  *
  * @author Matthias Mak
  * @author Philipp Speidel
@@ -96,8 +100,6 @@ public class GroupAPI {
                           @DefaultValue("false") @QueryParam("withParticipants") boolean withParticipants, @Context
                              UriInfo ui)
             throws ServerException {
-//        MultivaluedMap<String, String> queryParams = ui.getQueryParameters();
-//        System.out.println(queryParams.get("withParticipants"));
         Group group = groupController.getGroup(accessToken, groupId, withParticipants);
         return Response.status(Response.Status.OK).entity(group).build();
     }

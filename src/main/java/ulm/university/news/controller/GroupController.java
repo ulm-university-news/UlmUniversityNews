@@ -5,8 +5,10 @@ import org.slf4j.LoggerFactory;
 import ulm.university.news.data.*;
 import ulm.university.news.data.enums.GroupType;
 import ulm.university.news.data.enums.Priority;
+import ulm.university.news.data.enums.PushType;
 import ulm.university.news.data.enums.TokenType;
 import ulm.university.news.manager.database.GroupDatabaseManager;
+import ulm.university.news.manager.push.PushManager;
 import ulm.university.news.util.exceptions.DatabaseException;
 import ulm.university.news.util.exceptions.MessageNumberAlreadyExistsException;
 import ulm.university.news.util.exceptions.ServerException;
@@ -236,6 +238,10 @@ public class GroupController extends AccessController {
 
         List<User> participants = groupDB.getParticipants();
         // TODO send notification to participants, also notify requestor -> don't notify requestor, delete him from list
+        // Start Test
+        logger.debug("Test Push with: participants: {} and group Id: {}.", participants, groupDB.getId());
+        PushManager.getInstance().notifyUsers(PushType.GROUP_CHANGED, participants, groupDB.getId(), null, null);
+        // End Test
 
         // Don't return the list of participants in the response.
         groupDB.setParticipants(null);

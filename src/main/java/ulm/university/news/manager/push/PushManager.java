@@ -151,8 +151,8 @@ public class PushManager {
         // Give push tokens to corresponding notification method.
         String jsonPushMessage = createPushMessage(pushType, id1, id2, id3);
         notifyAndroid(userPushTokensAndroid, jsonPushMessage);
-        notifyWindows(userPushTokensAndroid, jsonPushMessage);
-        notifyIOS(userPushTokensAndroid, jsonPushMessage);
+        notifyWindows(userPushTokensWindows, jsonPushMessage);
+        notifyIOS(userPushTokensIOS, jsonPushMessage);
     }
 
     /**
@@ -180,8 +180,8 @@ public class PushManager {
         // Give push tokens to corresponding notification method.
         String jsonPushMessage = createPushMessage(pushType, id1, id2, id3);
         notifyAndroid(userPushTokensAndroid, jsonPushMessage);
-        notifyWindows(userPushTokensAndroid, jsonPushMessage);
-        notifyIOS(userPushTokensAndroid, jsonPushMessage);
+        notifyWindows(userPushTokensWindows, jsonPushMessage);
+        notifyIOS(userPushTokensIOS, jsonPushMessage);
     }
 
     /**
@@ -457,6 +457,9 @@ public class PushManager {
                 case HttpURLConnection.HTTP_NOT_ACCEPTABLE:
                     logger.warn("The WNS throttles this channel due to to many push notifications in a short amount " +
                             "of time. Request won't be retried.");
+                    break;
+                case HttpURLConnection.HTTP_OK:
+                    logger.debug("Successfully sent push notification.");
                     break;
                 default:
                     logger.error("Could not send push notification: Response code is: {}, debug trace is: {}, error " +
