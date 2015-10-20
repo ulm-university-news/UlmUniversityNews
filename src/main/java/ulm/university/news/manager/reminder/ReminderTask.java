@@ -49,7 +49,7 @@ public class ReminderTask implements Runnable {
         if (reminder.isExpired()) {
             // The Reminder is expired so stop its production of announcements.
             logger.debug("Expired. No announcement has been created. Reminder will be deactivated.");
-            ReminderManager.removeReminder(reminder.getId());
+            ReminderManager.getInstance().removeReminder(reminder.getId());
         } else {
             if (reminder.isIgnore()) {
                 // Ignore the production of an announcement this time and reset the ignore flag.
@@ -58,7 +58,7 @@ public class ReminderTask implements Runnable {
                 channelCtrl.resetReminderIgnore(reminder.getId());
             } else {
                 // Create an announcement.
-                logger.debug("Valid. Announcement has been created.");
+                logger.debug("Valid. Announcement will be created.");
                 channelCtrl.createAnnouncementFromReminder(reminder);
             }
             // Compute the reminders next execution date.
@@ -70,7 +70,7 @@ public class ReminderTask implements Runnable {
             if (reminder.isExpired()) {
                 // The reminder is expired so stop its production of announcements.
                 logger.debug("Expired. Reminder will be deactivated.");
-                ReminderManager.removeReminder(reminder.getId());
+                ReminderManager.getInstance().removeReminder(reminder.getId());
             }
         }
     }

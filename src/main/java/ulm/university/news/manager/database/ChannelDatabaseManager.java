@@ -1483,8 +1483,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
         List<Reminder> reminders = new LinkedList<Reminder>();
         try {
             con = getDatabaseConnection();
-            String query =
-                    "SELECT * FROM Reminder WHERE Channel_Id=?;";
+            String query = "SELECT * FROM Reminder WHERE Channel_Id=?;";
 
             PreparedStatement getRemindersStmt = con.prepareStatement(query);
             getRemindersStmt.setInt(1, channelId);
@@ -1504,6 +1503,61 @@ public class ChannelDatabaseManager extends DatabaseManager {
                         (Constants.TIME_ZONE);
                 endDate = getRemindersRs.getTimestamp("EndDate").toLocalDateTime()
                         .atZone(Constants.TIME_ZONE);
+                interval = getRemindersRs.getInt("Interval");
+                ignore = getRemindersRs.getBoolean("Ignore");
+                reminderId = getRemindersRs.getInt("Id");
+                authorModerator = getRemindersRs.getInt("Author_Moderator_Id");
+                title = getRemindersRs.getString("Title");
+                text = getRemindersRs.getString("Text");
+                priority = Priority.values[getRemindersRs.getInt("Priority")];
+                reminder = new Reminder(reminderId, creationDate, modificationDate, startDate, endDate, interval,
+                        ignore, channelId, authorModerator, title, text, priority);
+                reminders.add(reminder);
+            }
+            getRemindersStmt.close();
+        } catch (SQLException e) {
+            // Throw back DatabaseException to the Controller.
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with reminders:{}.", reminders);
+        return reminders;
+    }
+
+    /**
+     * Gets all reminders of all channels from the database.
+     *
+     * @return The reminders of all channels.
+     * @throws DatabaseException If the reminders couldn't be get from the database due to a database failure.
+     */
+    public List<Reminder> getReminders() throws DatabaseException {
+        logger.debug("Start.");
+        Connection con = null;
+        List<Reminder> reminders = new LinkedList<Reminder>();
+        try {
+            con = getDatabaseConnection();
+            String query = "SELECT * FROM Reminder;";
+
+            PreparedStatement getRemindersStmt = con.prepareStatement(query);
+            ResultSet getRemindersRs = getRemindersStmt.executeQuery();
+            Reminder reminder;
+            ZonedDateTime creationDate, modificationDate, startDate, endDate;
+            int channelId, interval, reminderId, authorModerator;
+            boolean ignore;
+            String title, text;
+            Priority priority;
+            while (getRemindersRs.next()) {
+                creationDate = getRemindersRs.getTimestamp("CreationDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
+                modificationDate = getRemindersRs.getTimestamp("ModificationDate").toLocalDateTime()
+                        .atZone(Constants.TIME_ZONE);
+                startDate = getRemindersRs.getTimestamp("StartDate").toLocalDateTime().atZone
+                        (Constants.TIME_ZONE);
+                endDate = getRemindersRs.getTimestamp("EndDate").toLocalDateTime()
+                        .atZone(Constants.TIME_ZONE);
+                channelId = getRemindersRs.getInt("Channel_Id");
                 interval = getRemindersRs.getInt("Interval");
                 ignore = getRemindersRs.getBoolean("Ignore");
                 reminderId = getRemindersRs.getInt("Id");

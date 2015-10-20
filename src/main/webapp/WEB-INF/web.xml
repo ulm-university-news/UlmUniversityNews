@@ -5,8 +5,12 @@
 <web-app>
   <display-name>Archetype Created Web Application</display-name>
 
+    <listener>
+        <listener-class>ulm.university.news.util.StartupListener</listener-class>
+    </listener>
+
     <servlet>
-        <servlet-name>jersey-serlvet</servlet-name>
+        <servlet-name>jersey-servlet</servlet-name>
         <servlet-class>org.glassfish.jersey.servlet.ServletContainer</servlet-class>
         <init-param>
             <param-name>jersey.config.server.provider.packages</param-name>
@@ -16,7 +20,7 @@
     </servlet>
 
     <servlet-mapping>
-        <servlet-name>jersey-serlvet</servlet-name>
+        <servlet-name>jersey-servlet</servlet-name>
         <url-pattern>/*</url-pattern>
     </servlet-mapping>
 

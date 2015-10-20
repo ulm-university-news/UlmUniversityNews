@@ -985,7 +985,7 @@ public class ChannelController extends AccessController {
         }
 
         // Tell the ReminderManager to schedule the created reminder.
-        ReminderManager.addReminder(reminder);
+        ReminderManager.getInstance().addReminder(reminder);
         return reminder;
     }
 
@@ -1057,7 +1057,7 @@ public class ChannelController extends AccessController {
         }
 
         // Tell the ReminderManager to schedule the changed reminder.
-        ReminderManager.changeReminder(reminderDB);
+        ReminderManager.getInstance().changeReminder(reminderDB);
 
         return reminderDB;
     }
@@ -1172,7 +1172,7 @@ public class ChannelController extends AccessController {
             throw new ServerException(500, DATABASE_FAILURE);
         }
         // Tell the ReminderManager to deactivate the deleted reminder.
-        ReminderManager.removeReminder(reminderId);
+        ReminderManager.getInstance().removeReminder(reminderId);
     }
 
     /**
@@ -1219,5 +1219,37 @@ public class ChannelController extends AccessController {
         // Notify all subscribers of the channel.
         PushManager.getInstance().notifyUsers(PushType.ANNOUNCEMENT_NEW, subscribers, announcement.getChannelId(),
                 null, null);
+
+    }
+
+    /**
+     * Gets all stored reminders from database and activates the valid ones. Expired reminders are ignored. This method
+     * should be called only on web app startup.
+     *
+     * @return the number of activated reminders.
+     */
+    public int activateStoredReminders(){
+        List<Reminder> remindersDB = null;
+        try {
+            // Get all reminders of all channels from database.
+            remindersDB = channelDBM.getReminders();
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure. Couldn't load all reminders " +
+                    "on web app startup.");
+        }
+        // Count how many reminders have been activated.
+        int numberOfActivatedReminders = 0;
+        if(remindersDB != null){
+            // Compute next date for each reminder.
+            for(Reminder reminder: remindersDB){
+                reminder.computeFirstNextDate();
+                // If reminder is still valid, activate it in the ReminderManager.
+                if(!reminder.isExpired()){
+                    ReminderManager.getInstance().addReminder(reminder);
+                    numberOfActivatedReminders++;
+                }
+            }
+        }
+        return numberOfActivatedReminders;
     }
 }

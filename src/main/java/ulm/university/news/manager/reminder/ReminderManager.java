@@ -8,7 +8,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.concurrent.*;
 
-import static ulm.university.news.util.Constants.*;
+import static ulm.university.news.util.Constants.TIME_ZONE;
 
 /**
  * The ReminderManager provides methods to activate and deactivate the production of Announcements of a Reminder.
@@ -22,18 +22,39 @@ public class ReminderManager {
     /** The logger instance for ReminderManager. */
     private static final Logger logger = LoggerFactory.getLogger(ReminderManager.class);
 
+    /** Reference for the EmailManager Singleton class. */
+    private static ReminderManager _instance;
+
     /** Schedules active ReminderTasks. */
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     /** Holds references to active ReminderTasks to allow their deactivation. */
-    private static ConcurrentHashMap<Integer, Future<?>> activeReminders = new ConcurrentHashMap<Integer, Future<?>>();
+    private static ConcurrentHashMap<Integer, Future<?>> activeReminders = new ConcurrentHashMap<>();
 
     /**
-     * Activates a Reminder. An active Reminder produces Announcements at the specified times.
-     *
-     * @param reminder The Reminder which should be activated.
+     * Creates an instance of the ReminderManager class.
      */
-    public static synchronized void addReminder(Reminder reminder) {
+    public ReminderManager() {
+    }
+
+    /**
+     * Get an instance of the ReminderManager class.
+     *
+     * @return Instance of ReminderManager.
+     */
+    public static ReminderManager getInstance() {
+        if (_instance == null) {
+            _instance = new ReminderManager();
+        }
+        return _instance;
+    }
+
+    /**
+     * Activates a reminder. An active reminder produces announcements at the specified times.
+     *
+     * @param reminder The reminder which should be activated.
+     */
+    public synchronized void addReminder(Reminder reminder) {
         ZonedDateTime currentDate = ZonedDateTime.now(TIME_ZONE);
         reminder.computeFirstNextDate();
 
@@ -54,12 +75,12 @@ public class ReminderManager {
     }
 
     /**
-     * Deactivates a Reminder. The Reminder will be removed from the list of active Reminders, which means that the
-     * Reminder produces no more Announcements.
+     * Deactivates a reminder. The reminder will be removed from the list of active reminders, which means that the
+     * reminder produces no more announcements.
      *
-     * @param reminderId The id of the Reminder which should be deactivated.
+     * @param reminderId The id of the reminder which should be deactivated.
      */
-    public static synchronized void removeReminder(int reminderId) {
+    public synchronized void removeReminder(int reminderId) {
         // Cancel already scheduled reminder tasks.
         if (activeReminders.containsKey(reminderId)) {
             activeReminders.get(reminderId).cancel(false);
@@ -69,11 +90,11 @@ public class ReminderManager {
     }
 
     /**
-     * Changes an active Reminder. Simply removes the running Reminder and adds the changed Reminder again.
+     * Changes an active reminder. Simply removes the running reminder and adds the changed reminder again.
      *
      * @param reminder The changed reminder which should be activated.
      */
-    public static synchronized void changeReminder(Reminder reminder) {
+    public synchronized void changeReminder(Reminder reminder) {
         removeReminder(reminder.getId());
         addReminder(reminder);
     }

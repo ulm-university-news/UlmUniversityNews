@@ -100,12 +100,12 @@ public class Reminder {
     }
 
     /**
-     * Check if the Reminders next date is after the Reminders end date.
+     * Check if the reminders next date is after the reminders end date and if the reminders end date is in the past.
      *
-     * @return true if Reminder is expired
+     * @return true if Reminder is expired.
      */
     public boolean isExpired() {
-        return nextDate.isAfter(endDate);
+        return nextDate.isAfter(endDate) || endDate.isBefore(ZonedDateTime.now(TIME_ZONE));
     }
 
     /**
