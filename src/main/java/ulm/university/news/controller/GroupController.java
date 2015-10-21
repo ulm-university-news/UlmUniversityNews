@@ -1717,7 +1717,8 @@ public class GroupController extends AccessController {
 
         // Send notification about the new conversation message to the participants.
         List<User> participants = groupDB.getParticipants();
-        // TODO Don't remove the reqeustor from the list? Send messageNr in push notification?
+        // Remove requestor from participants list. The requestor should not be notified.
+        removeRequestorFromParticipantsList(participants, requestor);
         PushManager.getInstance().notifyUsers(PushType.CONVERSATION_MESSAGE_NEW, participants, groupId,
                 conversationId, null);
 
@@ -1792,8 +1793,8 @@ public class GroupController extends AccessController {
                         break;
                     }
                 }
-                // TODO send notification USER_CHANGE with userId and groupId - noch nicht definiert!
-//                PushManager.getInstance().notifyUsers();
+                // Send the notification.
+                PushManager.getInstance().notifyUsers(PushType.USER_CHANGED, participants, userId, null, null);
             }
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
