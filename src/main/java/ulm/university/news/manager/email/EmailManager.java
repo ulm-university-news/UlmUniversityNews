@@ -3,13 +3,13 @@ package ulm.university.news.manager.email;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
 import javax.mail.*;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 
 /**
  * The EmailManager class is a Singleton class which offers the possibility to send emails.
@@ -42,7 +42,7 @@ public class EmailManager {
      *
      * @return Instance of EmailManager.
      */
-    public static EmailManager getInstance() {
+    public static synchronized EmailManager getInstance() {
         if (_instance == null) {
             _instance = new EmailManager();
         }

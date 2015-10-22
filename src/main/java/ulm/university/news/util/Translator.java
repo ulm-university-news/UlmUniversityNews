@@ -36,7 +36,7 @@ public class Translator {
      *
      * @return Instance of Translator.
      */
-    public static Translator getInstance() {
+    public static synchronized Translator getInstance() {
         if (_instance == null) {
             _instance = new Translator(Locale.ENGLISH);
         }

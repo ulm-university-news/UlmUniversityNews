@@ -42,7 +42,7 @@ public class ReminderManager {
      *
      * @return Instance of ReminderManager.
      */
-    public static ReminderManager getInstance() {
+    public static synchronized ReminderManager getInstance() {
         if (_instance == null) {
             _instance = new ReminderManager();
         }

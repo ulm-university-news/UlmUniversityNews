@@ -90,7 +90,7 @@ public class PushManager {
      *
      * @return Instance of PushManager.
      */
-    public static PushManager getInstance() {
+    public static synchronized PushManager getInstance() {
         if (_instance == null) {
             _instance = new PushManager();
         }
