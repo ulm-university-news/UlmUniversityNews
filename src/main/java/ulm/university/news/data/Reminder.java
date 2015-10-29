@@ -1,10 +1,12 @@
 package ulm.university.news.data;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import ulm.university.news.data.enums.Priority;
 
 import java.time.ZonedDateTime;
 
-import static ulm.university.news.util.Constants.*;
+import static ulm.university.news.util.Constants.TIME_ZONE;
 
 /**
  * The Reminder class provides information which are necessary to produce Announcement messages at certain,
@@ -104,6 +106,7 @@ public class Reminder {
      *
      * @return true if Reminder is expired.
      */
+    @JsonIgnore
     public boolean isExpired() {
         return nextDate.isAfter(endDate) || endDate.isBefore(ZonedDateTime.now(TIME_ZONE));
     }
@@ -160,6 +163,7 @@ public class Reminder {
      *
      * @return true if interval is valid.
      */
+    @JsonIgnore
     public boolean isValidInterval() {
         // 0 is a valid interval. It means that there is no interval, it's a one time reminder.
         if (interval == 0) {
@@ -187,6 +191,7 @@ public class Reminder {
      *
      * @return true if dates are valid.
      */
+    @JsonIgnore
     public boolean isValidDates() {
         // Check if the start date is after the end date.
         if (startDate.isAfter(endDate)) {
@@ -207,6 +212,8 @@ public class Reminder {
         this.id = id;
     }
 
+    // Make sure that date is serialized correctly.
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     public ZonedDateTime getCreationDate() {
         return creationDate;
     }
@@ -215,6 +222,8 @@ public class Reminder {
         this.creationDate = creationDate;
     }
 
+    // Make sure that date is serialized correctly.
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     public ZonedDateTime getModificationDate() {
         return modificationDate;
     }
@@ -223,6 +232,8 @@ public class Reminder {
         this.modificationDate = modificationDate;
     }
 
+    // Make sure that date is serialized correctly.
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     public ZonedDateTime getStartDate() {
         return startDate;
     }
@@ -231,10 +242,13 @@ public class Reminder {
         this.startDate = startDate;
     }
 
+    @JsonIgnore
     public ZonedDateTime getNextDate() {
         return nextDate;
     }
 
+    // Make sure that date is serialized correctly.
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     public ZonedDateTime getEndDate() {
         return endDate;
     }

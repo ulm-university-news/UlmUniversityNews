@@ -1,5 +1,6 @@
 package ulm.university.news.data;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import ulm.university.news.data.enums.Priority;
 
 import java.time.ZonedDateTime;
@@ -91,6 +92,8 @@ public class Message {
         this.text = text;
     }
 
+    // Make sure that date is serialized correctly.
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     public ZonedDateTime getCreationDate() {
         return creationDate;
     }

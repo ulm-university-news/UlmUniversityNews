@@ -1,5 +1,6 @@
 package ulm.university.news.api;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,6 +46,22 @@ public class ChannelAPI {
     /** The logger instance for ChannelAPI. */
     private static final Logger logger = LoggerFactory.getLogger(ChannelAPI.class);
 
+    /** An instance of the Jackson mapper to parse dates and subclasses properly to JSON. */
+    ObjectMapper mapper;
+
+    /**
+     * Instantiates the ChannelAPI and configures the Jackson mapper.
+     */
+    public ChannelAPI() {
+        mapper = new ObjectMapper();
+        // Write channels with subclass attributes as JSON String.
+        mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
+        // Make sure that dates are formatted correctly.
+        mapper.registerModule(new JavaTimeModule());
+        mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true);
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    }
+
     /**
      * Create a new channel and adds the creator to its responsible moderators. The data of the new channel is
      * provided within the JSON String. The appropriate channel subclass will be created from the JSON representation.
@@ -67,8 +84,9 @@ public class ChannelAPI {
         channel = channelCtrl.createChannel(accessToken, channel);
         // Create the URI for the created channel resource.
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel" + "/" + channel.getId());
+        String channelAsJson = parseToJson(channel);
         // Return the created channel resource and the Location Header.
-        return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(channel).build();
+        return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(channelAsJson).build();
     }
 
     /**
@@ -92,8 +110,9 @@ public class ChannelAPI {
         // Create appropriate channel object from JSON String.
         Channel channel = getChannelFromJSON(json);
         channel = channelCtrl.changeChannel(accessToken, channelId, channel);
-        // Return the changed channel resource.
-        return Response.status(Response.Status.OK).entity(channel).build();
+        // Return updated channel resource.
+        String channelAsJson = parseToJson(channel);
+        return Response.status(Response.Status.OK).entity(channelAsJson).build();
     }
 
 
@@ -110,7 +129,7 @@ public class ChannelAPI {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public String getChannels(@HeaderParam("Authorization") String accessToken, @QueryParam("moderatorId")
+    public Response getChannels(@HeaderParam("Authorization") String accessToken, @QueryParam("moderatorId")
     Integer moderatorId, @QueryParam("lastUpdated") String lastUpdated) throws ServerException {
         ZonedDateTime lastUpdatedDate = null;
         try {
@@ -124,19 +143,8 @@ public class ChannelAPI {
         }
         // Get all the requested channel resources.
         List<Channel> channels = channelCtrl.getChannels(accessToken, moderatorId, lastUpdatedDate);
-
-        // Write channels with subclass attributes as JSON String.
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
-        // Make sure that dates are formatted correctly.
-        mapper.registerModule(new JavaTimeModule());
-        mapper.configure(SerializationFeature.WRITE_DATES_WITH_ZONE_ID, true);
-        try {
-            return mapper.writeValueAsString(channels);
-        } catch (JsonProcessingException e) {
-            logger.error(LOG_SERVER_EXCEPTION, 500, PARSING_FAILURE, "Couldn't parse channels to JSON String.");
-            throw new ServerException(500, PARSING_FAILURE);
-        }
+        String channelsAsJson = parseToJson(channels);
+        return Response.status(Response.Status.OK).entity(channelsAsJson).build();
     }
 
     /**
@@ -156,7 +164,8 @@ public class ChannelAPI {
         // Get the requested channel resource.
         Channel channel = channelCtrl.getChannel(accessToken, channelId);
         // Return the channel resource.
-        return Response.status(Response.Status.OK).entity(channel).build();
+        String channelAsJson = parseToJson(channel);
+        return Response.status(Response.Status.OK).entity(channelAsJson).build();
     }
 
     /**
@@ -194,7 +203,7 @@ public class ChannelAPI {
     public Response addModeratorToChannel(@HeaderParam("Authorization") String accessToken, @PathParam("id") int
             channelId, Moderator moderator) throws ServerException {
         channelCtrl.addModeratorToChannel(accessToken, channelId, moderator.getName());
-        // Return 201 Created TODO Set Location Header?
+        // Return 201 Created
         return Response.status(Response.Status.CREATED).build();
     }
 
@@ -249,7 +258,7 @@ public class ChannelAPI {
     public Response subscribeChannel(@HeaderParam("Authorization") String accessToken, @PathParam("id") int
             channelId) throws ServerException {
         channelCtrl.subscribeChannel(accessToken, channelId);
-        // Return 201 Created TODO Set Location Header?
+        // Return 201 Created
         return Response.status(Response.Status.CREATED).build();
     }
 
@@ -284,10 +293,194 @@ public class ChannelAPI {
     @GET
     @Path("/{id}/user")
     @Produces(MediaType.APPLICATION_JSON)
-    public List<User> getSubscribers(@HeaderParam("Authorization") String accessToken, @PathParam
-            ("id") int channelId) throws ServerException {
+    public List<User> getSubscribers(@HeaderParam("Authorization") String accessToken, @PathParam("id") int
+            channelId) throws ServerException {
         // Return all the requested user resources.
         return channelCtrl.getSubscribers(accessToken, channelId);
+    }
+
+    /**
+     * Create a new announcement in the specified channel. The created resource will be returned including the URI
+     * which can be used to access the resource.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param announcement The announcement data contained in the body of the HTTP request.
+     * @param uriInfo Information about the URI of this request.
+     * @return Response object including the created announcement object and a set Location Header.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @POST
+    @Path("/{id}/announcement")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response createAnnouncement(@HeaderParam("Authorization") String accessToken, @Context UriInfo uriInfo,
+                                       @PathParam("id") int channelId, Announcement announcement) throws ServerException {
+        announcement = channelCtrl.createAnnouncement(accessToken, channelId, announcement);
+        // Create the URI for the created announcement resource.
+        URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel/" + channelId + "/announcement" +
+                announcement.getId());
+        // Return the created announcement resource and the Location Header.
+        String announcementAsJson = parseToJson(announcement);
+        return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(announcementAsJson).build();
+    }
+
+    /**
+     * Returns the announcements of the channel starting from a defined message number which is taken form the
+     * request URL. The method returns a list of all announcements of the channel which have a higher message
+     * number than the one defined in the request.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel from which the announcements should be retrieved.
+     * @param messageNumber The starting message number. All announcements of the channel which have a higher message
+     * number than the one defined in this parameter are returned.
+     * @return A list of announcements. The list can be empty.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{id}/announcement")
+    public Response getAnnouncements(@HeaderParam("Authorization") String accessToken, @PathParam("id") int
+            channelId, @DefaultValue("0") @QueryParam("messageNr") int messageNumber) throws ServerException {
+        // Get all the requested announcement resources.
+        List<Announcement> announcements = channelCtrl.getAnnouncements(accessToken, channelId, messageNumber);
+        String announcementsAsJson = parseToJson(announcements);
+        return Response.status(Response.Status.OK).entity(announcementsAsJson).build();
+    }
+
+    /**
+     * Deletes an announcement from a channel. This method is used in combination with create a new announcement to
+     * simulate a change of an announcement.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the user is subscribed.
+     * @param messageNumber The message number of the announcement which should be deleted from the channel.
+     * @return Response object.
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Path("/{channelId}/announcement/{messageNumber}")
+    public Response deleteAnnouncement(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
+            channelId, @PathParam("messageNumber") int messageNumber) throws ServerException {
+        channelCtrl.deleteAnnouncement(accessToken, channelId, messageNumber);
+        // Return 204 No Content
+        return Response.status(Response.Status.NO_CONTENT).build();
+    }
+
+    /**
+     * Create a new reminder in the specified channel. The created resource will be returned including the URI
+     * which can be used to access the resource.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param uriInfo Information about the URI of this request.
+     * @param channelId The id of the channel in which the reminder should be created.
+     * @param json The reminder data represented as JSON String.
+     * @return Response object including the created reminder object and a set Location Header.
+     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @POST
+    @Path("/{id}/reminder")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response createReminder(@HeaderParam("Authorization") String accessToken, @Context UriInfo uriInfo,
+                                   @PathParam("id") int channelId, String json) throws ServerException {
+        Reminder reminder = getReminderFromJSON(json);
+        reminder = channelCtrl.createReminder(accessToken, channelId, reminder);
+        // Create the URI for the created reminder resource.
+        URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel/" + channelId + "/reminder" +
+                reminder.getId());
+        String reminderAsJson = parseToJson(reminder);
+        // Return the created reminder resource and the Location Header.
+        return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(reminderAsJson).build();
+    }
+
+    /**
+     * Changes an existing reminder in the specified channel. The updated resource will be returned to the requestor.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the reminder belongs.
+     * @param reminderId The id of the reminder which should be changed.
+     * @param json The changed reminder data represented as JSON String.
+     * @return Response object including the changed reminder object.
+     * @throws ServerException If the execution of the PATCH request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @PATCH
+    @Path("/{channelId}/reminder/{reminderId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response changeReminder(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
+            channelId, @PathParam("reminderId") int reminderId, String json) throws ServerException {
+        Reminder reminder = getReminderFromJSON(json);
+        reminder = channelCtrl.changeReminder(accessToken, channelId, reminder, reminderId);
+        // Return the updated reminder resource.
+        String reminderAsJson = parseToJson(reminder);
+        return Response.status(Response.Status.OK).entity(reminderAsJson).build();
+    }
+
+    /**
+     * Gets an existing reminder identified by id in the specified channel. The requested resource will be returned to
+     * the requestor.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the reminder belongs.
+     * @param reminderId The id of the reminder which is requested.
+     * @return Response object including the requested reminder object.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Path("/{channelId}/reminder/{reminderId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getReminder(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
+            channelId, @PathParam("reminderId") int reminderId) throws ServerException {
+        Reminder reminder = channelCtrl.getReminder(accessToken, channelId, reminderId);
+        String reminderAsJson = parseToJson(reminder);
+        return Response.status(Response.Status.OK).entity(reminderAsJson).build();
+    }
+
+    /**
+     * Gets all existing reminders of a channel identified by id. The requested resources will be returned to the
+     * requestor.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the reminders belong.
+     * @return A list with all reminders of the specified channel.
+     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @GET
+    @Path("/{channelId}/reminder")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getReminders(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
+            channelId) throws ServerException {
+        List<Reminder> reminders = channelCtrl.getReminders(accessToken, channelId);
+        // Return the reminder resources.
+        String remindersAsJson = parseToJson(reminders);
+        return Response.status(Response.Status.OK).entity(remindersAsJson).build();
+    }
+
+    /**
+     * Deletes an existing reminder identified by id in the specified channel. The reminder will be removed from
+     * active reminders in the ReminderManager.
+     *
+     * @param accessToken The access token of the requestor.
+     * @param channelId The id of the channel to which the reminder belongs.
+     * @param reminderId The id of the reminder which should be deleted.
+     * @return Response object.
+     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
+     * information about the error which has occurred.
+     */
+    @DELETE
+    @Path("/{channelId}/reminder/{reminderId}")
+    public Response deleteReminder(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
+            channelId, @PathParam("reminderId") int reminderId) throws ServerException {
+        channelCtrl.deleteReminder(accessToken, channelId, reminderId);
+        // Return 204 No Content
+        return Response.status(Response.Status.NO_CONTENT).build();
     }
 
     /**
@@ -346,182 +539,6 @@ public class ChannelAPI {
     }
 
     /**
-     * Create a new announcement in the specified channel. The created resource will be returned including the URI
-     * which can be used to access the resource.
-     *
-     * @param accessToken The access token of the requestor.
-     * @param announcement The announcement data contained in the body of the HTTP request.
-     * @param uriInfo Information about the URI of this request.
-     * @return Response object including the created announcement object and a set Location Header.
-     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
-     * information about the error which has occurred.
-     */
-    @POST
-    @Path("/{id}/announcement")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response createAnnouncement(@HeaderParam("Authorization") String accessToken, @Context UriInfo uriInfo,
-                                       @PathParam("id") int channelId, Announcement announcement) throws ServerException {
-        announcement = channelCtrl.createAnnouncement(accessToken, channelId, announcement);
-        // Create the URI for the created announcement resource.
-        URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel/" + channelId + "/announcement" +
-                announcement.getId());
-        // Return the created announcement resource and the Location Header.
-        return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(announcement).build();
-    }
-
-    /**
-     * Returns the announcements of the channel starting from a defined message number which is taken form the
-     * request URL. The method returns a list of all announcements of the channel which have a higher message
-     * number than the one defined in the request.
-     *
-     * @param accessToken The access token of the requestor.
-     * @param channelId The id of the channel from which the announcements should be retrieved.
-     * @param messageNumber The starting message number. All announcements of the channel which have a higher message
-     * number than the one defined in this parameter are returned.
-     * @return A list of announcements. The list can be empty.
-     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
-     * information about the error which has occurred.
-     */
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    @Path("/{id}/announcement")
-    public List<Announcement> getAnnouncements(@HeaderParam("Authorization") String accessToken, @PathParam("id") int
-            channelId, @DefaultValue("0") @QueryParam("messageNr") int messageNumber) throws ServerException {
-        return channelCtrl.getAnnouncements(accessToken, channelId, messageNumber);
-    }
-
-    /**
-     * Deletes an announcement from a channel. This method is used in combination with create a new announcement to
-     * simulate a change of an announcement.
-     *
-     * @param accessToken The access token of the requestor.
-     * @param channelId The id of the channel to which the user is subscribed.
-     * @param messageNumber The message number of the announcement which should be deleted from the channel.
-     * @return Response object.
-     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
-     * information about the error which has occurred.
-     */
-    @DELETE
-    @Path("/{channelId}/announcement/{messageNumber}")
-    public Response deleteAnnouncement(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
-            channelId, @PathParam("messageNumber") int messageNumber) throws ServerException {
-        channelCtrl.deleteAnnouncement(accessToken, channelId, messageNumber);
-        // Return 204 No Content
-        return Response.status(Response.Status.NO_CONTENT).build();
-    }
-
-    /**
-     * Create a new reminder in the specified channel. The created resource will be returned including the URI
-     * which can be used to access the resource.
-     *
-     * @param accessToken The access token of the requestor.
-     * @param uriInfo Information about the URI of this request.
-     * @param channelId The id of the channel in which the reminder should be created.
-     * @param json The reminder data represented as JSON String.
-     * @return Response object including the created reminder object and a set Location Header.
-     * @throws ServerException If the execution of the POST request has failed. The ServerException contains
-     * information about the error which has occurred.
-     */
-    @POST
-    @Path("/{id}/reminder")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response createReminder(@HeaderParam("Authorization") String accessToken, @Context UriInfo uriInfo,
-                                   @PathParam("id") int channelId, String json) throws ServerException {
-        Reminder reminder = getReminderFromJSON(json);
-        reminder = channelCtrl.createReminder(accessToken, channelId, reminder);
-        // Create the URI for the created reminder resource.
-        URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "channel/" + channelId + "/reminder" +
-                reminder.getId());
-        // Return the created reminder resource and the Location Header.
-        return Response.status(Response.Status.CREATED).contentLocation(createdURI).entity(reminder).build();
-    }
-
-    /**
-     * Changes an existing reminder in the specified channel. The updated resource will be returned to the requestor.
-     *
-     * @param accessToken The access token of the requestor.
-     * @param channelId The id of the channel to which the reminder belongs.
-     * @param reminderId The id of the reminder which should be changed.
-     * @param json The changed reminder data represented as JSON String.
-     * @return Response object including the changed reminder object.
-     * @throws ServerException If the execution of the PATCH request has failed. The ServerException contains
-     * information about the error which has occurred.
-     */
-    @PATCH
-    @Path("/{channelId}/reminder/{reminderId}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response changeReminder(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
-            channelId, @PathParam("reminderId") int reminderId, String json) throws ServerException {
-        Reminder reminder = getReminderFromJSON(json);
-        reminder = channelCtrl.changeReminder(accessToken, channelId, reminder, reminderId);
-        // Return the updated reminder resource.
-        return Response.status(Response.Status.OK).entity(reminder).build();
-    }
-
-    /**
-     * Gets an existing reminder identified by id in the specified channel. The requested resource will be returned to
-     * the requestor.
-     *
-     * @param accessToken The access token of the requestor.
-     * @param channelId The id of the channel to which the reminder belongs.
-     * @param reminderId The id of the reminder which is requested.
-     * @return Response object including the requested reminder object.
-     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
-     * information about the error which has occurred.
-     */
-    @GET
-    @Path("/{channelId}/reminder/{reminderId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getReminder(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
-            channelId, @PathParam("reminderId") int reminderId) throws ServerException {
-        Reminder reminder = channelCtrl.getReminder(accessToken, channelId, reminderId);
-        // Return the reminder resource.
-        return Response.status(Response.Status.OK).entity(reminder).build();
-    }
-
-    /**
-     * Gets all existing reminders of a channel identified by id. The requested resources will be returned to the
-     * requestor.
-     *
-     * @param accessToken The access token of the requestor.
-     * @param channelId The id of the channel to which the reminders belong.
-     * @return A list with all reminders of the specified channel.
-     * @throws ServerException If the execution of the GET request has failed. The ServerException contains
-     * information about the error which has occurred.
-     */
-    @GET
-    @Path("/{channelId}/reminder")
-    @Produces(MediaType.APPLICATION_JSON)
-    public List<Reminder> getReminders(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
-            channelId) throws ServerException {
-        // Return the reminder resources.
-        return channelCtrl.getReminders(accessToken, channelId);
-    }
-
-    /**
-     * Deletes an existing reminder identified by id in the specified channel. The reminder will be removed from
-     * active reminders in the ReminderManager.
-     *
-     * @param accessToken The access token of the requestor.
-     * @param channelId The id of the channel to which the reminder belongs.
-     * @param reminderId The id of the reminder which should be deleted.
-     * @return Response object.
-     * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
-     * information about the error which has occurred.
-     */
-    @DELETE
-    @Path("/{channelId}/reminder/{reminderId}")
-    public Response deleteReminder(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
-            channelId, @PathParam("reminderId") int reminderId) throws ServerException {
-        channelCtrl.deleteReminder(accessToken, channelId, reminderId);
-        // Return 204 No Content
-        return Response.status(Response.Status.NO_CONTENT).build();
-    }
-
-    /**
      * Creates a reminder object from a given JSON String.
      *
      * @param json The reminder data represented as JSON String.
@@ -552,5 +569,22 @@ public class ChannelAPI {
         }
         logger.debug("End with reminder:{}", reminder);
         return reminder;
+    }
+
+    /**
+     * Parses the given object to a JSON String.
+     *
+     * @param object The object which should be parsed to JSON.
+     * @return The JSON String generated form given object.
+     * @throws ServerException If a parsing exception occurred.
+     */
+    private String parseToJson(Object object) throws ServerException {
+        try {
+            // Return the channel resources.
+            return mapper.writeValueAsString(object);
+        } catch (JsonProcessingException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, PARSING_FAILURE, "Couldn't parse object to JSON String.");
+            throw new ServerException(500, PARSING_FAILURE);
+        }
     }
 }
