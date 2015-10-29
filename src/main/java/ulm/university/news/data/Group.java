@@ -1,12 +1,11 @@
 package ulm.university.news.data;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import org.mindrot.jbcrypt.BCrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ulm.university.news.data.enums.GroupType;
 
-import java.sql.Date;
-import java.sql.Timestamp;
 import java.time.ZonedDateTime;
 import java.util.List;
 
@@ -155,10 +154,7 @@ public class Group {
      * @return Returns true if the user is the group administrator, false otherwise.
      */
     public boolean isGroupAdmin(int userId){
-        if(userId == groupAdmin){
-            return true;
-        }
-        return false;
+        return userId == groupAdmin;
     }
 
     /**
@@ -228,6 +224,8 @@ public class Group {
         this.groupType = groupType;
     }
 
+    // Make sure that date is serialized correctly.
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     public ZonedDateTime getCreationDate() {
         return creationDate;
     }
@@ -236,6 +234,8 @@ public class Group {
         this.creationDate = creationDate;
     }
 
+    // Make sure that date is serialized correctly.
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     public ZonedDateTime getModificationDate() {
         return modificationDate;
     }

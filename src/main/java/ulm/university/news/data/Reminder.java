@@ -107,6 +107,7 @@ public class Reminder {
      * @return true if Reminder is expired.
      */
     @JsonIgnore
+    // Jackson interprets this as a getter method, so make sure that this won't be serialized.
     public boolean isExpired() {
         return nextDate.isAfter(endDate) || endDate.isBefore(ZonedDateTime.now(TIME_ZONE));
     }
@@ -163,6 +164,7 @@ public class Reminder {
      *
      * @return true if interval is valid.
      */
+    // Jackson interprets this as a getter method, so make sure that this won't be serialized.
     @JsonIgnore
     public boolean isValidInterval() {
         // 0 is a valid interval. It means that there is no interval, it's a one time reminder.
@@ -191,6 +193,7 @@ public class Reminder {
      *
      * @return true if dates are valid.
      */
+    // Jackson interprets this as a getter method, so make sure that this won't be serialized.
     @JsonIgnore
     public boolean isValidDates() {
         // Check if the start date is after the end date.
@@ -242,6 +245,7 @@ public class Reminder {
         this.startDate = startDate;
     }
 
+    // Make sure that next date won't be serialized.
     @JsonIgnore
     public ZonedDateTime getNextDate() {
         return nextDate;

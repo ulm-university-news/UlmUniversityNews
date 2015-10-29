@@ -1,7 +1,13 @@
 package ulm.university.news.api;
 
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ulm.university.news.controller.GroupController;
 import ulm.university.news.data.*;
 import ulm.university.news.data.enums.GroupType;
@@ -14,6 +20,9 @@ import javax.ws.rs.core.*;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
+
+import static ulm.university.news.util.Constants.LOG_SERVER_EXCEPTION;
+import static ulm.university.news.util.Constants.PARSING_FAILURE;
 
 /**
  * The GroupAPI is responsible for accepting incoming group requests and requests for the corresponding sub-resources
@@ -31,11 +40,21 @@ public class GroupAPI {
     /** Instance of the GroupController class. */
     private GroupController groupController = new GroupController();
 
-    /**
-     * Creates an instance of the GroupAPI class.
-     */
-    public GroupAPI(){
+    /** The logger instance for GroupAPI. */
+    private static final Logger logger = LoggerFactory.getLogger(GroupAPI.class);
 
+    /** An instance of the Jackson mapper to parse dates properly to JSON. */
+    ObjectMapper mapper;
+
+    /**
+     * Instantiates the ChannelAPI and configures the Jackson mapper.
+     */
+    public GroupAPI() {
+        mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        // Make sure that dates are formatted correctly.
+        mapper.registerModule(new JavaTimeModule());
+        mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true);
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     }
 
     /**
@@ -57,8 +76,9 @@ public class GroupAPI {
         group = groupController.createGroup(accessToken,group);
         // Create the URI which can be used to access the created resource.
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "group" + "/" + group.getId());
+        String groupAsJson = parseToJson(group);
         // Return the created resource and set the location header.
-        return Response.status(Response.Status.CREATED).location(createdURI).entity(group).build();
+        return Response.status(Response.Status.CREATED).location(createdURI).entity(groupAsJson).build();
     }
 
     /**
@@ -75,10 +95,11 @@ public class GroupAPI {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public List<Group> getGroups(@HeaderParam("Authorization") String accessToken,@QueryParam("groupName") String
+    public Response getGroups(@HeaderParam("Authorization") String accessToken,@QueryParam("groupName") String
             groupName, @QueryParam("groupType") GroupType groupType) throws ServerException {
         List<Group> groups = groupController.getGroups(accessToken, groupName, groupType);
-        return groups;
+        String groupsAsJson = parseToJson(groups);
+        return Response.status(Response.Status.OK).entity(groupsAsJson).build();
     }
 
     /**
@@ -101,7 +122,8 @@ public class GroupAPI {
                              UriInfo ui)
             throws ServerException {
         Group group = groupController.getGroup(accessToken, groupId, withParticipants);
-        return Response.status(Response.Status.OK).entity(group).build();
+        String groupAsJson = parseToJson(group);
+        return Response.status(Response.Status.OK).entity(groupAsJson).build();
     }
 
     /**
@@ -123,7 +145,8 @@ public class GroupAPI {
     public Response changeGroup(@HeaderParam("Authorization") String accessToken, @PathParam("id") int id, Group
             group) throws ServerException {
         group = groupController.changeGroup(accessToken, id, group);
-        return Response.status(Response.Status.OK).entity(group).build();
+        String groupAsJson = parseToJson(group);
+        return Response.status(Response.Status.OK).entity(groupAsJson).build();
     }
 
     /**
@@ -167,7 +190,7 @@ public class GroupAPI {
             // Reads the password from the received JSON String with Jackson.
             JsonNode jsonObj = mapper.readTree(jsonString);
             if(jsonObj.get("password") != null){
-                password = jsonObj.get("password").getTextValue();
+                password = jsonObj.get("password").asText();
             }
         } catch (IOException e) {
             throw new ServerException(400, Constants.GROUP_MISSING_PASSWORD);
@@ -190,8 +213,7 @@ public class GroupAPI {
     @Path("/{groupId}/user")
     public List<User> getParticipants(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
             groupId) throws ServerException {
-        List<User> users = groupController.getParticipants(accessToken, groupId);
-        return users;
+        return groupController.getParticipants(accessToken, groupId);
     }
 
     /**
@@ -255,8 +277,7 @@ public class GroupAPI {
     @Path("/{groupId}/ballot")
     public List<Ballot> getBallots(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
             groupId, @DefaultValue("false") @QueryParam("subresources") boolean subresources) throws ServerException {
-        List<Ballot> ballots = groupController.getBallots(accessToken, groupId, subresources);
-        return ballots;
+        return groupController.getBallots(accessToken, groupId, subresources);
     }
 
     /**
@@ -446,8 +467,7 @@ public class GroupAPI {
     @Path("/{groupId}/ballot/{ballotId}/option/{optionId}/user")
     public List<User> getVoters(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
             groupId, @PathParam("ballotId") int ballotId, @PathParam("optionId") int optionId) throws ServerException {
-        List<User> users = groupController.getVoters(accessToken, groupId, ballotId, optionId);
-        return users;
+        return groupController.getVoters(accessToken, groupId, ballotId, optionId);
     }
 
     /**
@@ -516,8 +536,7 @@ public class GroupAPI {
     public List<Conversation> getConversations(@HeaderParam("Authorization") String accessToken, @PathParam
             ("groupId") int groupId, @DefaultValue("false") @QueryParam("subresources") boolean subresources) throws
             ServerException {
-        List<Conversation> conversations = groupController.getConversations(accessToken, groupId, subresources);
-        return conversations;
+        return groupController.getConversations(accessToken, groupId, subresources);
     }
 
     /**
@@ -604,7 +623,8 @@ public class GroupAPI {
            ServerException {
         conversationMessage = groupController.createConversationMessage(accessToken, groupId, conversationId,
                 conversationMessage);
-        return Response.status(Response.Status.CREATED).entity(conversationMessage).build();
+        String conversationMessageAsJson = parseToJson(conversationMessage);
+        return Response.status(Response.Status.CREATED).entity(conversationMessageAsJson).build();
     }
 
     /**
@@ -624,12 +644,29 @@ public class GroupAPI {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{groupId}/conversation/{conversationId}/message")
-    public List<ConversationMessage> getConversationMessages(@HeaderParam("Authorization") String accessToken,
+    public Response getConversationMessages(@HeaderParam("Authorization") String accessToken,
            @PathParam("groupId") int groupId, @PathParam("conversationId") int conversationId, @DefaultValue("0")
            @QueryParam("messageNr") int messageNr) throws ServerException {
-        List<ConversationMessage> messagesList = groupController.getConversationMessages(accessToken, groupId,
+        List<ConversationMessage> conversationMessages = groupController.getConversationMessages(accessToken, groupId,
                 conversationId, messageNr);
-        return messagesList;
+        String conversationMessagesAsJson = parseToJson(conversationMessages);
+        return Response.status(Response.Status.OK).entity(conversationMessagesAsJson).build();
     }
 
+    /**
+     * Parses the given object to a JSON String.
+     *
+     * @param object The object which should be parsed to JSON.
+     * @return The JSON String generated form given object.
+     * @throws ServerException If a parsing exception occurred.
+     */
+    private String parseToJson(Object object) throws ServerException {
+        try {
+            // Return the channel resources.
+            return mapper.writeValueAsString(object);
+        } catch (JsonProcessingException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, PARSING_FAILURE, "Couldn't parse object to JSON String.");
+            throw new ServerException(500, PARSING_FAILURE);
+        }
+    }
 }

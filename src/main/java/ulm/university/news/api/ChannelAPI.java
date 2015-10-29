@@ -54,8 +54,6 @@ public class ChannelAPI {
      */
     public ChannelAPI() {
         mapper = new ObjectMapper();
-        // Write channels with subclass attributes as JSON String.
-        mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
         // Make sure that dates are formatted correctly.
         mapper.registerModule(new JavaTimeModule());
         mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true);
