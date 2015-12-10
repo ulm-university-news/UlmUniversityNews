@@ -474,7 +474,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
             getChannelsStmt.setInt(1, channelId);
             ResultSet getChannelsRs = getChannelsStmt.executeQuery();
 
-            // Create fields before while loop, not within every pass.
+            // Create channel fields.
             String name, description, term, locations, dates, contacts, website, startDate, endDate, lecturer,
                     assistant, cost, organizer, participants;
             ChannelType type;
@@ -982,10 +982,10 @@ public class ChannelDatabaseManager extends DatabaseManager {
     }
 
     /**
-     * Gets all moderators who are responsible for a channel with the given id from the database.
+     * Gets all users who are subscribers of a channel with the given id from the database.
      *
      * @param channelId The id of the channel.
-     * @return All moderators who are responsible for the channel.
+     * @return All users who subscribed to the channel.
      */
     public List<User> getSubscribers(int channelId) throws DatabaseException {
         logger.debug("Start with channelId:{}.", channelId);
@@ -1007,8 +1007,9 @@ public class ChannelDatabaseManager extends DatabaseManager {
                 User user = new User();
                 user.setId(getSubscribersRs.getInt("Id"));
                 user.setName(getSubscribersRs.getString("Name"));
-                user.setPushAccessToken(getSubscribersRs.getString("PushAccessToken"));
                 user.setPlatform(Platform.values[getSubscribersRs.getInt("Platform")]);
+                // Do not return the users push access tokens. The requestor isn't allowed to know them.
+                // user.setPushAccessToken(getSubscribersRs.getString("PushAccessToken"));
                 users.add(user);
             }
             getSubscribersStmt.close();

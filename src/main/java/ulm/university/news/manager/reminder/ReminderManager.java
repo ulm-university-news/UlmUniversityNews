@@ -26,7 +26,7 @@ public class ReminderManager {
     private static ReminderManager _instance;
 
     /** Schedules active ReminderTasks. */
-    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
     /** Holds references to active ReminderTasks to allow their deactivation. */
     private static ConcurrentHashMap<Integer, Future<?>> activeReminders = new ConcurrentHashMap<>();

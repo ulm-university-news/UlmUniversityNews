@@ -67,7 +67,8 @@ public class ChannelController extends AccessController {
      */
     public Channel createChannel(String accessToken, Channel channel) throws ServerException {
         // Perform checks on the received channel data. If the data isn't accurate the channel can't be created.
-        if (channel.getName() == null || channel.getType() == null || channel.getContacts() == null) {
+        if (channel.getName() == null || channel.getType() == null || channel.getContacts() == null || channel
+                .getTerm() == null) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Channel data is incomplete.");
             throw new ServerException(400, CHANNEL_DATA_INCOMPLETE);
         }
@@ -693,22 +694,15 @@ public class ChannelController extends AccessController {
      *
      * @param accessToken The access token of the requestor.
      * @param channelId The id of the channel to which the user is subscribed.
-     * @param userId The id of the user who should be removed as subscriber from the channel.
      * @throws ServerException If the authorization of the requestor fails, the requestor isn't allowed to perform
      * the operation or the channel wasn't found. Furthermore, a failure of the database also causes a ServerException.
      */
-    public void unsubscribeChannel(String accessToken, int channelId, int userId) throws ServerException {
+    public void unsubscribeChannel(String accessToken, int channelId) throws ServerException {
         // Check if requestor is a valid user.
         User userDB = verifyUserAccess(accessToken);
         try {
-            // Check if requestor id is another user id as the one which should be unsubscribed.
-            if (userDB.getId() != userId) {
-                logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, "User is not allowed to perform the requested" +
-                        " operation.");
-                throw new ServerException(403, USER_FORBIDDEN);
-            }
             // Perform no further checks, just try to delete the specified entry. If not found, nothing happens.
-            channelDBM.removeSubscriberFromChannel(channelId, userId);
+            channelDBM.removeSubscriberFromChannel(channelId, userDB.getId());
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);

@@ -265,16 +265,15 @@ public class ChannelAPI {
      *
      * @param accessToken The access token of the requestor.
      * @param channelId The id of the channel to which the user is subscribed.
-     * @param userId The id of the user who should be removed as subscriber from the channel.
      * @return Response object.
      * @throws ServerException If the execution of the DELETE request has failed. The ServerException contains
      * information about the error which has occurred.
      */
     @DELETE
-    @Path("/{channelId}/user/{userId}")
-    public Response unsubscribeChannel(@HeaderParam("Authorization") String accessToken, @PathParam("channelId") int
-            channelId, @PathParam("userId") int userId) throws ServerException {
-        channelCtrl.unsubscribeChannel(accessToken, channelId, userId);
+    @Path("/{id}/user")
+    public Response unsubscribeChannel(@HeaderParam("Authorization") String accessToken, @PathParam("id") int
+            channelId) throws ServerException {
+        channelCtrl.unsubscribeChannel(accessToken, channelId);
         // Return 204 No Content
         return Response.status(Response.Status.NO_CONTENT).build();
     }
