@@ -720,8 +720,14 @@ public class ChannelController extends AccessController {
     public List<User> getSubscribers(String accessToken, int channelId) throws ServerException {
         // Check if requestor is a valid moderator.
         verifyResponsibleModerator(accessToken, channelId);
+        List<User> subscribers;
         try {
-            return channelDBM.getSubscribers(channelId);
+            subscribers = channelDBM.getSubscribers(channelId);
+            for(User subscriber: subscribers){
+                // Do not return the users push access tokens. The requestor isn't allowed to know them.
+                subscriber.setPushAccessToken(null);
+            }
+            return subscribers;
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);

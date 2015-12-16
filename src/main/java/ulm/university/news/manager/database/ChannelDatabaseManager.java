@@ -1008,8 +1008,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
                 user.setId(getSubscribersRs.getInt("Id"));
                 user.setName(getSubscribersRs.getString("Name"));
                 user.setPlatform(Platform.values[getSubscribersRs.getInt("Platform")]);
-                // Do not return the users push access tokens. The requestor isn't allowed to know them.
-                // user.setPushAccessToken(getSubscribersRs.getString("PushAccessToken"));
+                user.setPushAccessToken(getSubscribersRs.getString("PushAccessToken"));
                 users.add(user);
             }
             getSubscribersStmt.close();
