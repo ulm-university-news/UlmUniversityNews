@@ -832,13 +832,12 @@ public class ChannelDatabaseManager extends DatabaseManager {
         try {
             con = getDatabaseConnection();
             String query =
-                    "SELECT m.Id, m.Name, m.FirstName, m.LastName, m.Email " +
+                    "SELECT m.Id, m.Name, m.FirstName, m.LastName, m.Email, mc.Active " +
                             "FROM Moderator AS m INNER JOIN ModeratorChannel AS mc ON " +
-                            "m.Id=mc.Moderator_Id WHERE mc.Channel_Id=? AND mc.Active=?;";
+                            "m.Id=mc.Moderator_Id WHERE mc.Channel_Id=?;";
 
             PreparedStatement getResponsibleStmt = con.prepareStatement(query);
             getResponsibleStmt.setInt(1, channelId);
-            getResponsibleStmt.setBoolean(2, true);
 
             ResultSet getResponsibleRs = getResponsibleStmt.executeQuery();
             while (getResponsibleRs.next()) {
@@ -849,6 +848,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
                 moderator.setFirstName(getResponsibleRs.getString("FirstName"));
                 moderator.setLastName(getResponsibleRs.getString("LastName"));
                 moderator.setEmail(getResponsibleRs.getString("Email"));
+                moderator.setActive(getResponsibleRs.getBoolean("Active"));
                 moderators.add(moderator);
             }
             getResponsibleStmt.close();
@@ -1214,7 +1214,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
             }
 
             // Abort if the execution has failed due to a duplicate primary key.
-            if(e.getErrorCode() == 1062 && e.getMessage().contains("PRIMARY")){
+            if (e.getErrorCode() == 1062 && e.getMessage().contains("PRIMARY")) {
                 throw new MessageNumberAlreadyExistsException("Message Number already exists.");
             }
 
