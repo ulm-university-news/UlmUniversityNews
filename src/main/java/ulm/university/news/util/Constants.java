@@ -181,4 +181,9 @@ public class Constants {
     public static final int RESOURCE_BUNDLE_NOT_FOUND = 5004;
     public static final int PARSING_FAILURE = 5005;
 
+    // Windows Push Notification related Status codes.
+    public static final int WIN_PUSH_MSG_SENT_SUCCESSFULLY = 0;
+    public static final int WIN_PUSH_MSG_SENDING_FAILED_RETRY_POSSIBLE = 1;
+    public static final int WIN_PUSH_MSG_SENDING_FAILED_RETRY_NOT_RECOMMENDED = 2;
+
 }

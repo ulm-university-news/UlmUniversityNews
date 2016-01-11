@@ -2,6 +2,7 @@ package ulm.university.news.manager.push;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ulm.university.news.util.Constants;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -76,7 +77,20 @@ public class NotifyWindowsTask implements Runnable {
             while (!successful && attempts < maxRetries) {
                 accessToken = PushManager.getInstance().getWnsAccessToken();
                 // Try to send the push notification to the device identified by the given push token.
-                successful = sendWindowsRawNotification(pushToken, jsonPushMessage, accessToken);
+                int statusCode = sendWindowsRawNotification(pushToken, jsonPushMessage, accessToken);
+                switch(statusCode)
+                {
+                    case Constants.WIN_PUSH_MSG_SENT_SUCCESSFULLY:
+                        successful = true;
+                        break;
+                    case Constants.WIN_PUSH_MSG_SENDING_FAILED_RETRY_POSSIBLE:
+                        successful = false;
+                        break;
+                    case Constants.WIN_PUSH_MSG_SENDING_FAILED_RETRY_NOT_RECOMMENDED:
+                        successful = false;
+                        attempts = maxRetries;  // Prevent further tries.
+                        break;
+                }
                 attempts++;
             }
 
@@ -97,10 +111,11 @@ public class NotifyWindowsTask implements Runnable {
      * @param pushToken The push token which identifies the client device.
      * @param content The content of the raw notification.
      * @param accessToken The access token which identifies the server at the WNS.
-     * @return Returns true if the notification has been sent successfully, false otherwise.
+     * @return Returns a status code which defines whether the push message was sent successfully or not. The status
+     * also indicates whether a retry is recommended if the push message could not be sent successfully.
      */
-    private boolean sendWindowsRawNotification(String pushToken, String content, String accessToken) {
-        boolean successful = true;
+    private int sendWindowsRawNotification(String pushToken, String content, String accessToken) {
+        int statusCode = Constants.WIN_PUSH_MSG_SENT_SUCCESSFULLY;
         try {
             URL urlFromToken = new URL(pushToken);
             HttpURLConnection conn = (HttpURLConnection) urlFromToken.openConnection();
@@ -124,17 +139,20 @@ public class NotifyWindowsTask implements Runnable {
                     logger.warn("The raw notification request to the WNS has failed. The access token is invalid.");
                     // The access token is invalid. Request a new one.
                     PushManager.getInstance().setWnsAccessToken();
-                    successful = false;
+                    statusCode =  Constants.WIN_PUSH_MSG_SENDING_FAILED_RETRY_POSSIBLE;
                     break;
                 case HttpURLConnection.HTTP_GONE:
                     logger.warn("The push token is invalid. Could not send a notification. Request won't be retried.");
+                    statusCode = Constants.WIN_PUSH_MSG_SENDING_FAILED_RETRY_NOT_RECOMMENDED;
                     break;
                 case HttpURLConnection.HTTP_NOT_FOUND:
                     logger.warn("The push token is invalid. Could not send a notification. Request won't be retried.");
+                    statusCode = Constants.WIN_PUSH_MSG_SENDING_FAILED_RETRY_NOT_RECOMMENDED;
                     break;
                 case HttpURLConnection.HTTP_NOT_ACCEPTABLE:
                     logger.warn("The WNS throttles this channel due to to many push notifications in a short amount " +
                             "of time. Request won't be retried.");
+                    statusCode = Constants.WIN_PUSH_MSG_SENDING_FAILED_RETRY_NOT_RECOMMENDED;
                     break;
                 case HttpURLConnection.HTTP_OK:
                     logger.debug("Successfully sent push notification.");
@@ -144,17 +162,18 @@ public class NotifyWindowsTask implements Runnable {
                             "description is {}, msg id: {}, wns status: {}.", responseCode, conn.getHeaderField
                             ("X-WNS-Debug-Trace"), conn.getHeaderField("X-WNS-Error-Description"), conn
                             .getHeaderField("X-WNS-Msg-ID"), conn.getHeaderField("X-WNS-Status"));
-                    successful = false;
+                    statusCode = Constants.WIN_PUSH_MSG_SENDING_FAILED_RETRY_POSSIBLE;
                     break;
             }
 
         } catch (MalformedURLException e) {
             logger.error("The push token could not be parsed to a valid url.");
+            statusCode = Constants.WIN_PUSH_MSG_SENDING_FAILED_RETRY_NOT_RECOMMENDED;
         } catch (IOException e) {
             logger.error("Error appeared during the sending process of a push notification to the WNS.");
-            successful = false;
+            statusCode = Constants.WIN_PUSH_MSG_SENDING_FAILED_RETRY_POSSIBLE;
         }
 
-        return successful;
+        return statusCode;
     }
 }
