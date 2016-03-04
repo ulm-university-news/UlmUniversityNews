@@ -350,14 +350,17 @@ public class ChannelDatabaseManager extends DatabaseManager {
             PreparedStatement getChannelsStmt;
             if (moderatorId != null && lastUpdated != null) {
                 query += " AS c INNER JOIN ModeratorChannel AS mc ON c.Id=mc.Channel_Id " +
-                        "WHERE mc.Moderator_Id=? AND ModificationDate>?;";
+                        "WHERE mc.Moderator_Id=? AND ModificationDate>? AND mc.Active=?;";
                 getChannelsStmt = con.prepareStatement(query);
                 getChannelsStmt.setInt(1, moderatorId);
                 getChannelsStmt.setTimestamp(2, Timestamp.from(lastUpdated.toInstant()));
+                getChannelsStmt.setBoolean(3, true);
             } else if (moderatorId != null) {
-                query += " AS c INNER JOIN ModeratorChannel AS mc ON c.Id=mc.Channel_Id WHERE mc.Moderator_Id=?;";
+                query += " AS c INNER JOIN ModeratorChannel AS mc ON c.Id=mc.Channel_Id WHERE mc.Moderator_Id=? AND " +
+                        "mc.Active=?;";
                 getChannelsStmt = con.prepareStatement(query);
                 getChannelsStmt.setInt(1, moderatorId);
+                getChannelsStmt.setBoolean(2, true);
             } else if (lastUpdated != null) {
                 query += " WHERE ModificationDate>?;";
                 getChannelsStmt = con.prepareStatement(query);
