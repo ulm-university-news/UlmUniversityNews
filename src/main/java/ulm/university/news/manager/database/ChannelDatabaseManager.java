@@ -173,6 +173,12 @@ public class ChannelDatabaseManager extends DatabaseManager {
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
         } finally {
+            try {
+                con.setAutoCommit(true);
+            } catch (SQLException e) {
+                logger.warn("Failed to set auto commit back to true.");
+                logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            }
             returnConnection(con);
         }
         logger.debug("End.");
@@ -326,6 +332,12 @@ public class ChannelDatabaseManager extends DatabaseManager {
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
         } finally {
+            try {
+                con.setAutoCommit(true);
+            } catch (SQLException e) {
+                logger.warn("Failed to set auto commit back to true.");
+                logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            }
             returnConnection(con);
         }
         logger.debug("End.");
@@ -1225,6 +1237,12 @@ public class ChannelDatabaseManager extends DatabaseManager {
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
         } finally {
+            try {
+                con.setAutoCommit(true);
+            } catch (SQLException e) {
+                logger.warn("Failed to set auto commit back to true.");
+                logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            }
             returnConnection(con);
         }
         logger.debug("End.");
