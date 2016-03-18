@@ -158,12 +158,16 @@ public class ChannelController extends AccessController {
             verifyChannelSubclassData(channel);
             // Update channel subclass fields.
             channelDB = updateChannelSubclass(channel, channelDB, changed);
+            List<User> subscribers;
             try {
                 channelDBM.updateChannelWithSubclass(channelDB);
+                subscribers = channelDBM.getSubscribers(channelId);
             } catch (DatabaseException e) {
                 logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
                 throw new ServerException(500, DATABASE_FAILURE);
             }
+            // Notify all subscribers of the channel.
+            PushManager.getInstance().notifyUsers(PushType.CHANNEL_CHANGED, subscribers, channelId, null, null);
         } else {
             if (!changed) {
                 logger.error(LOG_SERVER_EXCEPTION, 400, CHANNEL_DATA_INCOMPLETE, "Channel PATCH data is incomplete.");
@@ -566,7 +570,11 @@ public class ChannelController extends AccessController {
         verifyResponsibleModerator(accessToken, channelId);
 
         try {
-            channelDBM.addModeratorToChannel(channelId, moderatorCtrl.getModeratorIdByName(moderatorName));
+            int moderatorId = moderatorCtrl.getModeratorIdByName(moderatorName);
+            channelDBM.addModeratorToChannel(channelId, moderatorId);
+            // Notify all subscribers of the channel.
+            List<User> subscribers = channelDBM.getSubscribers(channelId);
+            PushManager.getInstance().notifyUsers(PushType.MODERATOR_ADDED, subscribers, channelId, moderatorId, null);
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
             throw new ServerException(500, DATABASE_FAILURE);
@@ -723,7 +731,7 @@ public class ChannelController extends AccessController {
         List<User> subscribers;
         try {
             subscribers = channelDBM.getSubscribers(channelId);
-            for(User subscriber: subscribers){
+            for (User subscriber : subscribers) {
                 // Do not return the users push access tokens. The requestor isn't allowed to know them.
                 subscriber.setPushAccessToken(null);
             }
@@ -969,6 +977,46 @@ public class ChannelController extends AccessController {
     }
 
     /**
+     * @param channelId The id of the channel to which the reminder belongs.
+     * @param reminderId The id of the reminder which should be changed.
+     * @param active The reminders active flag.
+     * @param moderatorDB The responsible moderator who sent the request.
+     * @return The updated reminder.
+     * @throws ServerException If the authorization of the requestor fails, the requestor isn't allowed to perform
+     * the operation or the channel or reminder couldn't be found. Furthermore, a failure of the database also causes a
+     * ServerException.
+     */
+    private Reminder changeReminderActive(int channelId, int reminderId, boolean active, Moderator moderatorDB)
+            throws ServerException {
+        Reminder reminderDB;
+        try {
+            channelDBM.updateReminderActive(reminderId, active);
+            reminderDB = channelDBM.getReminder(channelId, reminderId);
+            if (reminderDB == null) {
+                logger.error(LOG_SERVER_EXCEPTION, 404, REMINDER_NOT_FOUND, "Reminder not found in database.");
+                throw new ServerException(404, REMINDER_NOT_FOUND);
+            }
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+
+        // Update modification date.
+        reminderDB.computeModificationDate();
+        //  Change author to moderator who changed the reminder.
+        reminderDB.setAuthorModerator(moderatorDB.getId());
+
+        // Tell the ReminderManager to schedule the changed reminder.
+        if (reminderDB.getActive()) {
+            ReminderManager.getInstance().addReminder(reminderDB);
+        } else {
+            ReminderManager.getInstance().removeReminder(reminderId);
+        }
+
+        return reminderDB;
+    }
+
+    /**
      * Changes an existing reminder in the specified channel. Validates the received reminder data.
      *
      * @param accessToken The access token of the requestor.
@@ -982,6 +1030,14 @@ public class ChannelController extends AccessController {
      */
     public Reminder changeReminder(String accessToken, int channelId, Reminder reminder, int reminderId) throws
             ServerException {
+        // Check if requestor is a valid moderator and responsible for the channel.
+        Moderator moderatorDB = verifyResponsibleModerator(accessToken, channelId);
+
+        // Only change the active flag of the reminder.
+        if (reminder.getActive() != null) {
+            return changeReminderActive(channelId, reminderId, reminder.getActive(), moderatorDB);
+        }
+
         // Perform checks on the received data. If there is no data provided, reminder can't be changed.
         if (reminder.getStartDate() == null && reminder.getEndDate() == null && reminder.getInterval() == null &&
                 reminder.isIgnore() == null && reminder.getText() == null && reminder.getTitle() == null && reminder
@@ -995,9 +1051,6 @@ public class ChannelController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 400, REMINDER_INVALID_TITLE, "Reminder title to long.");
             throw new ServerException(400, REMINDER_INVALID_TITLE);
         }
-
-        // Check if requestor is a valid moderator and responsible for the channel.
-        Moderator moderatorDB = verifyResponsibleModerator(accessToken, channelId);
 
         Reminder reminderDB;
         try {
@@ -1026,7 +1079,7 @@ public class ChannelController extends AccessController {
         // Update modification date.
         reminderDB.computeModificationDate();
         //  Change author to moderator who changed the reminder.
-        reminder.setAuthorModerator(moderatorDB.getId());
+        reminderDB.setAuthorModerator(moderatorDB.getId());
 
         try {
             channelDBM.updateReminder(reminderDB);
@@ -1207,7 +1260,7 @@ public class ChannelController extends AccessController {
      *
      * @return the number of activated reminders.
      */
-    public int activateStoredReminders(){
+    public int activateStoredReminders() {
         List<Reminder> remindersDB = null;
         try {
             // Get all reminders of all channels from database.
@@ -1218,12 +1271,12 @@ public class ChannelController extends AccessController {
         }
         // Count how many reminders have been activated.
         int numberOfActivatedReminders = 0;
-        if(remindersDB != null){
+        if (remindersDB != null) {
             // Compute next date for each reminder.
-            for(Reminder reminder: remindersDB){
+            for (Reminder reminder : remindersDB) {
                 reminder.computeFirstNextDate();
                 // If reminder is still valid, activate it in the ReminderManager.
-                if(!reminder.isExpired()){
+                if (!reminder.isExpired()) {
                     ReminderManager.getInstance().addReminder(reminder);
                     numberOfActivatedReminders++;
                 }

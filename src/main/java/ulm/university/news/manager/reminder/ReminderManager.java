@@ -55,6 +55,11 @@ public class ReminderManager {
      * @param reminder The reminder which should be activated.
      */
     public synchronized void addReminder(Reminder reminder) {
+        // Check if reminder is already scheduled.
+        if (activeReminders.containsKey(reminder.getId())) {
+            return;
+        }
+
         ZonedDateTime currentDate = ZonedDateTime.now(TIME_ZONE);
         reminder.computeFirstNextDate();
 

@@ -1402,8 +1402,8 @@ public class ChannelDatabaseManager extends DatabaseManager {
 
             String storeReminderQuery =
                     "INSERT INTO Reminder (Channel_Id, Author_Moderator_Id, StartDate, ModificationDate, EndDate, " +
-                            "`Interval`, `Ignore`, Title, Text, CreationDate, Priority) " +
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?);";
+                            "`Interval`, `Ignore`, Title, Text, CreationDate, Priority, Active) " +
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?);";
 
             PreparedStatement storeReminderStmt = con.prepareStatement(storeReminderQuery);
             storeReminderStmt.setInt(1, reminder.getChannelId());
@@ -1417,6 +1417,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
             storeReminderStmt.setString(9, reminder.getText());
             storeReminderStmt.setTimestamp(10, Timestamp.from(reminder.getCreationDate().toInstant()));
             storeReminderStmt.setInt(11, reminder.getPriority().ordinal());
+            storeReminderStmt.setBoolean(12, true);
             storeReminderStmt.execute();
 
             // Retrieve auto incremented id of the database record for the reminder.
@@ -1476,8 +1477,10 @@ public class ChannelDatabaseManager extends DatabaseManager {
                 String title = getReminderRs.getString("Title");
                 String text = getReminderRs.getString("Text");
                 Priority priority = Priority.values[getReminderRs.getInt("Priority")];
+                Boolean active = getReminderRs.getBoolean("Active");
                 reminder = new Reminder(reminderId, creationDate, modificationDate, startDate, endDate, interval,
                         ignore, channelId, authorModerator, title, text, priority);
+                reminder.setActive(active);
             }
             getReminderStmt.close();
         } catch (SQLException e) {
@@ -1513,6 +1516,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
             ZonedDateTime creationDate, modificationDate, startDate, endDate;
             int interval, reminderId, authorModerator;
             boolean ignore;
+            Boolean active;
             String title, text;
             Priority priority;
             while (getRemindersRs.next()) {
@@ -1531,8 +1535,10 @@ public class ChannelDatabaseManager extends DatabaseManager {
                 title = getRemindersRs.getString("Title");
                 text = getRemindersRs.getString("Text");
                 priority = Priority.values[getRemindersRs.getInt("Priority")];
+                active = getRemindersRs.getBoolean("Active");
                 reminder = new Reminder(reminderId, creationDate, modificationDate, startDate, endDate, interval,
                         ignore, channelId, authorModerator, title, text, priority);
+                reminder.setActive(active);
                 reminders.add(reminder);
             }
             getRemindersStmt.close();
@@ -1567,6 +1573,7 @@ public class ChannelDatabaseManager extends DatabaseManager {
             ZonedDateTime creationDate, modificationDate, startDate, endDate;
             int channelId, interval, reminderId, authorModerator;
             boolean ignore;
+            Boolean active;
             String title, text;
             Priority priority;
             while (getRemindersRs.next()) {
@@ -1586,8 +1593,10 @@ public class ChannelDatabaseManager extends DatabaseManager {
                 title = getRemindersRs.getString("Title");
                 text = getRemindersRs.getString("Text");
                 priority = Priority.values[getRemindersRs.getInt("Priority")];
+                active = getRemindersRs.getBoolean("Active");
                 reminder = new Reminder(reminderId, creationDate, modificationDate, startDate, endDate, interval,
                         ignore, channelId, authorModerator, title, text, priority);
+                reminder.setActive(active);
                 reminders.add(reminder);
             }
             getRemindersStmt.close();
@@ -1633,6 +1642,43 @@ public class ChannelDatabaseManager extends DatabaseManager {
             int rowsAffected = updateReminderStmt.executeUpdate();
             if (rowsAffected > 1) {
                 logger.info("Updated reminder with id {}.", reminder.getId());
+            }
+            updateReminderStmt.close();
+        } catch (SQLException e) {
+            logger.error(LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End.");
+    }
+
+    /**
+     * Updates the given reminders active flag in the database.
+     *
+     * @param reminderId The reminder id.
+     * @param active The active flag of the reminder.
+     * @throws DatabaseException If the data could not be updated in the database due to a database failure.
+     */
+    public void updateReminderActive(int reminderId, boolean active) throws DatabaseException {
+        logger.debug("Start with reminderId:{} and active:{}.", reminderId, active);
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+
+            // Update reminder active flag in the database.
+            String updateReminderQuery =
+                    "UPDATE Reminder " +
+                            "SET Active=? " +
+                            "WHERE Id=?;";
+            PreparedStatement updateReminderStmt = con.prepareStatement(updateReminderQuery);
+            updateReminderStmt.setBoolean(1, active);
+            updateReminderStmt.setInt(2, reminderId);
+
+            int rowsAffected = updateReminderStmt.executeUpdate();
+            if (rowsAffected > 1) {
+                logger.info("Updated reminder with id {}.", reminderId);
             }
             updateReminderStmt.close();
         } catch (SQLException e) {
