@@ -960,6 +960,7 @@ public class ChannelController extends AccessController {
         reminder.setModificationDate(reminder.getCreationDate());
         reminder.setAuthorModerator(moderatorDB.getId());
         reminder.setChannelId(channelId);
+        reminder.setActive(true);
         if (reminder.isIgnore() == null) {
             reminder.setIgnore(false);
         }
@@ -1005,6 +1006,12 @@ public class ChannelController extends AccessController {
         reminderDB.computeModificationDate();
         //  Change author to moderator who changed the reminder.
         reminderDB.setAuthorModerator(moderatorDB.getId());
+        try {
+            channelDBM.updateReminder(reminderDB);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
 
         // Tell the ReminderManager to schedule the changed reminder.
         if (reminderDB.getActive()) {
