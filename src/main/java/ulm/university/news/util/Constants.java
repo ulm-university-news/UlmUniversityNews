@@ -10,7 +10,7 @@ import java.time.ZoneId;
  */
 public class Constants {
     /** The name of the application. */
-    public static final String APPLICATION_NAME = "Ulm University News";
+    public static final String APPLICATION_NAME = "University News Ulm";
 
     /** The time zone where the server is located. */
     public static final ZoneId TIME_ZONE = ZoneId.of("Europe/Berlin");
@@ -33,8 +33,10 @@ public class Constants {
     /** A pattern which describes the valid form of a resource name or title. */
     public static final String NAME_PATTERN = "^[!?_-öÖäÄüÜßa-zA-Z0-9\\p{Blank}]{3,45}$";
 
-    /** A pattern which describes the valid form of a term string. The term is always noted in the form W for winter or
-     *  S for Summer plus the year yyyy. e.g. W2016 or S2016.*/
+    /**
+     * A pattern which describes the valid form of a term string. The term is always noted in the form W for winter or
+     * S for Summer plus the year yyyy. e.g. W2016 or S2016.
+     */
     public static final String TERM_PATTERN = "^[W,S][0-9]{4}$";
 
     /** The maximum length of a description field. */
