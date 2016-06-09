@@ -25,7 +25,7 @@ public class OverrideHttpMethodFilter implements ContainerRequestFilter {
     private static final String OVERRIDE_HEADER = "X-HTTP-Method-Override";
 
     private boolean override(String method, ContainerRequestContext request) {
-        if (!method.isEmpty()) {
+        if (method != null && !method.isEmpty()) {
             request.setMethod(method);
             return true;
         }
