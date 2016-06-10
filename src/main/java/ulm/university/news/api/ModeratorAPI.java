@@ -124,7 +124,7 @@ public class ModeratorAPI {
             moderatorId) throws ServerException {
         moderatorCtrl.deleteModerator(accessToken, moderatorId);
         // No resource is returned.
-        return Response.status(Response.Status.OK).build();
+        return Response.status(Response.Status.NO_CONTENT).build();
     }
 
     /**
