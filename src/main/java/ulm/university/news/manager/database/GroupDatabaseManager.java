@@ -30,7 +30,7 @@ public class GroupDatabaseManager extends DatabaseManager {
     /**
      * Creates an instance of the GroupDatabaseManager class.
      */
-    public GroupDatabaseManager(){
+    public GroupDatabaseManager() {
 
     }
 
@@ -48,8 +48,8 @@ public class GroupDatabaseManager extends DatabaseManager {
             con.setAutoCommit(false);
             String query =
                     "INSERT INTO `Group` (Name, Description, Type, CreationDate, ModificationDate, Term, " +
-                    "Password, GroupAdmin_User_Id) " +
-                    "VALUES (?,?,?,?,?,?,?,?);";
+                            "Password, GroupAdmin_User_Id) " +
+                            "VALUES (?,?,?,?,?,?,?,?);";
 
             PreparedStatement insertGroupStmt = con.prepareStatement(query);
             insertGroupStmt.setString(1, group.getName());
@@ -59,7 +59,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             insertGroupStmt.setTimestamp(5, Timestamp.from(group.getModificationDate().toInstant()));
             insertGroupStmt.setString(6, group.getTerm());
             insertGroupStmt.setString(7, group.getPassword());
-            insertGroupStmt.setInt(8,group.getGroupAdmin());
+            insertGroupStmt.setInt(8, group.getGroupAdmin());
 
             insertGroupStmt.execute();
 
@@ -68,7 +68,7 @@ public class GroupDatabaseManager extends DatabaseManager {
 
             Statement getIdStmt = con.createStatement();
             ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
-            if(getIdRs.next()){
+            if (getIdRs.next()) {
                 group.setId(getIdRs.getInt(1));
             }
             logger.info("Stored group with id:{}.", group.getId());
@@ -76,7 +76,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             // Add the creator of the group, i.e. the group admin in this case, to the participants of the group.
             String addParticipantQuery =
                     "INSERT INTO UserGroup (User_Id, Group_Id, Active) " +
-                    "VALUES (?,?,?);";
+                            "VALUES (?,?,?);";
 
             PreparedStatement addParticipantStmt = con.prepareStatement(addParticipantQuery);
             addParticipantStmt.setInt(1, group.getGroupAdmin());
@@ -104,8 +104,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             try {
                 con.setAutoCommit(true);
             } catch (SQLException e) {
@@ -123,9 +122,9 @@ public class GroupDatabaseManager extends DatabaseManager {
      * contain the given name value in their name or groups which are of a given type.
      *
      * @param groupName The search parameter for the group name. If it is set, the method will only return groups
-     *                  which contain this value in their name.
+     * which contain this value in their name.
      * @param groupType The search parameter for the group type. If it is set, the method will only return groups
-     *                  which are of the specified type.
+     * which are of the specified type.
      * @return A list of groups. The list can also be empty.
      * @throws DatabaseException If the search query could not be executed due to database failure.
      */
@@ -137,26 +136,26 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "SELECT * " +
-                    "FROM `Group` " +
-                    "WHERE Name LIKE ? AND Type BETWEEN ? AND ?;";
+                            "FROM `Group` " +
+                            "WHERE Name LIKE ? AND Type BETWEEN ? AND ?;";
 
             // Check which search parameters are set and adjust them to fit into the GET query.
-            if(groupName == null){
+            if (groupName == null) {
                 // Use wildcard value to fit any value for the name.
                 groupName = "%";
-            }else{
+            } else {
                 /* Add wildcards in front and behind the search parameter to get any group which contains the search
                 parameter in its name. */
                 groupName = "%" + groupName + "%";
             }
             int typeIntervalStart;
             int typeIntervalEnd;
-            if(groupType == null){
+            if (groupType == null) {
                 /* If no groupType search parameter is specified, accept all possible group types. To achieve this,
                  the interval is set to the whole range of possible values, starting with 0. */
                 typeIntervalStart = 0;
-                typeIntervalEnd = GroupType.values.length-1;
-            }else{
+                typeIntervalEnd = GroupType.values.length - 1;
+            } else {
                 // GroupType is set, thus restrict the interval to the search parameter.
                 typeIntervalStart = groupType.ordinal();
                 typeIntervalEnd = groupType.ordinal();
@@ -168,7 +167,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             getGroupsStmt.setInt(3, typeIntervalEnd);
 
             ResultSet getGroupsRs = getGroupsStmt.executeQuery();
-            while (getGroupsRs.next()){
+            while (getGroupsRs.next()) {
                 int id = getGroupsRs.getInt("Id");
                 String name = getGroupsRs.getString("Name");
                 String description = getGroupsRs.getString("Description");
@@ -190,8 +189,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End with groups:{}.", groups);
@@ -212,15 +210,15 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getGroupsQuery =
                     "SELECT * " +
-                    "FROM `Group` AS g JOIN UserGroup AS ug ON g.Id=ug.Group_Id " +
-                    "WHERE ug.User_Id=? AND ug.Active=?;";
+                            "FROM `Group` AS g JOIN UserGroup AS ug ON g.Id=ug.Group_Id " +
+                            "WHERE ug.User_Id=? AND ug.Active=?;";
 
             PreparedStatement getGroupsStmt = con.prepareStatement(getGroupsQuery);
             getGroupsStmt.setInt(1, participantId);
             getGroupsStmt.setBoolean(2, true);
 
             ResultSet getGroupsRs = getGroupsStmt.executeQuery();
-            while(getGroupsRs.next()){
+            while (getGroupsRs.next()) {
                 int id = getGroupsRs.getInt("Id");
                 String name = getGroupsRs.getString("Name");
                 String description = getGroupsRs.getString("Description");
@@ -243,8 +241,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -256,7 +253,7 @@ public class GroupDatabaseManager extends DatabaseManager {
      *
      * @param groupId The id of the group which should be returned.
      * @param withParticipants Indicates whether the list of participants of this group should be set in the group
-     *                         object.
+     * object.
      * @return The group object which contains the group data.
      * @throws DatabaseException If the execution has failed due to database failure.
      */
@@ -268,14 +265,14 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getGroupQuery =
                     "SELECT * " +
-                    "FROM `Group` " +
-                    "WHERE Id=?;";
+                            "FROM `Group` " +
+                            "WHERE Id=?;";
 
             PreparedStatement getGroupStmt = con.prepareStatement(getGroupQuery);
             getGroupStmt.setInt(1, groupId);
 
             ResultSet getGroupRs = getGroupStmt.executeQuery();
-            if(getGroupRs.next()){
+            if (getGroupRs.next()) {
                 String name = getGroupRs.getString("Name");
                 String description = getGroupRs.getString("Description");
                 GroupType groupType = GroupType.values[getGroupRs.getInt("Type")];
@@ -295,16 +292,16 @@ public class GroupDatabaseManager extends DatabaseManager {
             }
 
             // Check if list of participants should be set for this group.
-            if(group != null && withParticipants){
+            if (group != null && withParticipants) {
                 List<User> participants = new ArrayList<User>();
                 String getUserIdsQuery =
                         "SELECT * " +
-                        "FROM UserGroup " +
-                        "WHERE Group_Id=?;";
+                                "FROM UserGroup " +
+                                "WHERE Group_Id=?;";
                 String getUserQuery =
                         "SELECT * " +
-                        "FROM User " +
-                        "WHERE Id=?;";
+                                "FROM User " +
+                                "WHERE Id=?;";
 
                 PreparedStatement getUserIdsStmt = con.prepareStatement(getUserIdsQuery);
                 getUserIdsStmt.setInt(1, group.getId());
@@ -313,14 +310,14 @@ public class GroupDatabaseManager extends DatabaseManager {
 
                 // First, request the ids of the users which are participants of the group.
                 ResultSet getUserIdsRs = getUserIdsStmt.executeQuery();
-                while(getUserIdsRs.next()){
+                while (getUserIdsRs.next()) {
                     int userId = getUserIdsRs.getInt("User_Id");
                     boolean active = getUserIdsRs.getBoolean("Active");
 
                     // Now request the user identified by this id.
                     getUserStmt.setInt(1, userId);
                     ResultSet getUserRs = getUserStmt.executeQuery();
-                    if(getUserRs.next()){
+                    if (getUserRs.next()) {
                         String username = getUserRs.getString("Name");
                         String pushAccessToken = getUserRs.getString("PushAccessToken");
                         Platform platform = Platform.values[getUserRs.getInt("Platform")];
@@ -342,8 +339,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End with group:{}.", group);
@@ -363,8 +359,8 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "UPDATE `Group` " +
-                    "SET Name=?, Description=?, Password=?, Term=?, GroupAdmin_User_Id=?, ModificationDate=? " +
-                    "WHERE Id=?;";
+                            "SET Name=?, Description=?, Password=?, Term=?, GroupAdmin_User_Id=?, ModificationDate=? " +
+                            "WHERE Id=?;";
 
             PreparedStatement updateGroupStmt = con.prepareStatement(query);
             updateGroupStmt.setString(1, updatedGroup.getName());
@@ -376,7 +372,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             updateGroupStmt.setInt(7, updatedGroup.getId());
 
             int rowsAffected = updateGroupStmt.executeUpdate();
-            if(rowsAffected == 1){
+            if (rowsAffected == 1) {
                 logger.info("Updated group with id:{}.", updatedGroup.getId());
             }
             updateGroupStmt.close();
@@ -384,8 +380,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -405,7 +400,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "DELETE FROM `Group` " +
-                    "WHERE Id=?;";
+                            "WHERE Id=?;";
 
             PreparedStatement deleteGroupStmt = con.prepareStatement(query);
             deleteGroupStmt.setInt(1, groupId);
@@ -419,8 +414,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -441,22 +435,21 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "SELECT Id " +
-                    "FROM `Group` " +
-                    "WHERE Id=?;";
+                            "FROM `Group` " +
+                            "WHERE Id=?;";
 
             PreparedStatement stmt = con.prepareStatement(query);
             stmt.setInt(1, groupId);
 
             ResultSet rs = stmt.executeQuery();
-            if(rs.next()){
+            if (rs.next()) {
                 valid = true;
             }
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -480,17 +473,17 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "SELECT * " +
-                    "FROM UserGroup " +
-                    "WHERE User_Id=? AND Group_Id=?;";
+                            "FROM UserGroup " +
+                            "WHERE User_Id=? AND Group_Id=?;";
 
             PreparedStatement stmt = con.prepareStatement(query);
             stmt.setInt(1, userId);
             stmt.setInt(2, groupId);
 
             ResultSet rs = stmt.executeQuery();
-            if(rs.next()){
+            if (rs.next()) {
                 boolean active = rs.getBoolean("Active");
-                if(active){
+                if (active) {
                     valid = true;
                 }
             }
@@ -499,8 +492,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End with valid:{}", valid);
@@ -521,8 +513,8 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getParticipantQuery =
                     "SELECT * " +
-                    "FROM UserGroup " +
-                    "WHERE User_Id=? AND Group_Id=?;";
+                            "FROM UserGroup " +
+                            "WHERE User_Id=? AND Group_Id=?;";
 
             // Check if the user is already a participant of the group.
             PreparedStatement getParticipantStmt = con.prepareStatement(getParticipantQuery);
@@ -530,18 +522,18 @@ public class GroupDatabaseManager extends DatabaseManager {
             getParticipantStmt.setInt(2, groupId);
 
             ResultSet getParticipantRs = getParticipantStmt.executeQuery();
-            if(getParticipantRs.next()){
+            if (getParticipantRs.next()) {
                 logger.warn("User with id: {} is already in the participant table of the group with id {}. If the " +
                         "status of the user is inactive, it will be set to active again. Otherwise, no action will " +
                         "be taken.", userId, groupId);
                 boolean active = getParticipantRs.getBoolean("Active");
 
-                if(!active){
+                if (!active) {
                     // Set the active field to true again.
                     String updateParticipantQuery =
                             "UPDATE UserGroup " +
-                            "SET Active=? " +
-                            "WHERE User_Id=? AND Group_Id=?;";
+                                    "SET Active=? " +
+                                    "WHERE User_Id=? AND Group_Id=?;";
 
                     PreparedStatement updateParticipantStmt = con.prepareStatement(updateParticipantQuery);
                     updateParticipantStmt.setBoolean(1, true);
@@ -549,18 +541,16 @@ public class GroupDatabaseManager extends DatabaseManager {
                     updateParticipantStmt.setInt(3, groupId);
 
                     int rowsAffected = updateParticipantStmt.executeUpdate();
-                    if(rowsAffected == 1){
+                    if (rowsAffected == 1) {
                         logger.info("Set the active field for the user with id {} to true again. The user is an " +
                                 "active participant of the group with id {} again.", userId, groupId);
                     }
                     updateParticipantStmt.close();
-                }
-                else{
+                } else {
                     logger.info("User with id {} is already an active participant of the group with id {}. No action " +
-                                    "performed.", userId, groupId);
+                            "performed.", userId, groupId);
                 }
-            }
-            else {
+            } else {
                 // Add the user as a participant to the group.
                 String insertParticipantQuery =
                         "INSERT INTO UserGroup (User_Id, Group_Id, Active) " +
@@ -581,8 +571,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -605,12 +594,12 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getUserIdsQuery =
                     "SELECT User_Id, Active " +
-                    "FROM UserGroup " +
-                    "WHERE Group_Id=?;";
+                            "FROM UserGroup " +
+                            "WHERE Group_Id=?;";
             String getUserQuery =
                     "SELECT * " +
-                    "FROM User " +
-                    "WHERE Id=?;";
+                            "FROM User " +
+                            "WHERE Id=?;";
 
             PreparedStatement getUserIdsStmt = con.prepareStatement(getUserIdsQuery);
             PreparedStatement getUserStmt = con.prepareStatement(getUserQuery);
@@ -618,14 +607,14 @@ public class GroupDatabaseManager extends DatabaseManager {
             // First request the ids of the users which are a participant of the group.
             getUserIdsStmt.setInt(1, groupId);
             ResultSet getUserIdsRs = getUserIdsStmt.executeQuery();
-            while(getUserIdsRs.next()){
+            while (getUserIdsRs.next()) {
                 int userId = getUserIdsRs.getInt("User_Id");
                 boolean active = getUserIdsRs.getBoolean("Active");
 
                 // Request the user data for the user with this id.
                 getUserStmt.setInt(1, userId);
                 ResultSet getUserRs = getUserStmt.executeQuery();
-                if(getUserRs.next()){
+                if (getUserRs.next()) {
                     String name = getUserRs.getString("Name");
                     String pushAccessToken = getUserRs.getString("PushAccessToken");
                     Platform platform = Platform.values[getUserRs.getInt("Platform")];
@@ -641,8 +630,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End with users:{}.", users);
@@ -666,8 +654,8 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "UPDATE UserGroup " +
-                    "SET Active=? " +
-                    "WHERE User_Id=? AND Group_Id=?;";
+                            "SET Active=? " +
+                            "WHERE User_Id=? AND Group_Id=?;";
 
             PreparedStatement removeParticipantStmt = con.prepareStatement(query);
             removeParticipantStmt.setBoolean(1, false);
@@ -675,7 +663,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             removeParticipantStmt.setInt(3, groupId);
 
             int rowsAffected = removeParticipantStmt.executeUpdate();
-            if(rowsAffected == 1){
+            if (rowsAffected == 1) {
                 logger.info("Remove user with id {} from the group with id {}. The user is not an active participant " +
                         "of the group anymore.", userId, groupId);
             }
@@ -684,8 +672,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -706,8 +693,8 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "INSERT INTO Ballot (Title, Description, MultipleChoice, Public, Closed, Group_Id, " +
-                    "BallotAdmin_User_Id) " +
-                    "VALUES (?,?,?,?,?,?,?);";
+                            "BallotAdmin_User_Id) " +
+                            "VALUES (?,?,?,?,?,?,?);";
 
             // When the ballot is stored into the database, it is not closed.
             ballot.setClosed(false);
@@ -728,7 +715,7 @@ public class GroupDatabaseManager extends DatabaseManager {
 
             Statement getIdStmt = con.createStatement();
             ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
-            if(getIdRs.next()){
+            if (getIdRs.next()) {
                 ballot.setId(getIdRs.getInt(1));
             }
 
@@ -740,11 +727,118 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
+    }
+
+    /**
+     * Returns a ballot which belongs to the group with the specified id. It can be defined whether the
+     * ballot object should already contain corresponding sub-resources like their options and the list of voters for
+     * each option.
+     *
+     * @param groupId The id of the group for which the ballot should be returned.
+     * @param withSubresources Indicates whether the ballot objects, which are returned, should contain a list of
+     * their options and a list of voters per option.
+     * @return A ballot object. Might be empty.
+     * @throws DatabaseException If the ballot could not be retrieved from the database.
+     */
+    public Ballot getBallot(int groupId, int ballotId, boolean withSubresources) throws DatabaseException {
+        logger.debug("Start with groupId:{}, ballotId:{} and withSubresources:{}.", groupId, ballotId,
+                withSubresources);
+        Ballot ballot = null;
+        Connection con = null;
+        try {
+            con = getDatabaseConnection();
+            String getBallotQuery =
+                    "SELECT *" +
+                            "FROM Ballot " +
+                            "WHERE Group_Id=? AND Id=?;";
+            String getBallotOptionsQuery =
+                    "SELECT * " +
+                            "FROM `Option` " +
+                            "WHERE Ballot_Id=?;";
+            String getUserIdsQuery =
+                    "SELECT User_Id " +
+                            "FROM UserOption " +
+                            "WHERE Option_Id=?;";
+
+            PreparedStatement getBallotStmt = con.prepareStatement(getBallotQuery);
+            getBallotStmt.setInt(1, groupId);
+            getBallotStmt.setInt(2, ballotId);
+
+            // If the sub-resources should be contained, prepare the statements here.
+            PreparedStatement getBallotOptionsStmt = null;
+            PreparedStatement getBallotOptionVotersStmt = null;
+            if (withSubresources) {
+                logger.info("Including the sub-resources into the ballots of group with id {}.", groupId);
+                getBallotOptionsStmt = con.prepareStatement(getBallotOptionsQuery);
+                getBallotOptionVotersStmt = con.prepareStatement(getUserIdsQuery);
+            }
+
+            // Request the ballots for the given group.
+            ResultSet getBallotsRs = getBallotStmt.executeQuery();
+            if (getBallotsRs.first()) {
+                int id = getBallotsRs.getInt("Id");
+                String title = getBallotsRs.getString("Title");
+                String description = getBallotsRs.getString("Description");
+                Boolean multipleChoice = getBallotsRs.getBoolean("MultipleChoice");
+                Boolean publicVotes = getBallotsRs.getBoolean("Public");
+                Boolean closed = getBallotsRs.getBoolean("Closed");
+                int ballotAdmin = getBallotsRs.getInt("BallotAdmin_User_Id");
+
+                ballot = new Ballot(id, title, description, ballotAdmin, closed, multipleChoice, publicVotes);
+
+                // Request the sub-resources options and voters if required.
+                if (withSubresources) {
+                    List<Option> ballotOptions = new ArrayList<>();
+                    // Request all options for the ballot.
+                    getBallotOptionsStmt.setInt(1, ballot.getId());
+                    ResultSet getBallotOptionsRs = getBallotOptionsStmt.executeQuery();
+                    while (getBallotOptionsRs.next()) {
+                        int optionId = getBallotOptionsRs.getInt("Id");
+                        String text = getBallotOptionsRs.getString("Text");
+
+                        Option optionTmp = new Option(optionId, text);
+
+                        // Request the ids of the users who have voted for this particular option.
+                        List<Integer> voters = new ArrayList<>();
+                        getBallotOptionVotersStmt.setInt(1, optionId);
+                        ResultSet getBallotOptionVotersRs = getBallotOptionVotersStmt.executeQuery();
+                        while (getBallotOptionVotersRs.next()) {
+                            int userId = getBallotOptionVotersRs.getInt("User_Id");
+
+                            // Add the id of the user to the voters list.
+                            voters.add(userId);
+                        }
+
+                        // Add the list of voters to the Option object.
+                        optionTmp.setVoters(voters);
+
+                        // Add the option object to the list of ballot options.
+                        ballotOptions.add(optionTmp);
+                    }
+
+                    // Add the list of options to the ballot object.
+                    ballot.setOptions(ballotOptions);
+                }
+            }
+
+            getBallotStmt.close();
+            if (getBallotOptionsStmt != null && getBallotOptionVotersStmt != null) {
+                getBallotOptionsStmt.close();
+                getBallotOptionVotersStmt.close();
+            }
+        } catch (SQLException e) {
+            logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
+            // Throw back DatabaseException to the Controller.
+            throw new DatabaseException("Database failure.");
+        } finally {
+            returnConnection(con);
+        }
+        logger.debug("End with ballots:{}.", ballot);
+        return ballot;
     }
 
     /**
@@ -754,7 +848,7 @@ public class GroupDatabaseManager extends DatabaseManager {
      *
      * @param groupId The id of the group for which the ballots should be returned.
      * @param withSubresources Indicates whether the ballot objects, which are returned, should contain a list of
-     *                         their options and a list of voters per option.
+     * their options and a list of voters per option.
      * @return A list of ballot objects. The list might also be empty.
      * @throws DatabaseException If the ballots could not be retrieved from the database.
      */
@@ -766,16 +860,16 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getBallotsQuery =
                     "SELECT *" +
-                    "FROM Ballot " +
-                    "WHERE Group_Id=?;";
+                            "FROM Ballot " +
+                            "WHERE Group_Id=?;";
             String getBallotOptionsQuery =
                     "SELECT * " +
-                    "FROM `Option` " +
-                    "WHERE Ballot_Id=?;";
+                            "FROM `Option` " +
+                            "WHERE Ballot_Id=?;";
             String getUserIdsQuery =
                     "SELECT User_Id " +
-                    "FROM UserOption " +
-                    "WHERE Option_Id=?;";
+                            "FROM UserOption " +
+                            "WHERE Option_Id=?;";
 
             PreparedStatement getBallotsStmt = con.prepareStatement(getBallotsQuery);
             getBallotsStmt.setInt(1, groupId);
@@ -783,7 +877,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             // If the sub-resources should be contained, prepare the statements here.
             PreparedStatement getBallotOptionsStmt = null;
             PreparedStatement getBallotOptionVotersStmt = null;
-            if(withSubresources){
+            if (withSubresources) {
                 logger.info("Including the sub-resources into the ballots of group with id {}.", groupId);
                 getBallotOptionsStmt = con.prepareStatement(getBallotOptionsQuery);
                 getBallotOptionVotersStmt = con.prepareStatement(getUserIdsQuery);
@@ -791,7 +885,7 @@ public class GroupDatabaseManager extends DatabaseManager {
 
             // Request the ballots for the given group.
             ResultSet getBallotsRs = getBallotsStmt.executeQuery();
-            while(getBallotsRs.next()){
+            while (getBallotsRs.next()) {
                 int id = getBallotsRs.getInt("Id");
                 String title = getBallotsRs.getString("Title");
                 String description = getBallotsRs.getString("Description");
@@ -803,12 +897,12 @@ public class GroupDatabaseManager extends DatabaseManager {
                 Ballot ballotTmp = new Ballot(id, title, description, ballotAdmin, closed, multipleChoice, publicVotes);
 
                 // Request the sub-resources options and voters if required.
-                if(withSubresources){
+                if (withSubresources) {
                     List<Option> ballotOptions = new ArrayList<Option>();
                     // Request all options for the ballot.
                     getBallotOptionsStmt.setInt(1, ballotTmp.getId());
                     ResultSet getBallotOptionsRs = getBallotOptionsStmt.executeQuery();
-                    while(getBallotOptionsRs.next()){
+                    while (getBallotOptionsRs.next()) {
                         int optionId = getBallotOptionsRs.getInt("Id");
                         String text = getBallotOptionsRs.getString("Text");
 
@@ -818,7 +912,7 @@ public class GroupDatabaseManager extends DatabaseManager {
                         List<Integer> voters = new ArrayList<Integer>();
                         getBallotOptionVotersStmt.setInt(1, optionId);
                         ResultSet getBallotOptionVotersRs = getBallotOptionVotersStmt.executeQuery();
-                        while(getBallotOptionVotersRs.next()){
+                        while (getBallotOptionVotersRs.next()) {
                             int userId = getBallotOptionVotersRs.getInt("User_Id");
 
                             // Add the id of the user to the voters list.
@@ -841,7 +935,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             }
 
             getBallotsStmt.close();
-            if(getBallotOptionsStmt != null && getBallotOptionVotersStmt != null){
+            if (getBallotOptionsStmt != null && getBallotOptionVotersStmt != null) {
                 getBallotOptionsStmt.close();
                 getBallotOptionVotersStmt.close();
             }
@@ -849,8 +943,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End with ballots:{}.", ballots);
@@ -874,15 +967,15 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getBallotsQuery =
                     "SELECT * " +
-                    "FROM Ballot " +
-                    "WHERE Group_Id=? AND BallotAdmin_User_Id=?;";
+                            "FROM Ballot " +
+                            "WHERE Group_Id=? AND BallotAdmin_User_Id=?;";
 
             PreparedStatement getBallotsStmt = con.prepareStatement(getBallotsQuery);
             getBallotsStmt.setInt(1, groupId);
             getBallotsStmt.setInt(2, adminId);
 
             ResultSet getBallotsRs = getBallotsStmt.executeQuery();
-            while(getBallotsRs.next()){
+            while (getBallotsRs.next()) {
                 int id = getBallotsRs.getInt("Id");
                 String title = getBallotsRs.getString("Title");
                 String description = getBallotsRs.getString("Description");
@@ -899,8 +992,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End with ballots:{}.", ballots);
@@ -924,15 +1016,15 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getBallotQuery =
                     "SELECT * " +
-                    "FROM Ballot " +
-                    "WHERE Id=? AND Group_Id=?;";
+                            "FROM Ballot " +
+                            "WHERE Id=? AND Group_Id=?;";
 
             PreparedStatement getBallotStmt = con.prepareStatement(getBallotQuery);
             getBallotStmt.setInt(1, ballotId);
             getBallotStmt.setInt(2, groupId);
 
             ResultSet getBallotRs = getBallotStmt.executeQuery();
-            if(getBallotRs.next()){
+            if (getBallotRs.next()) {
                 String title = getBallotRs.getString("Title");
                 String description = getBallotRs.getString("Description");
                 Boolean multipleChoice = getBallotRs.getBoolean("MultipleChoice");
@@ -948,8 +1040,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -969,8 +1060,8 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "UPDATE Ballot " +
-                    "SET Title=?, Description=?, Closed=?, BallotAdmin_User_Id=? " +
-                    "WHERE Id=?;";
+                            "SET Title=?, Description=?, Closed=?, BallotAdmin_User_Id=? " +
+                            "WHERE Id=?;";
 
             PreparedStatement updateBallotStmt = con.prepareStatement(query);
             updateBallotStmt.setString(1, ballot.getTitle());
@@ -980,7 +1071,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             updateBallotStmt.setInt(5, ballot.getId());
 
             int rowsAffected = updateBallotStmt.executeUpdate();
-            if(rowsAffected == 1){
+            if (rowsAffected == 1) {
                 logger.info("Updated the ballot with id {}.", ballot.getId());
             }
             updateBallotStmt.close();
@@ -988,8 +1079,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -1003,20 +1093,20 @@ public class GroupDatabaseManager extends DatabaseManager {
      * @throws DatabaseException If the deletion fails due to a database failure.
      */
     public void deleteBallot(int groupId, int ballotId) throws DatabaseException {
-        logger.debug("Start with groupId:{} and ballotId:{}." , groupId, ballotId);
+        logger.debug("Start with groupId:{} and ballotId:{}.", groupId, ballotId);
         Connection con = null;
         try {
             con = getDatabaseConnection();
             String deleteBallotQuery =
                     "DELETE FROM Ballot " +
-                    "WHERE Id=? AND Group_Id=?;";
+                            "WHERE Id=? AND Group_Id=?;";
 
             PreparedStatement deleteBallotStmt = con.prepareStatement(deleteBallotQuery);
             deleteBallotStmt.setInt(1, ballotId);
             deleteBallotStmt.setInt(2, groupId);
 
             int rowsAffected = deleteBallotStmt.executeUpdate();
-            if(rowsAffected == 1){
+            if (rowsAffected == 1) {
                 logger.info("Deleted the ballot with id {} from the group with id {}.", ballotId, groupId);
             }
             deleteBallotStmt.close();
@@ -1024,8 +1114,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -1046,23 +1135,22 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "SELECT Id " +
-                    "FROM Ballot " +
-                    "WHERE Id=? AND Group_Id=?;";
+                            "FROM Ballot " +
+                            "WHERE Id=? AND Group_Id=?;";
 
             PreparedStatement stmt = con.prepareStatement(query);
             stmt.setInt(1, ballotId);
             stmt.setInt(2, groupId);
 
             ResultSet rs = stmt.executeQuery();
-            if(rs.next()){
+            if (rs.next()) {
                 isValid = true;
             }
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -1083,7 +1171,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String insertOptionQuery =
                     "INSERT INTO `Option` (Text, Ballot_Id) " +
-                    "VALUES (?,?);";
+                            "VALUES (?,?);";
 
             PreparedStatement insertOptionStmt = con.prepareStatement(insertOptionQuery);
             insertOptionStmt.setString(1, option.getText());
@@ -1096,7 +1184,7 @@ public class GroupDatabaseManager extends DatabaseManager {
 
             Statement getIdStmt = con.createStatement();
             ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
-            if(getIdRs.next()){
+            if (getIdRs.next()) {
                 option.setId(getIdRs.getInt(1));
             }
 
@@ -1107,8 +1195,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -1121,27 +1208,53 @@ public class GroupDatabaseManager extends DatabaseManager {
      * @return A list of options which belong to the ballot. The list can also be empty.
      * @throws DatabaseException If the retrieval of the options from the database fails.
      */
-    public List<Option> getOptions(int ballotId) throws DatabaseException {
+    public List<Option> getOptions(int ballotId, boolean withSubresources) throws DatabaseException {
         logger.debug("Start with ballotId:{}.", ballotId);
-        List<Option> options = new ArrayList<Option>();
+        List<Option> options = new ArrayList<>();
         Connection con = null;
 
         try {
             con = getDatabaseConnection();
             String getOptionsQuery =
                     "SELECT * " +
-                    "FROM `Option` " +
-                    "WHERE Ballot_Id=?;";
+                            "FROM `Option` " +
+                            "WHERE Ballot_Id=?;";
 
             PreparedStatement getOptionsStmt = con.prepareStatement(getOptionsQuery);
             getOptionsStmt.setInt(1, ballotId);
 
+            String getUserIdsQuery =
+                    "SELECT User_Id " +
+                            "FROM UserOption " +
+                            "WHERE Option_Id=?;";
+
+            // If the sub-resources should be contained, prepare the statements here.
+            PreparedStatement getBallotOptionVotersStmt = null;
+            if (withSubresources) {
+                logger.info("Including the sub-resources into the options of ballot with id {}.", ballotId);
+                getBallotOptionVotersStmt = con.prepareStatement(getUserIdsQuery);
+            }
+
             ResultSet getOptionsRs = getOptionsStmt.executeQuery();
-            while(getOptionsRs.next()){
+            while (getOptionsRs.next()) {
                 int id = getOptionsRs.getInt("Id");
                 String text = getOptionsRs.getString("Text");
-
                 Option tmp = new Option(id, text);
+
+                if (withSubresources) {
+                    // Request the ids of the users who have voted for this particular option.
+                    List<Integer> voters = new ArrayList<>();
+                    getBallotOptionVotersStmt.setInt(1, id);
+                    ResultSet getBallotOptionVotersRs = getBallotOptionVotersStmt.executeQuery();
+                    while (getBallotOptionVotersRs.next()) {
+                        int userId = getBallotOptionVotersRs.getInt("User_Id");
+
+                        // Add the id of the user to the voters list.
+                        voters.add(userId);
+                    }
+                    tmp.setVoters(voters);
+                }
+
                 options.add(tmp);
             }
 
@@ -1150,8 +1263,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -1175,15 +1287,15 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getOptionQuery =
                     "SELECT * " +
-                    "FROM `Option` " +
-                    "WHERE Id=? AND Ballot_Id=?;";
+                            "FROM `Option` " +
+                            "WHERE Id=? AND Ballot_Id=?;";
 
             PreparedStatement getOptionStmt = con.prepareStatement(getOptionQuery);
             getOptionStmt.setInt(1, optionId);
             getOptionStmt.setInt(2, ballotId);
 
             ResultSet getOptionRs = getOptionStmt.executeQuery();
-            if(getOptionRs.next()){
+            if (getOptionRs.next()) {
                 String text = getOptionRs.getString("Text");
 
                 option = new Option(optionId, text);
@@ -1194,8 +1306,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -1217,14 +1328,14 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "DELETE FROM `Option` " +
-                    "WHERE Id=? AND Ballot_Id=?;";
+                            "WHERE Id=? AND Ballot_Id=?;";
 
             PreparedStatement deleteOptionStmt = con.prepareStatement(query);
             deleteOptionStmt.setInt(1, optionId);
             deleteOptionStmt.setInt(2, ballotId);
 
             int rowsAffected = deleteOptionStmt.executeUpdate();
-            if(rowsAffected == 1){
+            if (rowsAffected == 1) {
                 logger.info("Deleted the option with id {} from ballot with id {}.", optionId, ballotId);
             }
             deleteOptionStmt.close();
@@ -1232,8 +1343,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -1255,15 +1365,15 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "SELECT Id " +
-                    "FROM `Option` " +
-                    "WHERE Id=? AND Ballot_Id=?;";
+                            "FROM `Option` " +
+                            "WHERE Id=? AND Ballot_Id=?;";
 
             PreparedStatement stmt = con.prepareStatement(query);
             stmt.setInt(1, optionId);
             stmt.setInt(2, ballotId);
 
             ResultSet rs = stmt.executeQuery();
-            if(rs.next()){
+            if (rs.next()) {
                 isValid = true;
             }
 
@@ -1272,8 +1382,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -1295,7 +1404,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String storeVoteQuery =
                     "INSERT INTO UserOption (User_Id, Option_Id) " +
-                    "VALUES (?,?);";
+                            "VALUES (?,?);";
 
             PreparedStatement storeVoteStmt = con.prepareStatement(storeVoteQuery);
             storeVoteStmt.setInt(1, userId);
@@ -1309,8 +1418,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -1333,23 +1441,22 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "SELECT * " +
-                    "FROM UserOption " +
-                    "WHERE Option_Id=? AND User_Id=?;";
+                            "FROM UserOption " +
+                            "WHERE Option_Id=? AND User_Id=?;";
 
             PreparedStatement stmt = con.prepareStatement(query);
             stmt.setInt(1, optionId);
             stmt.setInt(2, userId);
 
             ResultSet rs = stmt.executeQuery();
-            if(rs.next()){
+            if (rs.next()) {
                 isValid = false;
             }
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -1373,15 +1480,15 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "SELECT COUNT(*) " +
-                    "FROM `Option` AS o JOIN UserOption AS uo ON o.Id=uo.Option_Id " +
-                    "WHERE o.Ballot_Id=? AND uo.User_Id=?;";
+                            "FROM `Option` AS o JOIN UserOption AS uo ON o.Id=uo.Option_Id " +
+                            "WHERE o.Ballot_Id=? AND uo.User_Id=?;";
 
             PreparedStatement stmt = con.prepareStatement(query);
             stmt.setInt(1, ballotId);
             stmt.setInt(2, userId);
 
             ResultSet rs = stmt.executeQuery();
-            if(rs.next()){
+            if (rs.next()) {
                 // The number of returned rows.
                 int numberOfRows = rs.getInt(1);
                 if (numberOfRows >= 1) {
@@ -1393,8 +1500,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -1417,14 +1523,14 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getVotersQuery =
                     "SELECT * " +
-                    "FROM User AS u JOIN UserOption AS uo ON u.Id=uo.User_Id " +
-                    "WHERE uo.Option_Id=?;";
+                            "FROM User AS u JOIN UserOption AS uo ON u.Id=uo.User_Id " +
+                            "WHERE uo.Option_Id=?;";
 
             PreparedStatement getVotersStmt = con.prepareStatement(getVotersQuery);
             getVotersStmt.setInt(1, optionId);
 
             ResultSet getVotersRs = getVotersStmt.executeQuery();
-            while (getVotersRs.next()){
+            while (getVotersRs.next()) {
                 int userId = getVotersRs.getInt("Id");
                 String name = getVotersRs.getString("Name");
                 String pushAccessToken = getVotersRs.getString("PushAccessToken");
@@ -1438,8 +1544,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -1461,14 +1566,14 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String deleteVoteQuery =
                     "DELETE FROM UserOption " +
-                    "WHERE Option_Id=? AND User_Id=?;";
+                            "WHERE Option_Id=? AND User_Id=?;";
 
             PreparedStatement deleteVoteStmt = con.prepareStatement(deleteVoteQuery);
             deleteVoteStmt.setInt(1, optionId);
             deleteVoteStmt.setInt(2, userId);
 
             int rowsAffected = deleteVoteStmt.executeUpdate();
-            if(rowsAffected == 1){
+            if (rowsAffected == 1) {
                 logger.info("Deleted the vote from user with id {} for option with id {}.", userId, optionId);
             }
             deleteVoteStmt.close();
@@ -1476,8 +1581,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -1497,7 +1601,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String insertConversationQuery =
                     "INSERT INTO Conversation (Title, Closed, Group_Id, ConversationAdmin_User_Id) " +
-                    "VALUES (?,?,?,?);";
+                            "VALUES (?,?,?,?);";
 
             // Conversation is not closed when it is stored within the database.
             conversation.setClosed(false);
@@ -1515,7 +1619,7 @@ public class GroupDatabaseManager extends DatabaseManager {
 
             Statement getIdStmt = con.createStatement();
             ResultSet getIdRs = getIdStmt.executeQuery(getIdQuery);
-            if(getIdRs.next()){
+            if (getIdRs.next()) {
                 conversation.setId(getIdRs.getInt(1));
             }
 
@@ -1527,8 +1631,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -1552,26 +1655,26 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getConversationsQuery =
                     "SELECT * " +
-                    "FROM Conversation " +
-                    "WHERE Group_Id=?;";
+                            "FROM Conversation " +
+                            "WHERE Group_Id=?;";
             String getMessagesQuery =
                     "SELECT * " +
-                    "FROM ConversationMessage AS cm JOIN Message AS m ON cm.Message_Id=m.Id " +
-                    "WHERE cm.Conversation_Id=?;";
+                            "FROM ConversationMessage AS cm JOIN Message AS m ON cm.Message_Id=m.Id " +
+                            "WHERE cm.Conversation_Id=?;";
 
             PreparedStatement getConversationsStmt = con.prepareStatement(getConversationsQuery);
             getConversationsStmt.setInt(1, groupId);
 
             // Prepare statement only when sub-resources are requested.
             PreparedStatement getMessagesStmt = null;
-            if(withSubresources){
+            if (withSubresources) {
                 logger.info("Conversations for group with id {} are requested including sub-resources.", groupId);
                 getMessagesStmt = con.prepareStatement(getMessagesQuery);
             }
 
             // Get all the conversations from the database.
             ResultSet getConversationsRs = getConversationsStmt.executeQuery();
-            while(getConversationsRs.next()){
+            while (getConversationsRs.next()) {
                 int conversationId = getConversationsRs.getInt("Id");
                 String title = getConversationsRs.getString("Title");
                 boolean closed = getConversationsRs.getBoolean("Closed");
@@ -1580,13 +1683,13 @@ public class GroupDatabaseManager extends DatabaseManager {
                 Conversation conversationTmp = new Conversation(conversationId, title, closed, admin);
 
                 // Get messages for this conversation if sub-resources are requested.
-                if(withSubresources){
+                if (withSubresources) {
                     List<ConversationMessage> conversationMessages = new ArrayList<ConversationMessage>();
 
                     // Execute the query to get the messages for the conversation with the given id.
                     getMessagesStmt.setInt(1, conversationTmp.getId());
                     ResultSet getMessagesRs = getMessagesStmt.executeQuery();
-                    while(getMessagesRs.next()){
+                    while (getMessagesRs.next()) {
                         int messageId = getMessagesRs.getInt("Id");
                         String text = getMessagesRs.getString("Text");
                         ZonedDateTime creationDate = getMessagesRs.getTimestamp("CreationDate").toLocalDateTime()
@@ -1610,15 +1713,14 @@ public class GroupDatabaseManager extends DatabaseManager {
             }
 
             getConversationsStmt.close();
-            if(withSubresources){
+            if (withSubresources) {
                 getMessagesStmt.close();
             }
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -1643,15 +1745,15 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getConversationsQuery =
                     "SELECT * " +
-                    "FROM Conversation " +
-                    "WHERE Group_Id=? AND ConversationAdmin_User_Id=?;";
+                            "FROM Conversation " +
+                            "WHERE Group_Id=? AND ConversationAdmin_User_Id=?;";
 
             PreparedStatement getConversationsStmt = con.prepareStatement(getConversationsQuery);
             getConversationsStmt.setInt(1, groupId);
             getConversationsStmt.setInt(2, adminId);
 
             ResultSet getConversationsRs = getConversationsStmt.executeQuery();
-            while(getConversationsRs.next()){
+            while (getConversationsRs.next()) {
                 int conversationId = getConversationsRs.getInt("Id");
                 String title = getConversationsRs.getString("Title");
                 Boolean closed = getConversationsRs.getBoolean("Closed");
@@ -1665,8 +1767,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -1690,15 +1791,15 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String getConversationQuery =
                     "SELECT * " +
-                    "FROM Conversation " +
-                    "WHERE Group_Id=? AND Id=?;";
+                            "FROM Conversation " +
+                            "WHERE Group_Id=? AND Id=?;";
 
             PreparedStatement getConversationStmt = con.prepareStatement(getConversationQuery);
             getConversationStmt.setInt(1, groupId);
             getConversationStmt.setInt(2, conversationId);
 
             ResultSet getConversationRs = getConversationStmt.executeQuery();
-            if(getConversationRs.next()){
+            if (getConversationRs.next()) {
                 String title = getConversationRs.getString("Title");
                 Boolean closed = getConversationRs.getBoolean("Closed");
                 int admin = getConversationRs.getInt("ConversationAdmin_User_Id");
@@ -1711,8 +1812,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -1734,8 +1834,8 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String updateConversationQuery =
                     "UPDATE Conversation " +
-                    "SET Title=?, ConversationAdmin_User_Id=?, Closed=? " +
-                    "WHERE Id=?;";
+                            "SET Title=?, ConversationAdmin_User_Id=?, Closed=? " +
+                            "WHERE Id=?;";
 
             PreparedStatement updateConversationStmt = con.prepareStatement(updateConversationQuery);
             updateConversationStmt.setString(1, conversation.getTitle());
@@ -1744,7 +1844,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             updateConversationStmt.setInt(4, conversation.getId());
 
             int rowsAffected = updateConversationStmt.executeUpdate();
-            if(rowsAffected == 1){
+            if (rowsAffected == 1) {
                 logger.info("Updated the conversation data for the conversation with id {}.", conversation.getId());
             }
             updateConversationStmt.close();
@@ -1752,8 +1852,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -1773,14 +1872,14 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String deleteConversationQuery =
                     "DELETE FROM Conversation " +
-                    "WHERE Id=? AND Group_Id=?;";
+                            "WHERE Id=? AND Group_Id=?;";
 
             PreparedStatement deleteConversationStmt = con.prepareStatement(deleteConversationQuery);
             deleteConversationStmt.setInt(1, conversationId);
             deleteConversationStmt.setInt(2, groupId);
 
             int rowsAffected = deleteConversationStmt.executeUpdate();
-            if(rowsAffected == 1){
+            if (rowsAffected == 1) {
                 logger.info("Deleted the conversation with id {} from the group with id {}.", conversationId, groupId);
             }
             deleteConversationStmt.close();
@@ -1788,8 +1887,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
         logger.debug("End.");
@@ -1801,7 +1899,7 @@ public class GroupDatabaseManager extends DatabaseManager {
      *
      * @param conversationId The id of the conversation to which the message belongs.
      * @param conversationMessage Contains the data of the message.
-     * @return  Returns true if the message has been stored successfully, false otherwise.
+     * @return Returns true if the message has been stored successfully, false otherwise.
      * @throws DatabaseException If the message could not be stored due to a database failure.
      */
     public void storeConversationMessage(int conversationId, ConversationMessage conversationMessage) throws
@@ -1820,10 +1918,10 @@ public class GroupDatabaseManager extends DatabaseManager {
             String insertConversationMsgQuery =
                     "INSERT INTO ConversationMessage (MessageNumber, Conversation_Id, Author_User_Id, Message_Id) " +
                             "VALUES (?,?,?,?);";
-              String getMessageNumberQuery =
+            String getMessageNumberQuery =
                     "SELECT MAX(MessageNumber) " +
-                    "FROM ConversationMessage " +
-                    "WHERE Conversation_Id=?;";
+                            "FROM ConversationMessage " +
+                            "WHERE Conversation_Id=?;";
 
             // Already prepare the statements.
             PreparedStatement insertMsgStmt = con.prepareStatement(insertMsgQuery);
@@ -1873,7 +1971,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             getMessageNumberStmt.close();
 
             logger.info("Stored the conversation message with the id {} and the message number {}.",
-                     conversationMessage.getId(), messageNumber);
+                    conversationMessage.getId(), messageNumber);
         } catch (SQLException e) {
             try {
                 logger.warn("SQLException occurred during conversationMsg storage, need to rollback the transaction.");
@@ -1884,15 +1982,14 @@ public class GroupDatabaseManager extends DatabaseManager {
             }
 
             // Abort if the execution has failed due to a duplicate primary key.
-            if(e.getErrorCode() == 1062 && e.getMessage().contains("PRIMARY")){
+            if (e.getErrorCode() == 1062 && e.getMessage().contains("PRIMARY")) {
                 throw new MessageNumberAlreadyExistsException("Message Number already exists.");
             }
 
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             try {
                 con.setAutoCommit(true);
             } catch (SQLException e) {
@@ -1910,7 +2007,7 @@ public class GroupDatabaseManager extends DatabaseManager {
      *
      * @param conversationId The id of the conversation for which the messages are retrieved.
      * @param messageNumber Defines the starting message number. The method will return all messsages from the
-     *                      conversation which have a higher message number than the one defined with this parameter.
+     * conversation which have a higher message number than the one defined with this parameter.
      * @return A list of conversation messages. The list can also be empty.
      * @throws DatabaseException If the retrieval fails due to a database failure.
      */
@@ -1923,15 +2020,15 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "SELECT * " +
-                    "FROM Message AS m JOIN ConversationMessage AS cm ON m.Id=cm.Message_Id " +
-                    "WHERE cm.Conversation_Id=? AND cm.MessageNumber > ?;";
+                            "FROM Message AS m JOIN ConversationMessage AS cm ON m.Id=cm.Message_Id " +
+                            "WHERE cm.Conversation_Id=? AND cm.MessageNumber > ?;";
 
             PreparedStatement getMessagesStmt = con.prepareStatement(query);
             getMessagesStmt.setInt(1, conversationId);
             getMessagesStmt.setInt(2, messageNumber);
 
             ResultSet getMessagesRs = getMessagesStmt.executeQuery();
-            while (getMessagesRs.next()){
+            while (getMessagesRs.next()) {
                 int messageId = getMessagesRs.getInt("Id");
                 String text = getMessagesRs.getString("Text");
                 ZonedDateTime creationDate = getMessagesRs.getTimestamp("CreationDate").toLocalDateTime().atZone
@@ -1950,8 +2047,7 @@ public class GroupDatabaseManager extends DatabaseManager {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 
@@ -1975,23 +2071,22 @@ public class GroupDatabaseManager extends DatabaseManager {
             con = getDatabaseConnection();
             String query =
                     "SELECT Id " +
-                    "FROM Conversation " +
-                    "WHERE Id=? AND Group_Id=?;";
+                            "FROM Conversation " +
+                            "WHERE Id=? AND Group_Id=?;";
 
             PreparedStatement stmt = con.prepareStatement(query);
             stmt.setInt(1, conversationId);
             stmt.setInt(2, groupId);
 
             ResultSet rs = stmt.executeQuery();
-            if(rs.next()){
+            if (rs.next()) {
                 isValid = true;
             }
         } catch (SQLException e) {
             logger.error(Constants.LOG_SQL_EXCEPTION, e.getSQLState(), e.getErrorCode(), e.getMessage());
             // Throw back DatabaseException to the Controller.
             throw new DatabaseException("Database failure.");
-        }
-        finally {
+        } finally {
             returnConnection(con);
         }
 

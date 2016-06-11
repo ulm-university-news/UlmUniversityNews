@@ -73,7 +73,7 @@ public class GroupAPI {
     @Produces(MediaType.APPLICATION_JSON)
     public Response createGroup(@HeaderParam("Authorization") String accessToken, Group group, @Context UriInfo
             uriInfo) throws ServerException {
-        group = groupController.createGroup(accessToken,group);
+        group = groupController.createGroup(accessToken, group);
         // Create the URI which can be used to access the created resource.
         URI createdURI = URI.create(uriInfo.getBaseUri().toString() + "group" + "/" + group.getId());
         String groupAsJson = parseToJson(group);
@@ -95,7 +95,7 @@ public class GroupAPI {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getGroups(@HeaderParam("Authorization") String accessToken,@QueryParam("groupName") String
+    public Response getGroups(@HeaderParam("Authorization") String accessToken, @QueryParam("groupName") String
             groupName, @QueryParam("groupType") GroupType groupType) throws ServerException {
         List<Group> groups = groupController.getGroups(accessToken, groupName, groupType);
         String groupsAsJson = parseToJson(groups);
@@ -109,7 +109,7 @@ public class GroupAPI {
      * @param accessToken The access token of the requestor.
      * @param groupId The id of the group which should be returned.
      * @param withParticipants Indicates whether the group object should contain a list of the participants of the
-     *                         group.
+     * group.
      * @return The group object.
      * @throws ServerException If the execution of the GET request has failed. The ServerException contains
      * information about the error which has occurred.
@@ -118,7 +118,7 @@ public class GroupAPI {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{id}")
     public Response getGroup(@HeaderParam("Authorization") String accessToken, @PathParam("id") int groupId,
-                          @DefaultValue("false") @QueryParam("withParticipants") boolean withParticipants, @Context
+                             @DefaultValue("false") @QueryParam("withParticipants") boolean withParticipants, @Context
                              UriInfo ui)
             throws ServerException {
         Group group = groupController.getGroup(accessToken, groupId, withParticipants);
@@ -189,7 +189,7 @@ public class GroupAPI {
         try {
             // Reads the password from the received JSON String with Jackson.
             JsonNode jsonObj = mapper.readTree(jsonString);
-            if(jsonObj.get("password") != null){
+            if (jsonObj.get("password") != null) {
                 password = jsonObj.get("password").asText();
             }
         } catch (IOException e) {
@@ -294,8 +294,9 @@ public class GroupAPI {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{groupId}/ballot/{ballotId}")
     public Response getBallot(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
-            groupId, @PathParam("ballotId") int ballotId) throws ServerException {
-        Ballot ballot = groupController.getBallot(accessToken, groupId, ballotId);
+            groupId, @PathParam("ballotId") int ballotId, @DefaultValue("false") @QueryParam("subresources")
+                              boolean subresources) throws ServerException {
+        Ballot ballot = groupController.getBallot(accessToken, groupId, ballotId, subresources);
         return Response.status(Response.Status.OK).entity(ballot).build();
     }
 
@@ -308,7 +309,7 @@ public class GroupAPI {
      * @param groupId The id of the group extracted from the URL.
      * @param ballotId The id of the ballot extracted from the URL.
      * @param ballot The ballot object which has been generated from the JSON Merge Patch document. It contains the
-     *               new data for the ballot.
+     * new data for the ballot.
      * @return Returns an updated version of the ballot resource.
      * @throws ServerException If the execution of the PATCH request has failed. The ServerException contains
      * information about the error which has occurred.
@@ -383,9 +384,10 @@ public class GroupAPI {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{groupId}/ballot/{ballotId}/option")
     public List<Option> getOptions(@HeaderParam("Authorization") String accessToken, @PathParam("groupId") int
-    groupId, @PathParam("ballotId") int ballotId) throws ServerException {
+            groupId, @PathParam("ballotId") int ballotId, @DefaultValue("false") @QueryParam("subresources")
+    boolean subresources) throws ServerException {
         List<Option> options;
-        options = groupController.getOptions(accessToken, groupId, ballotId);
+        options = groupController.getOptions(accessToken, groupId, ballotId, subresources);
         return options;
     }
 
@@ -568,7 +570,7 @@ public class GroupAPI {
      * @param groupId The id of the group to which the conversation belongs.
      * @param conversationId The id of the conversation which should be updated.
      * @param conversation The conversation object which has been generated from the JSON Merge Patch document. It
-     *                     contains the new data for the conversation.
+     * contains the new data for the conversation.
      * @return Returns an updated version of the conversation resource.
      * @throws ServerException If the execution of the PATCH request has failed. The ServerException contains
      * information about the error which has occurred.
@@ -619,8 +621,8 @@ public class GroupAPI {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{groupId}/conversation/{conversationId}/message")
     public Response createConversationMessage(@HeaderParam("Authorization") String accessToken, @PathParam("groupId")
-           int groupId, @PathParam("conversationId") int conversationId, ConversationMessage conversationMessage) throws
-           ServerException {
+    int groupId, @PathParam("conversationId") int conversationId, ConversationMessage conversationMessage) throws
+            ServerException {
         conversationMessage = groupController.createConversationMessage(accessToken, groupId, conversationId,
                 conversationMessage);
         String conversationMessageAsJson = parseToJson(conversationMessage);
@@ -636,7 +638,7 @@ public class GroupAPI {
      * @param groupId The id of the group to which the conversation belongs.
      * @param conversationId The id of the conversation.
      * @param messageNr The starting message number. All messages of the conversation are returned which have a
-     *                  higher message number than the one defined in this parameter.
+     * higher message number than the one defined in this parameter.
      * @return A list of conversation messages. The list can also be empty.
      * @throws ServerException If the execution of the GET request has failed. The ServerException contains
      * information about the error which has occurred.
@@ -645,8 +647,8 @@ public class GroupAPI {
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{groupId}/conversation/{conversationId}/message")
     public Response getConversationMessages(@HeaderParam("Authorization") String accessToken,
-           @PathParam("groupId") int groupId, @PathParam("conversationId") int conversationId, @DefaultValue("0")
-           @QueryParam("messageNr") int messageNr) throws ServerException {
+                                            @PathParam("groupId") int groupId, @PathParam("conversationId") int conversationId, @DefaultValue("0")
+                                            @QueryParam("messageNr") int messageNr) throws ServerException {
         List<ConversationMessage> conversationMessages = groupController.getConversationMessages(accessToken, groupId,
                 conversationId, messageNr);
         String conversationMessagesAsJson = parseToJson(conversationMessages);

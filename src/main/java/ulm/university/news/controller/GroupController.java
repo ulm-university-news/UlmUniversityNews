@@ -35,8 +35,10 @@ public class GroupController extends AccessController {
     /** A standard error message which can be used if the request is rejected due to an invalid token. */
     private static final String INVALID_TOKEN_ERROR_MSG =
             "To perform this operation a valid access token needs to be provided.";
-    /** A standard error message which can be used if the requestor is a moderator and not a user and the operation
-     * can only be performed by users. */
+    /**
+     * A standard error message which can be used if the requestor is a moderator and not a user and the operation
+     * can only be performed by users.
+     */
     private static final String MODERATOR_FORBIDDEN_ERROR_MSG =
             "Moderator is not allowed to perform the requested  operation.";
 
@@ -46,7 +48,7 @@ public class GroupController extends AccessController {
     /**
      * Creates an instance of the GroupController class.
      */
-    public GroupController(){
+    public GroupController() {
 
     }
 
@@ -135,11 +137,11 @@ public class GroupController extends AccessController {
         /* Verify access token and check whether the requestor is allowed to perform the operation.
            Users and system administrators can perform this operation. */
         TokenType tokenType = verifyAccessToken(accessToken);
-        if(tokenType == TokenType.INVALID){
+        if (tokenType == TokenType.INVALID) {
             logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, INVALID_TOKEN_ERROR_MSG);
             throw new ServerException(401, TOKEN_INVALID);
         }
-        if(tokenType == TokenType.MODERATOR && !isAdministrator(accessToken)) {
+        if (tokenType == TokenType.MODERATOR && !isAdministrator(accessToken)) {
             logger.error(LOG_SERVER_EXCEPTION, 403, MODERATOR_FORBIDDEN, MODERATOR_FORBIDDEN_ERROR_MSG);
             throw new ServerException(403, MODERATOR_FORBIDDEN);
         }
@@ -165,7 +167,7 @@ public class GroupController extends AccessController {
      * @param accessToken The access token of the requestor.
      * @param groupId The id of the group which should be returned.
      * @param withParticipants Indicates whether the group object should contain a list of all participants of the
-     *                         group.
+     * group.
      * @return The group object.
      * @throws ServerException If the requestor is not allowed to perform the operation or the execution fails due to
      * a database failure.
@@ -207,7 +209,7 @@ public class GroupController extends AccessController {
      * doesn't have the required permissions and if a database failure occurs.
      */
     public Group changeGroup(String accessToken, int groupId, Group group) throws ServerException {
-        if(group == null){
+        if (group == null) {
             String errMsg = "No valid data sent with patch request.";
             logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_DATA_INCOMPLETE, errMsg);
             throw new ServerException(400, GROUP_DATA_INCOMPLETE);
@@ -220,7 +222,7 @@ public class GroupController extends AccessController {
         // Get the data of the group from the database. The group should already contain the list of participants.
         Group groupDB = getGroup(groupId, true);
         // Check if the user is allowed to execute the update operation.
-        if(!groupDB.isGroupAdmin(requestor.getId())){
+        if (!groupDB.isGroupAdmin(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not the group administrator of this group." +
                     " The user is thus not allowed to change the group data.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -257,18 +259,17 @@ public class GroupController extends AccessController {
      *
      * @param group The group object which contains the data from the request.
      * @param groupDB The group object which contains the data from the database and a list of its participants. The
-     *                list of participants needs to be set, otherwise not all conditions can be checked successfully.
+     * list of participants needs to be set, otherwise not all conditions can be checked successfully.
      * @return Returns an updated version of the group object taken from the database.
      * @throws ServerException If some data based conditions are harmed.
      */
     private Group updateGroup(Group group, Group groupDB) throws ServerException {
         String newName = group.getName();
-        if(newName != null){
+        if (newName != null) {
             // Update the name if conditions are met.
-            if(newName.matches(NAME_PATTERN)){
+            if (newName.matches(NAME_PATTERN)) {
                 groupDB.setName(newName);
-            }
-            else{
+            } else {
                 String errMsg = "Invalid group name. The given name is " + group.getName() + ".";
                 logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_NAME, errMsg);
                 throw new ServerException(400, GROUP_INVALID_NAME);
@@ -276,40 +277,37 @@ public class GroupController extends AccessController {
         }
 
         String newDescription = group.getDescription();
-        if(newDescription != null){
+        if (newDescription != null) {
             // Update the description if conditions are met.
-            if(newDescription.length() <= DESCRIPTION_MAX_LENGTH){
+            if (newDescription.length() <= DESCRIPTION_MAX_LENGTH) {
                 groupDB.setDescription(newDescription);
-            }
-            else{
+            } else {
                 String errMsg = "Invalid description for group. The description exceeded the size. The size of the " +
-                        "description is: " +group.getDescription().length()+ ".";
+                        "description is: " + group.getDescription().length() + ".";
                 logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_DESCRIPTION, errMsg);
                 throw new ServerException(400, GROUP_INVALID_DESCRIPTION);
             }
         }
 
         String newPassword = group.getPassword();
-        if(newPassword != null){
+        if (newPassword != null) {
             // Update the password if conditions are met.
-            if(newPassword.matches(PASSWORD_HASH_PATTERN)){
+            if (newPassword.matches(PASSWORD_HASH_PATTERN)) {
                 groupDB.setPassword(newPassword);
                 // Prepare the password for the storing in the database.
                 groupDB.encryptPassword();
-            }
-            else{
+            } else {
                 logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_PASSWORD, "Invalid group password.");
                 throw new ServerException(400, GROUP_INVALID_PASSWORD);
             }
         }
 
         String newTerm = group.getTerm();
-        if(newTerm != null){
+        if (newTerm != null) {
             // Update the term if conditions are met.
-            if(newTerm.matches(TERM_PATTERN)){
+            if (newTerm.matches(TERM_PATTERN)) {
                 groupDB.setTerm(newTerm);
-            }
-            else{
+            } else {
                 String errMsg = "Invalid term. The given term is " + group.getTerm() + ".";
                 logger.error(LOG_SERVER_EXCEPTION, 400, GROUP_INVALID_TERM, errMsg);
                 throw new ServerException(400, GROUP_INVALID_TERM);
@@ -317,12 +315,11 @@ public class GroupController extends AccessController {
         }
 
         int newGroupAdmin = group.getGroupAdmin();
-        if(newGroupAdmin != 0){
+        if (newGroupAdmin != 0) {
             // Update the group admin if conditions are met.
-            if(groupDB.isValidParticipant(newGroupAdmin)){
+            if (groupDB.isValidParticipant(newGroupAdmin)) {
                 groupDB.setGroupAdmin(newGroupAdmin);
-            }
-            else{
+            } else {
                 String errMsg = "Invalid group admin. The given id for the new group admin represents a user who is " +
                         "no active participant of the group and thus can't be set as the group admin of this group. " +
                         "The id is " + newGroupAdmin + ".";
@@ -350,7 +347,7 @@ public class GroupController extends AccessController {
         /* Verify access token. Only users (the group administrator) and system administrators are allowed to delete a
            group. */
         TokenType tokenType = verifyAccessToken(accessToken);
-        if(tokenType == TokenType.INVALID){
+        if (tokenType == TokenType.INVALID) {
             logger.error(LOG_SERVER_EXCEPTION, 401, TOKEN_INVALID, INVALID_TOKEN_ERROR_MSG);
             throw new ServerException(401, TOKEN_INVALID);
         }
@@ -362,20 +359,19 @@ public class GroupController extends AccessController {
         Moderator requestorModerator = null;
         try {
             // Check whether the requestor has the permission to delete the group.
-            if(tokenType == TokenType.USER){
+            if (tokenType == TokenType.USER) {
                 // Note that user cannot be null here as the access token has been verified.
                 requestor = userDBM.getUserByToken(accessToken);
                 logger.info("User with id {} wants to delete the group with id {}.", requestor.getId(), groupId);
 
                 // Check if user is group administrator of this group.
-                if(!groupDB.isGroupAdmin(requestor.getId())){
-                    String errMsg = "The user with id "+ requestor.getId() + " is not the group administrator of this" +
+                if (!groupDB.isGroupAdmin(requestor.getId())) {
+                    String errMsg = "The user with id " + requestor.getId() + " is not the group administrator of this" +
                             " group. The user is thus not allowed to delete the group.";
                     logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
                     throw new ServerException(403, USER_FORBIDDEN);
                 }
-            }
-            else if (tokenType == TokenType.MODERATOR) {
+            } else if (tokenType == TokenType.MODERATOR) {
                 requestorModerator = moderatorDBM.getModeratorByToken(accessToken);
                 logger.info("Moderator with id {} wants to delete the group with id {}.", requestorModerator.getId(),
                         groupId);
@@ -389,7 +385,7 @@ public class GroupController extends AccessController {
             // Delete the group and all corresponding resources.
             groupDBM.deleteGroup(groupId);
 
-        }catch (DatabaseException e){
+        } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
@@ -397,7 +393,7 @@ public class GroupController extends AccessController {
         // Get all participants of the group. Notify also the requestor?
         List<User> participants = groupDB.getParticipants();
         // Remove the requestor from the participants list if it is an user. The requestor should not be notified.
-        if(requestor != null){
+        if (requestor != null) {
             removeRequestorFromParticipantsList(participants, requestor);
         }
         // Notify the participants of the group.
@@ -426,7 +422,7 @@ public class GroupController extends AccessController {
 
         // Check if the user has provided the correct password in order to join the group.
         boolean verified = groupDB.verifyPassword(password);
-        if(!verified){
+        if (!verified) {
             String errMessage = "The user didn't provide the correct password to be able to join the group.";
             logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_INCORRECT_PASSWORD, errMessage);
             throw new ServerException(403, GROUP_INCORRECT_PASSWORD);
@@ -478,7 +474,7 @@ public class GroupController extends AccessController {
         }
 
         // Set the push access token and the platform to null, so they are not returned to the requestor.
-        for(User user : users){
+        for (User user : users) {
             user.setPushAccessToken(null);
             user.setPlatform(null);
         }
@@ -507,7 +503,7 @@ public class GroupController extends AccessController {
         Group groupDB = getGroup(groupId, true);
         // Check if the user which is identified by the participantId is an active participant of the group.
         boolean activeParticipant = groupDB.isValidParticipant(participantId);
-        if(!activeParticipant){
+        if (!activeParticipant) {
             String errMsg = "The user with the id " + participantId + " is not found in the group with id " +
                     groupId + ". The user is not an active participant of the group and thus can't be removed " +
                     "from the participant list.";
@@ -518,7 +514,7 @@ public class GroupController extends AccessController {
         /* Check if the requestor is the group administrator of this group. The group administrator is not
            allowed to leave the group. */
         boolean isAdmin = groupDB.isGroupAdmin(requestor.getId());
-        if(requestor.getId() == participantId && isAdmin){
+        if (requestor.getId() == participantId && isAdmin) {
             String errMsg = "The group administrator requests to leave the group. The request is rejected as the " +
                     "group administrator is not allowed to leave the group. The id of the requestor is " +
                     requestor.getId() + ".";
@@ -529,7 +525,7 @@ public class GroupController extends AccessController {
         /* Check if the requestor has another id than the one specified in the request for the participant that
            should be removed. A participant can only remove himself from the group, i.e. leave the group. The
            group administrator exclusively is allowed to remove other participants from the group. */
-        if(requestor.getId() != participantId && !isAdmin){
+        if (requestor.getId() != participantId && !isAdmin) {
             String errMsg = "The user with id " + requestor.getId() + " requested to remove the user with the id " +
                     participantId + " from the group. The request is rejected as the requestor is not the group " +
                     "administrator of the group.";
@@ -550,12 +546,11 @@ public class GroupController extends AccessController {
         // Remove the requestor from the participants list. The requestor should not be notified.
         removeRequestorFromParticipantsList(participants, requestor);
         // Send the notification.
-        if(participantId == requestor.getId()){
+        if (participantId == requestor.getId()) {
             logger.info("The user with id {} has left the group with id {}.", requestor.getId(), groupId);
             PushManager.getInstance().notifyUsers(PushType.PARTICIPANT_LEFT, participants, groupId, participantId,
                     null);
-        }
-        else{
+        } else {
             logger.info("The user with id {} has been removed from the group with id {} by the group " +
                     "administrator", participantId, groupId);
             PushManager.getInstance().notifyUsers(PushType.PARTICIPANT_REMOVED, participants, groupId, participantId,
@@ -607,7 +602,7 @@ public class GroupController extends AccessController {
             List<Ballot> ballots = groupDBM.getBallots(groupDB.getId(), participantId);
             /* Set the group administrator as the new administrator of all ballots which have been administered
                by the participant before. */
-            for (Ballot ballot : ballots){
+            for (Ballot ballot : ballots) {
                 ballot.setAdmin(adminId);
                 // Update the ballot data record in the database.
                 groupDBM.updateBallot(ballot);
@@ -636,18 +631,16 @@ public class GroupController extends AccessController {
      */
     public Ballot createBallot(String accessToken, int groupId, Ballot ballot) throws ServerException {
         // Validate the received data.
-        if(ballot == null || ballot.getTitle() == null || ballot.getMultipleChoice() == null ||
-                ballot.getPublicVotes() == null){
+        if (ballot == null || ballot.getTitle() == null || ballot.getMultipleChoice() == null ||
+                ballot.getPublicVotes() == null) {
             String errMsg = "Incomplete data record. The given ballot object is " + ballot + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_DATA_INCOMPLETE, errMsg);
             throw new ServerException(400, BALLOT_DATA_INCOMPLETE);
-        }
-        else if(!ballot.getTitle().matches(NAME_PATTERN)){
+        } else if (!ballot.getTitle().matches(NAME_PATTERN)) {
             String errMsg = "Invalid ballot title. The given title is " + ballot.getTitle() + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_TITLE, errMsg);
             throw new ServerException(400, BALLOT_INVALID_TITLE);
-        }
-        else if(ballot.getDescription() != null && ballot.getDescription().length() > DESCRIPTION_MAX_LENGTH){
+        } else if (ballot.getDescription() != null && ballot.getDescription().length() > DESCRIPTION_MAX_LENGTH) {
             String errMsg = "Invalid description for ballot. The description exceeded the max size. The size of the " +
                     "description is: " + ballot.getDescription().length() + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_DESCRIPTION, errMsg);
@@ -663,7 +656,7 @@ public class GroupController extends AccessController {
         Group groupDB = getGroup(groupId, true);
         // Check if the requestor is an active participant of the group. If not, discard the request.
         boolean valid = groupDB.isValidParticipant(requestor.getId());
-        if(!valid){
+        if (!valid) {
             String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not an active " +
                     "participant of the group. The user is thus not allowed to create a ballot for this group.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -672,9 +665,9 @@ public class GroupController extends AccessController {
 
         // Perform further authorization checks depending on the group type.
         GroupType groupType = groupDB.getGroupType();
-        if(groupType == GroupType.TUTORIAL){
+        if (groupType == GroupType.TUTORIAL) {
             // In a tutorial group, only the tutor (group administrator) is allowed to create a ballot.
-            if(!groupDB.isGroupAdmin(requestor.getId())){
+            if (!groupDB.isGroupAdmin(requestor.getId())) {
                 String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not the tutor" +
                         " (group administrator) of the tutorial group with id " + groupId + ". The user is thus " +
                         "not allowed to create a ballot for this group.";
@@ -710,7 +703,7 @@ public class GroupController extends AccessController {
      * @param accessToken The access token of the requestor.
      * @param groupId The id of the group.
      * @param subresources Indicates whether the ballot objects should contain the corresponding options and a list
-     *                     of voters per option who voted for each option.
+     * of voters per option who voted for each option.
      * @return A list of ballot objects. The list can also be empty.
      * @throws ServerException If the requestor is not allowed to execute the operation, the group is not found or
      * the ballots can not be retrieved due to a database failure.
@@ -750,7 +743,8 @@ public class GroupController extends AccessController {
      * @throws ServerException If the requestor is not allowed to execute the operation, the group or the ballot are
      * not found or the ballot could not be retrieved due to a database failure.
      */
-    public Ballot getBallot(String accessToken, int groupId, int ballotId) throws ServerException {
+    public Ballot getBallot(String accessToken, int groupId, int ballotId, boolean withSubresources) throws
+            ServerException {
         Ballot ballot;
         /* Check if requestor is a valid user. Only users (more precisely participants of the group) are allowed to
            perform this operation. */
@@ -765,7 +759,7 @@ public class GroupController extends AccessController {
         verifyGroupExistenceViaDB(groupId);
 
         // Get the ballot from the database.
-        ballot = getBallot(groupId,ballotId);
+        ballot = getBallot(groupId, ballotId, withSubresources);
 
         return ballot;
     }
@@ -784,7 +778,7 @@ public class GroupController extends AccessController {
      * not found or the update could not be performed due to a database failure.
      */
     public Ballot changeBallot(String accessToken, int groupId, int ballotId, Ballot ballot) throws ServerException {
-        if(ballot == null){
+        if (ballot == null) {
             logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_DATA_INCOMPLETE, "No valid data sent with patch request.");
             throw new ServerException(400, BALLOT_DATA_INCOMPLETE);
         }
@@ -798,7 +792,7 @@ public class GroupController extends AccessController {
         // First, get the group from the database. The group should already contain a list of all participants.
         Group groupDB = getGroup(groupId, true);
         // Check if the requestor is an active participant of the group. Otherwise reject the request.
-        if(!groupDB.isValidParticipant(requestor.getId())){
+        if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
                     " with id " + groupId + ". The user is not allowed to change the ballot, the request is rejected.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -808,7 +802,7 @@ public class GroupController extends AccessController {
         // Second, get the ballot object from the database.
         Ballot ballotDB = getBallot(groupId, ballotId);
         // Check if the requestor is the administrator of the ballot. Otherwise reject the request.
-        if(!ballotDB.isBallotAdmin(requestor.getId())){
+        if (!ballotDB.isBallotAdmin(requestor.getId())) {
             String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not the " +
                     "administrator of the ballot with id " + ballotId + ". The request is rejected.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -845,12 +839,11 @@ public class GroupController extends AccessController {
      */
     private Ballot updateBallot(Ballot ballot, Ballot ballotDB) throws ServerException {
         String newTitle = ballot.getTitle();
-        if(newTitle != null){
+        if (newTitle != null) {
             // Update the title if conditions are met.
-            if(newTitle.matches(NAME_PATTERN)){
+            if (newTitle.matches(NAME_PATTERN)) {
                 ballotDB.setTitle(newTitle);
-            }
-            else{
+            } else {
                 String errMsg = "Invalid ballot title. The given title is " + ballot.getTitle() + ".";
                 logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_TITLE, errMsg);
                 throw new ServerException(400, BALLOT_INVALID_TITLE);
@@ -858,12 +851,11 @@ public class GroupController extends AccessController {
         }
 
         String newDescription = ballot.getDescription();
-        if(newDescription != null){
+        if (newDescription != null) {
             // Update the description if conditions are met.
-            if(newDescription.length() <= DESCRIPTION_MAX_LENGTH){
+            if (newDescription.length() <= DESCRIPTION_MAX_LENGTH) {
                 ballotDB.setDescription(newDescription);
-            }
-            else{
+            } else {
                 String errMsg = "Invalid description for ballot. The description exceeded the size. The size of the " +
                         "description is: " + ballot.getDescription().length() + ".";
                 logger.error(LOG_SERVER_EXCEPTION, 400, BALLOT_INVALID_DESCRIPTION, errMsg);
@@ -872,7 +864,7 @@ public class GroupController extends AccessController {
         }
 
         // Update the closed status if necessary.
-        if(ballot.getClosed() != null) {
+        if (ballot.getClosed() != null) {
             boolean closed = ballot.getClosed();
             if (closed && !ballotDB.getClosed()) {
                 logger.info("The ballot with id {} is getting closed.", ballotDB.getId());
@@ -904,7 +896,7 @@ public class GroupController extends AccessController {
         // First, get the group from the database. The group should already contain a list of all participants.
         Group groupDB = getGroup(groupId, true);
         // Check if the requestor is an active participant of the group. Otherwise reject the request.
-        if(!groupDB.isValidParticipant(requestor.getId())){
+        if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
                     " with id " + groupId + ". The user is not allowed to delete the ballot, the request is rejected.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -914,7 +906,7 @@ public class GroupController extends AccessController {
         // Second, get the ballot object from the database.
         Ballot ballotDB = getBallot(groupId, ballotId);
         // Check if the requestor is the administrator of the ballot. Otherwise reject the request.
-        if(!ballotDB.isBallotAdmin(requestor.getId())){
+        if (!ballotDB.isBallotAdmin(requestor.getId())) {
             String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not the " +
                     "administrator of the ballot with id " + ballotId + ". The request is rejected.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -926,7 +918,7 @@ public class GroupController extends AccessController {
         try {
             // Delete the ballot.
             groupDBM.deleteBallot(groupId, ballotId);
-        } catch (DatabaseException e){
+        } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
@@ -957,8 +949,7 @@ public class GroupController extends AccessController {
             String errMsg = "Incomplete data record. The given option is " + option + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, OPTION_DATA_INCOMPLETE, errMsg);
             throw new ServerException(400, OPTION_DATA_INCOMPLETE);
-        }
-        else if (option.getText().length() > OPTION_TEXT_MAX_LENGTH) {
+        } else if (option.getText().length() > OPTION_TEXT_MAX_LENGTH) {
             String errMsg = "Invalid option text. The option's text has exceeded the max length.";
             logger.error(LOG_SERVER_EXCEPTION, 400, OPTION_INVALID_TEXT, errMsg);
             throw new ServerException(400, OPTION_TEXT_MAX_LENGTH);
@@ -978,13 +969,13 @@ public class GroupController extends AccessController {
         Ballot ballotDB = getBallot(groupId, ballotId);
 
         // Check if the ballot is closed. If its closed, reject the request.
-        if(ballotDB.getClosed()){
+        if (ballotDB.getClosed()) {
             String errMsg = "The ballot with id " + ballotId + " is closed. There are thus no changes allowed.";
             logger.error(LOG_SERVER_EXCEPTION, 403, BALLOT_CLOSED, errMsg);
             throw new ServerException(403, BALLOT_CLOSED);
         }
 
-        if(!ballotDB.isBallotAdmin(requestor.getId())){
+        if (!ballotDB.isBallotAdmin(requestor.getId())) {
             String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not the administrator" +
                     " of the ballot with id " + ballotId + ". The user is thus not allowed to create an option for " +
                     "this ballot. The request is rejected.";
@@ -1017,11 +1008,14 @@ public class GroupController extends AccessController {
      * @param accessToken The access token of the requestor.
      * @param groupId The id of the group.
      * @param ballotId The id of the ballot for which the options should be returned.
+     * @param subresources Indicates whether the ballot objects should contain the corresponding options and a list
+     * of voters per option who voted for each option.
      * @return A list of option objects. The list can also be empty.
      * @throws ServerException If the requestor is not allowed to execute the operation, the group or the ballot are
      * not found or the retrieval of the option fails due to a database failure.
      */
-    public List<Option> getOptions(String accessToken, int groupId, int ballotId) throws ServerException {
+    public List<Option> getOptions(String accessToken, int groupId, int ballotId, boolean subresources) throws
+            ServerException {
         List<Option> options;
 
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
@@ -1040,7 +1034,7 @@ public class GroupController extends AccessController {
         verifyBallotExistenceViaDB(groupId, ballotId);
 
         try {
-            options = groupDBM.getOptions(ballotId);
+            options = groupDBM.getOptions(ballotId, subresources);
         } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
@@ -1112,14 +1106,14 @@ public class GroupController extends AccessController {
         verifyOptionExistenceViaDB(ballotId, optionId);
 
         // Check if the ballot is closed. If its closed, reject the request.
-        if(ballotDB.getClosed()){
+        if (ballotDB.getClosed()) {
             String errMsg = "The ballot with id " + ballotId + " is closed. There are thus no changes allowed.";
             logger.error(LOG_SERVER_EXCEPTION, 403, BALLOT_CLOSED, errMsg);
             throw new ServerException(403, BALLOT_CLOSED);
         }
 
         // The requestor needs to be the administrator of the ballot in order to delete it.
-        if(!ballotDB.isBallotAdmin(requestor.getId())){
+        if (!ballotDB.isBallotAdmin(requestor.getId())) {
             String errMsg = "The user with the id " + requestor.getId() + " is not the administrator of the " +
                     "ballot with id " + ballotId + ". The user is thus not allowed to delete the option.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -1157,13 +1151,13 @@ public class GroupController extends AccessController {
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
         logger.info("The requestor, i.e. the user with id {}, requests to vote for the option with id {} in ballot " +
-                "with id {}. The ballot belongs to the group with id {}.", requestor.getId(), optionId, ballotId,
+                        "with id {}. The ballot belongs to the group with id {}.", requestor.getId(), optionId, ballotId,
                 groupId);
 
         // Get the group including the list of participants from the database. Reject the request if group is not found.
         Group groupDB = getGroup(groupId, true);
         // Check if the requestor is an active participant of the group. Otherwise reject the request.
-        if(!groupDB.isValidParticipant(requestor.getId())){
+        if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " isn't an active participant of the group " +
                     "with id " + groupId + ". The user is not allowed to vote for an option of a ballot of this group.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -1173,7 +1167,7 @@ public class GroupController extends AccessController {
         // Get the ballot from the database. Reject the request if ballot is not found.
         Ballot ballotDB = getBallot(groupId, ballotId);
         // Check if the ballot is closed. If its closed, reject the request.
-        if(ballotDB.getClosed()){
+        if (ballotDB.getClosed()) {
             String errMsg = "The ballot with id " + ballotId + " is closed. There are thus no changes allowed.";
             logger.error(LOG_SERVER_EXCEPTION, 403, BALLOT_CLOSED, errMsg);
             throw new ServerException(403, BALLOT_CLOSED);
@@ -1184,12 +1178,12 @@ public class GroupController extends AccessController {
 
         try {
             // Check whether the requestor has already voted for this option.
-            if(groupDBM.isValidVote(optionId, requestor.getId())){
+            if (groupDBM.isValidVote(optionId, requestor.getId())) {
                 boolean multipleChoice = ballotDB.getMultipleChoice();
-                if(!multipleChoice){
+                if (!multipleChoice) {
                     /* If there is no multiple choice enabled, each participant can only take exactly one vote for
                        the ballot. */
-                    if(groupDBM.hasAlreadyVoted(ballotId, requestor.getId())){
+                    if (groupDBM.hasAlreadyVoted(ballotId, requestor.getId())) {
                         String errMsg = "The user with id " + requestor.getId() + " has already placed a vote for an " +
                                 "option within the ballot with id " + ballotId + ". No further vote can be placed.";
                         logger.error(LOG_SERVER_EXCEPTION, 403, BALLOT_USER_HAS_ALREADY_VOTED, errMsg);
@@ -1231,7 +1225,7 @@ public class GroupController extends AccessController {
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
         logger.debug("The requestor, i.e. the user with id {}, requests the voters for the option with id {} in the " +
-                "ballot with id {}. The ballot belongs to the group with id {}.", requestor.getId(), optionId,
+                        "ballot with id {}. The ballot belongs to the group with id {}.", requestor.getId(), optionId,
                 ballotId, groupId);
 
         // Check if the group exists and the user is an active participant. If not, reject the request.
@@ -1273,17 +1267,17 @@ public class GroupController extends AccessController {
      * @throws ServerException If the requestor is not allowed to execute the operation, the group, ballot or option
      * are not found or if the vote could not be deleted due to a database failure.
      */
-    public void deleteVote(String accessToken, int groupId, int ballotId, int optionId, int userId )  throws
+    public void deleteVote(String accessToken, int groupId, int ballotId, int optionId, int userId) throws
             ServerException {
         /* Check if the requestor is a valid user. Only a user, i.e. a participant of the group, is allowed to
            execute this operation. */
         User requestor = verifyUserAccess(accessToken);
         logger.info("The requestor, i.e. the user with id {}, requests to delete the vote for the option with id {} " +
-                "from the ballot with id {}. The ballot belongs to the group with id {}.", requestor.getId(),
+                        "from the ballot with id {}. The ballot belongs to the group with id {}.", requestor.getId(),
                 optionId, ballotId, groupId);
 
         // Check whether the userId matches the requestor's id.
-        if(requestor.getId() != userId){
+        if (requestor.getId() != userId) {
             String errMsg = "A user can only delete votes which have been placed by himself.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
             throw new ServerException(403, USER_FORBIDDEN);
@@ -1292,7 +1286,7 @@ public class GroupController extends AccessController {
         // Get the group including the list of participants from the database. Reject the request if group is not found.
         Group groupDB = getGroup(groupId, true);
         // Check if the requestor is an active participant of the group. Otherwise reject the request.
-        if(!groupDB.isValidParticipant(requestor.getId())){
+        if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " isn't an active participant of the group " +
                     "with id " + groupId + ". The user is not allowed to remove a vote for an option of a ballot of " +
                     "this group.";
@@ -1303,7 +1297,7 @@ public class GroupController extends AccessController {
         // Get the ballot from the database. Reject the request if ballot is not found.
         Ballot ballotDB = getBallot(groupId, ballotId);
         // Check if the ballot is closed. If it is closed, reject the request.
-        if(ballotDB.getClosed()){
+        if (ballotDB.getClosed()) {
             String errMsg = "The ballot with id " + ballotId + " is closed. There are thus no changes allowed.";
             logger.error(LOG_SERVER_EXCEPTION, 403, BALLOT_CLOSED, errMsg);
             throw new ServerException(403, BALLOT_CLOSED);
@@ -1341,12 +1335,11 @@ public class GroupController extends AccessController {
     public Conversation createConversation(String accessToken, int groupId, Conversation conversation) throws
             ServerException {
         // Validate the received data.
-        if(conversation == null || conversation.getTitle() == null){
+        if (conversation == null || conversation.getTitle() == null) {
             String errMsg = "Incomplete data record. The given conversation object is " + conversation + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, CONVERSATION_DATA_INCOMPLETE, errMsg);
             throw new ServerException(400, CONVERSATION_DATA_INCOMPLETE);
-        }
-        else if(!conversation.getTitle().matches(NAME_PATTERN)){
+        } else if (!conversation.getTitle().matches(NAME_PATTERN)) {
             String errMsg = "Invalid conversation title. The given title is " + conversation.getTitle() + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, CONVERSATION_INVALID_TITLE, errMsg);
             throw new ServerException(400, CONVERSATION_INVALID_TITLE);
@@ -1361,7 +1354,7 @@ public class GroupController extends AccessController {
         // Get the group from the database. The group should already include a list of its participants.
         Group groupDB = getGroup(groupId, true);
         // Check if the requestor is an active participant of the group. Otherwise reject the request.
-        if(!groupDB.isValidParticipant(requestor.getId())){
+        if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " isn't an active participant of the group " +
                     "with id " + groupId + ". The user is not allowed to create a conversation for this group";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -1469,7 +1462,7 @@ public class GroupController extends AccessController {
      */
     public Conversation changeConversation(String accessToken, int groupId, int conversationId, Conversation
             conversation) throws ServerException {
-        if(conversation == null){
+        if (conversation == null) {
             logger.error(LOG_SERVER_EXCEPTION, 400, CONVERSATION_DATA_INCOMPLETE, "No valid data sent with patch " +
                     "request.");
             throw new ServerException(400, CONVERSATION_DATA_INCOMPLETE);
@@ -1484,7 +1477,7 @@ public class GroupController extends AccessController {
         // First, get the group from the database. The group should already contain a list of all participants.
         Group groupDB = getGroup(groupId, true);
         // Check if the requestor is an active participant of the group. Otherwise reject the request.
-        if(!groupDB.isValidParticipant(requestor.getId())){
+        if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
                     " with id " + groupId + ". The user is not allowed to change the conversation, the request is " +
                     "rejected.";
@@ -1495,7 +1488,7 @@ public class GroupController extends AccessController {
         // Second, get the conversation from the database.
         Conversation conversationDB = getConversation(groupId, conversationId);
         // Check if the requestor is the administrator of the conversation. If not, reject the request.
-        if(!conversationDB.isAdmin(requestor.getId())){
+        if (!conversationDB.isAdmin(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not the administrator of the conversation " +
                     "with the id " + conversationId + ". The user is thus not allowed to change the conversation.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -1535,12 +1528,11 @@ public class GroupController extends AccessController {
     private Conversation updateConversation(Conversation conversation, Conversation conversationDB) throws
             ServerException {
         String newTitle = conversation.getTitle();
-        if(newTitle != null){
+        if (newTitle != null) {
             // Update the title if conditions are met.
-            if(newTitle.matches(NAME_PATTERN)){
+            if (newTitle.matches(NAME_PATTERN)) {
                 conversationDB.setTitle(newTitle);
-            }
-            else{
+            } else {
                 String errMsg = "Invalid conversation title. The given title is " + conversation.getTitle() + ".";
                 logger.error(LOG_SERVER_EXCEPTION, 400, CONVERSATION_INVALID_TITLE, errMsg);
                 throw new ServerException(400, CONVERSATION_INVALID_TITLE);
@@ -1548,13 +1540,12 @@ public class GroupController extends AccessController {
         }
 
         Boolean closed = conversation.getClosed();
-        if(closed != null){
+        if (closed != null) {
             // Update the closed field if necessary.
-            if(closed == Boolean.TRUE && conversationDB.getClosed() == Boolean.FALSE){
+            if (closed == Boolean.TRUE && conversationDB.getClosed() == Boolean.FALSE) {
                 logger.info("The conversation with id {} is getting closed.", conversationDB.getId());
                 conversationDB.setClosed(true);
-            }
-            else if(closed == Boolean.FALSE && conversationDB.getClosed() == Boolean.TRUE){
+            } else if (closed == Boolean.FALSE && conversationDB.getClosed() == Boolean.TRUE) {
                 logger.info("The conversation with id {} is getting opend again.", conversationDB.getId());
                 conversationDB.setClosed(false);
             }
@@ -1582,7 +1573,7 @@ public class GroupController extends AccessController {
         // First, get the group from the database. The group should already contain a list of all participants.
         Group groupDB = getGroup(groupId, true);
         // Check if the requestor is an active participant of the group. Otherwise reject the request.
-        if(!groupDB.isValidParticipant(requestor.getId())){
+        if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
                     " with id " + groupId + ". The user is not allowed to delete the conversation, the request is " +
                     "rejected.";
@@ -1593,7 +1584,7 @@ public class GroupController extends AccessController {
         // Second, get the conversation from the database.
         Conversation conversationDB = getConversation(groupId, conversationId);
         // Check if the requestor is the administrator of the conversation. If not, reject the request.
-        if(!conversationDB.isAdmin(requestor.getId())){
+        if (!conversationDB.isAdmin(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not the administrator of the conversation " +
                     "with the id " + conversationId + ". The user is thus not allowed to delete the conversation.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -1628,15 +1619,14 @@ public class GroupController extends AccessController {
      * conversation are not found or the message cannot be created due to a database failure.
      */
     public ConversationMessage createConversationMessage(String accessToken, int groupId, int conversationId,
-            ConversationMessage conversationMessage) throws ServerException {
+                                                         ConversationMessage conversationMessage) throws ServerException {
         // Validate the received data.
-        if(conversationMessage == null || conversationMessage.getText() == null ||
-                conversationMessage.getPriority() == null){
+        if (conversationMessage == null || conversationMessage.getText() == null ||
+                conversationMessage.getPriority() == null) {
             String errMsg = "Incomplete data record. The given conversationMessage is " + conversationMessage + ".";
             logger.error(LOG_SERVER_EXCEPTION, 400, CONVERSATIONMESSAGE_DATA_INCOMPLETE, errMsg);
             throw new ServerException(400, CONVERSATIONMESSAGE_DATA_INCOMPLETE);
-        }
-        else if(conversationMessage.getText().length() > MESSAGE_MAX_LENGTH){
+        } else if (conversationMessage.getText().length() > MESSAGE_MAX_LENGTH) {
             String errMsg = "Invalid message text. The text exceeded the max length.";
             logger.error(LOG_SERVER_EXCEPTION, 400, CONVERSATIONMESSAGE_INVALID_TEXT, errMsg);
             throw new ServerException(400, CONVERSATIONMESSAGE_INVALID_TEXT);
@@ -1650,7 +1640,7 @@ public class GroupController extends AccessController {
 
         // Get the group from the database including a list of the participants.
         Group groupDB = getGroup(groupId, true);
-        if(!groupDB.isValidParticipant(requestor.getId())){
+        if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group " +
                     "with id " + groupId + ". The user is thus not allowed to create a new conversation message";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -1659,7 +1649,7 @@ public class GroupController extends AccessController {
 
         // Get the conversation from the database. Reject the request if the conversation is closed.
         Conversation conversationDB = getConversation(groupId, conversationId);
-        if(conversationDB.getClosed() == Boolean.TRUE){
+        if (conversationDB.getClosed() == Boolean.TRUE) {
             String errMsg = "The conversation with id " + conversationId + " is closed. No message can be sent.";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
             throw new ServerException(403, USER_FORBIDDEN);
@@ -1667,13 +1657,12 @@ public class GroupController extends AccessController {
 
         // Check the priority and adjust it if necessary.
         Priority priority = conversationMessage.getPriority();
-        if(priority == Priority.HIGH && groupDB.getGroupType() == GroupType.WORKING){
+        if (priority == Priority.HIGH && groupDB.getGroupType() == GroupType.WORKING) {
             // In a working group no messages can be sent with priority high.
             conversationMessage.setPriority(Priority.NORMAL);
             logger.info("Message priority is reset to normal.");
-        }
-        else if(priority == Priority.HIGH && groupDB.getGroupType() == GroupType.TUTORIAL &&
-                !groupDB.isGroupAdmin(requestor.getId())){
+        } else if (priority == Priority.HIGH && groupDB.getGroupType() == GroupType.TUTORIAL &&
+                !groupDB.isGroupAdmin(requestor.getId())) {
             // In a tutorial group only the group administrator (tutor) can send a message with priority high.
             conversationMessage.setPriority(Priority.NORMAL);
             logger.info("Message priority is reset to normal.");
@@ -1688,7 +1677,7 @@ public class GroupController extends AccessController {
         int attempts = 0;
         boolean successful = false;
         // Try to store the conversation message into the database. After a maximum of attempts, abort the method.
-        while(!successful && attempts < maxAttempts){
+        while (!successful && attempts < maxAttempts) {
             try {
                 // Store the conversation message in the database.
                 groupDBM.storeConversationMessage(conversationId, conversationMessage);
@@ -1709,10 +1698,10 @@ public class GroupController extends AccessController {
                 }
             }
         }
-        if(!successful){
+        if (!successful) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Storing of conversation message has failed due" +
                     " to duplicate message numbers.");
-            throw  new ServerException(500, DATABASE_FAILURE);
+            throw new ServerException(500, DATABASE_FAILURE);
         }
 
         // Send notification about the new conversation message to the participants.
@@ -1734,7 +1723,7 @@ public class GroupController extends AccessController {
      * @param groupId The id of the group to which the conversation belongs.
      * @param conversationId The id of the conversation for which the messages are requested.
      * @param messageNumber Defines the starting message number. The method returns all messages which have a higher
-     *                      message number than the one specified in this parameter.
+     * message number than the one specified in this parameter.
      * @return A list of conversation messages. The list can also be empty.
      * @throws ServerException If the requestor is not allowed to execute the operation, the group or the
      * conversation are not found or the retrieval of the messages fails due to a database failure.
@@ -1787,8 +1776,8 @@ public class GroupController extends AccessController {
                 List<User> participants = groupDBM.getParticipants(group.getId());
 
                 // Remove the changed user from the participants list before.
-                for(int i=0; i< participants.size(); i++){
-                    if(participants.get(i).getId() == userId){
+                for (int i = 0; i < participants.size(); i++) {
+                    if (participants.get(i).getId() == userId) {
                         participants.remove(i);
                         break;
                     }
@@ -1821,7 +1810,7 @@ public class GroupController extends AccessController {
                 logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
                 throw new ServerException(404, GROUP_NOT_FOUND);
             }
-        } catch (DatabaseException e){
+        } catch (DatabaseException e) {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
@@ -1846,7 +1835,7 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
-        if(!activeParticipant){
+        if (!activeParticipant) {
             String errMsg = "The user needs to be an active participant of the group to perform this operation. The " +
                     "user with id " + userId + " is not an active participant of the group with id " + groupId + ".";
             logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
@@ -1863,7 +1852,7 @@ public class GroupController extends AccessController {
      */
     private void verifyGroupExistenceViaDB(int groupId) throws ServerException {
         try {
-            if(!groupDBM.isValidGroup(groupId)){
+            if (!groupDBM.isValidGroup(groupId)) {
                 String errMsg = "The group with the id " + groupId + " could not be found.";
                 logger.error(LOG_SERVER_EXCEPTION, 404, GROUP_NOT_FOUND, errMsg);
                 throw new ServerException(404, GROUP_NOT_FOUND);
@@ -1872,6 +1861,36 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
+    }
+
+    /**
+     * A helper method which requests the ballot with the specified id from the database manager. The ballots
+     * subresources my be included. If the ballot is not found, the method throws a ServerException.
+     *
+     * @param groupId The if of the group to which the ballot belongs.
+     * @param ballotId The id of the ballot.
+     * @param withSubresources Indicates whether the ballot objects, which are returned, should contain a list of
+     * their options and a list of voters per option.
+     * @return Returns the ballot object from the database.
+     * @throws ServerException If the ballot is not found or the retrieval of the ballot fails due to a database
+     * failure.
+     */
+    private Ballot getBallot(int groupId, int ballotId, boolean withSubresources) throws ServerException {
+        Ballot ballot;
+        try {
+            // Get the ballot from the database.
+            ballot = groupDBM.getBallot(groupId, ballotId, withSubresources);
+        } catch (DatabaseException e) {
+            logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
+            throw new ServerException(500, DATABASE_FAILURE);
+        }
+        if (ballot == null) {
+            String errMsg = "The ballot with id " + ballotId + " could not be found in the group with id " +
+                    groupId + ".";
+            logger.error(LOG_SERVER_EXCEPTION, 404, BALLOT_NOT_FOUND, errMsg);
+            throw new ServerException(404, BALLOT_NOT_FOUND);
+        }
+        return ballot;
     }
 
     /**
@@ -1884,7 +1903,7 @@ public class GroupController extends AccessController {
      * @throws ServerException If the ballot is not found or the retrieval of the ballot fails due to a database
      * failure.
      */
-    private Ballot getBallot(int groupId, int ballotId) throws ServerException{
+    private Ballot getBallot(int groupId, int ballotId) throws ServerException {
         Ballot ballot;
         try {
             // Get the ballot from the database.
@@ -1893,7 +1912,7 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
-        if(ballot == null){
+        if (ballot == null) {
             String errMsg = "The ballot with id " + ballotId + " could not be found in the group with id " +
                     groupId + ".";
             logger.error(LOG_SERVER_EXCEPTION, 404, BALLOT_NOT_FOUND, errMsg);
@@ -1914,9 +1933,9 @@ public class GroupController extends AccessController {
      */
     private void verifyBallotExistenceViaDB(int groupId, int ballotId) throws ServerException {
         try {
-            if(!groupDBM.isValidBallot(groupId, ballotId)){
+            if (!groupDBM.isValidBallot(groupId, ballotId)) {
                 String errMsg = "The ballot with the id " + ballotId + " could not be found within the group with id " +
-                         groupId + ".";
+                        groupId + ".";
                 logger.error(LOG_SERVER_EXCEPTION, 404, BALLOT_NOT_FOUND, errMsg);
                 throw new ServerException(404, BALLOT_NOT_FOUND);
             }
@@ -1945,7 +1964,7 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
-        if(option == null){
+        if (option == null) {
             String errMsg = "The option with id " + optionId + " could not be found within the ballot with id " +
                     ballotId + ".";
             logger.error(LOG_SERVER_EXCEPTION, 404, OPTION_NOT_FOUND, errMsg);
@@ -1966,7 +1985,7 @@ public class GroupController extends AccessController {
      */
     private void verifyOptionExistenceViaDB(int ballotId, int optionId) throws ServerException {
         try {
-            if(!groupDBM.isValidOption(ballotId,optionId)){
+            if (!groupDBM.isValidOption(ballotId, optionId)) {
                 String errMsg = "The given option with id " + optionId + " could not be found for the ballot with id " +
                         ballotId + ".";
                 logger.error(LOG_SERVER_EXCEPTION, 404, OPTION_NOT_FOUND, errMsg);
@@ -1996,7 +2015,7 @@ public class GroupController extends AccessController {
             logger.error(LOG_SERVER_EXCEPTION, 500, DATABASE_FAILURE, "Database Failure.");
             throw new ServerException(500, DATABASE_FAILURE);
         }
-        if(conversation == null){
+        if (conversation == null) {
             String errMsg = "The conversation with id " + conversationId + " could not be found within the group with" +
                     " id " + groupId + ".";
             logger.error(LOG_SERVER_EXCEPTION, 404, CONVERSATION_NOT_FOUND, errMsg);
@@ -2017,7 +2036,7 @@ public class GroupController extends AccessController {
      */
     private void verifyConversationExistenceViaDB(int groupId, int conversationId) throws ServerException {
         try {
-            if(!groupDBM.isValidConversation(groupId, conversationId)){
+            if (!groupDBM.isValidConversation(groupId, conversationId)) {
                 String errMsg = "The given conversation with id " + conversationId + " could not be found for the " +
                         "group with id " + groupId + ".";
                 logger.error(LOG_SERVER_EXCEPTION, 404, CONVERSATION_NOT_FOUND, errMsg);
@@ -2037,15 +2056,15 @@ public class GroupController extends AccessController {
      * @param userList The list of user objects.
      * @param requestor The user object which should be removed from the list.
      */
-    private void removeRequestorFromParticipantsList(List<User> userList, User requestor){
+    private void removeRequestorFromParticipantsList(List<User> userList, User requestor) {
         int requestorObjectIndex = -1;
-        for (int i=0; i < userList.size(); i++) {
-            if (requestor.getId() == userList.get(i).getId()){
+        for (int i = 0; i < userList.size(); i++) {
+            if (requestor.getId() == userList.get(i).getId()) {
                 requestorObjectIndex = i;
                 break;
             }
         }
-        if (requestorObjectIndex != -1){
+        if (requestorObjectIndex != -1) {
             userList.remove(requestorObjectIndex);
             logger.debug("Removed the user with id {} from the participants list.", requestor.getId());
         }
