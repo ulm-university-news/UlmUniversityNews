@@ -535,10 +535,11 @@ public class GroupAPI {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{groupId}/conversation")
-    public List<Conversation> getConversations(@HeaderParam("Authorization") String accessToken, @PathParam
+    public Response getConversations(@HeaderParam("Authorization") String accessToken, @PathParam
             ("groupId") int groupId, @DefaultValue("false") @QueryParam("subresources") boolean subresources) throws
             ServerException {
-        return groupController.getConversations(accessToken, groupId, subresources);
+        List<Conversation> conversations = groupController.getConversations(accessToken, groupId, subresources);
+        return Response.status(Response.Status.OK).entity(parseToJson(conversations)).build();
     }
 
     /**
