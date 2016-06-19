@@ -752,11 +752,11 @@ public class GroupController extends AccessController {
         logger.debug("The requestor, i.e. the user with id {}, requests the ballot with the id {} from the group with" +
                 " the id {}.", requestor.getId(), ballotId, groupId);
 
-        // Check if the requestor is a valid participant of the group. If not, the request is rejected.
-        verifyParticipationInGroupViaDB(groupId, requestor.getId());
-
         // Check if group exists. If not, the request is rejected.
         verifyGroupExistenceViaDB(groupId);
+
+        // Check if the requestor is a valid participant of the group. If not, the request is rejected.
+        verifyParticipationInGroupViaDB(groupId, requestor.getId());
 
         // Get the ballot from the database.
         ballot = getBallot(groupId, ballotId, withSubresources);
@@ -790,7 +790,9 @@ public class GroupController extends AccessController {
                 "with id {}.", requestor.getId(), ballotId, groupId);
 
         // First, get the group from the database. The group should already contain a list of all participants.
+        // Reject the request if group is not found.
         Group groupDB = getGroup(groupId, true);
+
         // Check if the requestor is an active participant of the group. Otherwise reject the request.
         if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
@@ -799,7 +801,7 @@ public class GroupController extends AccessController {
             throw new ServerException(403, USER_FORBIDDEN);
         }
 
-        // Second, get the ballot object from the database.
+        // Second, get the ballot object from the database. Reject request if group is not found.
         Ballot ballotDB = getBallot(groupId, ballotId);
         // Check if the requestor is the administrator of the ballot. Otherwise reject the request.
         if (!ballotDB.isBallotAdmin(requestor.getId())) {
@@ -1475,7 +1477,9 @@ public class GroupController extends AccessController {
                 "the group with id {}.", requestor.getId(), conversationId, groupId);
 
         // First, get the group from the database. The group should already contain a list of all participants.
+        // Reject the request if group is not found.
         Group groupDB = getGroup(groupId, true);
+
         // Check if the requestor is an active participant of the group. Otherwise reject the request.
         if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
@@ -1638,7 +1642,8 @@ public class GroupController extends AccessController {
         logger.info("The requestor, i.e. the user with the id {}, requests to create a new message for the " +
                 "conversation with id {} within the group with id {}.", requestor.getId(), conversationId, groupId);
 
-        // Get the group from the database including a list of the participants.
+        // Get the group from the database including a list of the participants. Reject the request if group is not
+        // found.
         Group groupDB = getGroup(groupId, true);
         if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group " +
