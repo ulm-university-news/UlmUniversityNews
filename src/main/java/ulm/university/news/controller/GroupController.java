@@ -659,8 +659,8 @@ public class GroupController extends AccessController {
         if (!valid) {
             String errMsg = "The requestor, i.e. the user with id " + requestor.getId() + ", is not an active " +
                     "participant of the group. The user is thus not allowed to create a ballot for this group.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-            throw new ServerException(403, USER_FORBIDDEN);
+            logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_PARTICIPANT_NOT_FOUND, errMsg);
+            throw new ServerException(403, GROUP_PARTICIPANT_NOT_FOUND);
         }
 
         // Perform further authorization checks depending on the group type.
@@ -797,8 +797,8 @@ public class GroupController extends AccessController {
         if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
                     " with id " + groupId + ". The user is not allowed to change the ballot, the request is rejected.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-            throw new ServerException(403, USER_FORBIDDEN);
+            logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_PARTICIPANT_NOT_FOUND, errMsg);
+            throw new ServerException(403, GROUP_PARTICIPANT_NOT_FOUND);
         }
 
         // Second, get the ballot object from the database. Reject request if group is not found.
@@ -901,8 +901,8 @@ public class GroupController extends AccessController {
         if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
                     " with id " + groupId + ". The user is not allowed to delete the ballot, the request is rejected.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-            throw new ServerException(403, USER_FORBIDDEN);
+            logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_PARTICIPANT_NOT_FOUND, errMsg);
+            throw new ServerException(403, GROUP_PARTICIPANT_NOT_FOUND);
         }
 
         // Second, get the ballot object from the database.
@@ -1162,8 +1162,8 @@ public class GroupController extends AccessController {
         if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " isn't an active participant of the group " +
                     "with id " + groupId + ". The user is not allowed to vote for an option of a ballot of this group.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-            throw new ServerException(403, USER_FORBIDDEN);
+            logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_PARTICIPANT_NOT_FOUND, errMsg);
+            throw new ServerException(403, GROUP_PARTICIPANT_NOT_FOUND);
         }
 
         // Get the ballot from the database. Reject the request if ballot is not found.
@@ -1292,8 +1292,8 @@ public class GroupController extends AccessController {
             String errMsg = "The user with id " + requestor.getId() + " isn't an active participant of the group " +
                     "with id " + groupId + ". The user is not allowed to remove a vote for an option of a ballot of " +
                     "this group.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-            throw new ServerException(403, USER_FORBIDDEN);
+            logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_PARTICIPANT_NOT_FOUND, errMsg);
+            throw new ServerException(403, GROUP_PARTICIPANT_NOT_FOUND);
         }
 
         // Get the ballot from the database. Reject the request if ballot is not found.
@@ -1359,8 +1359,8 @@ public class GroupController extends AccessController {
         if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " isn't an active participant of the group " +
                     "with id " + groupId + ". The user is not allowed to create a conversation for this group";
-            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-            throw new ServerException(403, USER_FORBIDDEN);
+            logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_PARTICIPANT_NOT_FOUND, errMsg);
+            throw new ServerException(403, GROUP_PARTICIPANT_NOT_FOUND);
         }
 
         // Set the requestor as the administrator for the new conversation.
@@ -1485,8 +1485,8 @@ public class GroupController extends AccessController {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
                     " with id " + groupId + ". The user is not allowed to change the conversation, the request is " +
                     "rejected.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-            throw new ServerException(403, USER_FORBIDDEN);
+            logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_PARTICIPANT_NOT_FOUND, errMsg);
+            throw new ServerException(403, GROUP_PARTICIPANT_NOT_FOUND);
         }
 
         // Second, get the conversation from the database.
@@ -1581,8 +1581,8 @@ public class GroupController extends AccessController {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group" +
                     " with id " + groupId + ". The user is not allowed to delete the conversation, the request is " +
                     "rejected.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-            throw new ServerException(403, USER_FORBIDDEN);
+            logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_PARTICIPANT_NOT_FOUND, errMsg);
+            throw new ServerException(403, GROUP_PARTICIPANT_NOT_FOUND);
         }
 
         // Second, get the conversation from the database.
@@ -1648,16 +1648,16 @@ public class GroupController extends AccessController {
         if (!groupDB.isValidParticipant(requestor.getId())) {
             String errMsg = "The user with id " + requestor.getId() + " is not an active participant of the group " +
                     "with id " + groupId + ". The user is thus not allowed to create a new conversation message";
-            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-            throw new ServerException(403, USER_FORBIDDEN);
+            logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_PARTICIPANT_NOT_FOUND, errMsg);
+            throw new ServerException(403, GROUP_PARTICIPANT_NOT_FOUND);
         }
 
         // Get the conversation from the database. Reject the request if the conversation is closed.
         Conversation conversationDB = getConversation(groupId, conversationId);
         if (conversationDB.getClosed() == Boolean.TRUE) {
             String errMsg = "The conversation with id " + conversationId + " is closed. No message can be sent.";
-            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-            throw new ServerException(403, USER_FORBIDDEN);
+            logger.error(LOG_SERVER_EXCEPTION, 403, CONVERSATION_CLOSED, errMsg);
+            throw new ServerException(403, CONVERSATION_CLOSED);
         }
 
         // Check the priority and adjust it if necessary.
@@ -1843,8 +1843,8 @@ public class GroupController extends AccessController {
         if (!activeParticipant) {
             String errMsg = "The user needs to be an active participant of the group to perform this operation. The " +
                     "user with id " + userId + " is not an active participant of the group with id " + groupId + ".";
-            logger.error(LOG_SERVER_EXCEPTION, 403, USER_FORBIDDEN, errMsg);
-            throw new ServerException(403, USER_FORBIDDEN);
+            logger.error(LOG_SERVER_EXCEPTION, 403, GROUP_PARTICIPANT_NOT_FOUND, errMsg);
+            throw new ServerException(403, GROUP_PARTICIPANT_NOT_FOUND);
         }
     }
 

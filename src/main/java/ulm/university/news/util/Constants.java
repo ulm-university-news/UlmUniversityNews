@@ -158,6 +158,7 @@ public class Constants {
     public static final int CONVERSATION_NOT_FOUND = 4100;
     public static final int CONVERSATION_DATA_INCOMPLETE = 4102;
     public static final int CONVERSATION_INVALID_TITLE = 4103;
+    public static final int CONVERSATION_CLOSED = 4104;
 
     public static final int CONVERSATIONMESSAGE_DATA_INCOMPLETE = 4202;
     public static final int CONVERSATIONMESSAGE_INVALID_TEXT = 4203;
