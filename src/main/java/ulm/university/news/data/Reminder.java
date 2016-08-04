@@ -2,8 +2,11 @@ package ulm.university.news.data;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ulm.university.news.data.enums.Priority;
 
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import static ulm.university.news.util.Constants.TIME_ZONE;
@@ -16,6 +19,10 @@ import static ulm.university.news.util.Constants.TIME_ZONE;
  * @author Philipp Speidel
  */
 public class Reminder {
+
+    /** The logger instance for Reminder. */
+    private static final Logger logger = LoggerFactory.getLogger(Reminder.class);
+
     /** The unique Reminder id. */
     int id;
     /** The date on which the Reminder was created. */
@@ -123,15 +130,36 @@ public class Reminder {
         if(interval == 0){
             nextDate = endDate.plusSeconds(1);
         }else{
-            nextDate = nextDate.plusSeconds(interval);
-        }
+            ZonedDateTime tmpNextDate = nextDate.plusSeconds(interval);
 
+            // Check if there is a transition from daylight saving time to non daylight saving time.
+            if (nextDate.getZone().getRules().isDaylightSavings(nextDate.toInstant()) &&
+                    !tmpNextDate.getZone().getRules().isDaylightSavings(tmpNextDate.toInstant())){
+                // Add one hour.
+                tmpNextDate = tmpNextDate.plusHours(1);
+
+                logger.info("Adding one hour to next date for reminder with id {}.", getId());
+            }
+
+            // Check if there is a transition from non daylight saving time to daylight saving time.
+            if (!nextDate.getZone().getRules().isDaylightSavings(nextDate.toInstant()) &&
+                    tmpNextDate.getZone().getRules().isDaylightSavings(tmpNextDate.toInstant())){
+                // Subtract one hour.
+                tmpNextDate = tmpNextDate.minusHours(1);
+
+                logger.info("Subtracting one hour to next date for reminder with id {}.", getId());
+            }
+
+            nextDate = tmpNextDate;
+        }
     }
 
     /**
      * Computes and sets the date on which the fist ReminderTask should start.
      */
     public void computeFirstNextDate() {
+        logger.info("Start calculation of first next date for reminder with id {}.", getId());
+
         // Set first next date to start date.
         if (nextDate == null) {
             nextDate = startDate;
@@ -140,10 +168,15 @@ public class Reminder {
         if (interval == 0) {
             return;
         }
+
+        logger.debug("Start date in local time: {}", startDate);
+
         // The next date has to be in the future.
         while (nextDate.isBefore(ZonedDateTime.now(TIME_ZONE))) {
-            nextDate = nextDate.plusSeconds(interval);
+            computeNextDate();
         }
+
+        logger.info("Calculated next date is: {}", nextDate);
     }
 
     /**

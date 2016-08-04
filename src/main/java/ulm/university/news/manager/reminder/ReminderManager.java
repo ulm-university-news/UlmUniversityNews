@@ -57,6 +57,12 @@ public class ReminderManager {
     public synchronized void addReminder(Reminder reminder) {
         // Check if reminder is already scheduled.
         if (activeReminders.containsKey(reminder.getId())) {
+            logger.warn("Cannot add reminder to scheduler. Reminder with id {} is already scheduled.", reminder.getId());
+            return;
+        }
+
+        if (reminder.getActive() != null && !reminder.getActive()){
+            logger.warn("Cannot add reminder to scheduler. Reminder with id {} is deactivated.", reminder.getId());
             return;
         }
 
