@@ -324,7 +324,9 @@ public class GroupDatabaseManager extends DatabaseManager {
 
                         // The ServerAccessToken is never returned, it is set to null.
                         User tmp = new User(userId, username, null, pushAccessToken, platform, active);
-                        participants.add(tmp);
+                        if (active){
+                            participants.add(tmp);
+                        }
                     }
                 }
                 getUserStmt.close();
